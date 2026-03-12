@@ -1,0 +1,81 @@
+// MANTIS — Scene 7: Automated Warehouse
+// Transport, store and retrieve boxes from a rack using a stacker crane.
+// DB16: I/O mapping
+
+FUNCTION_BLOCK "FB_Warehouse"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+
+VAR
+    AtEntry     : BOOL;  // 0.0
+    _pad0       : BYTE;
+    AtExit      : BOOL;  // 2.0
+    _pad1       : BYTE;
+    CraneX      : REAL;  // 4
+    CraneZ      : REAL;  // 8
+    CraneFork   : BOOL;  // 12.0
+    _pad2       : BYTE;
+    ConveyorIn  : BOOL;  // 14.0
+    _pad3       : BYTE;
+    ConveyorOut : BOOL;  // 16.0
+    _pad4       : BYTE;
+    CraneMoveX  : REAL;  // 18
+    CraneMoveZ  : REAL;  // 22
+    ForkExtend  : BOOL;  // 26.0
+    _pad5       : BYTE;
+    ForkRetract : BOOL;  // 28.0
+    _pad6       : BYTE;
+    Emitter     : BOOL;  // 30.0
+    _pad7       : BYTE;
+    TargetSlot  : INT;   // 32
+    
+    iState       : INT := 0;
+    CurrentSlot : INT := 0;
+    SLOT_SPACING_X : REAL := 200.0;
+    SLOT_SPACING_Z : REAL := 150.0;
+    COLS        : INT := 5;
+    TOLERANCE   : REAL := 15.0;
+END_VAR
+
+BEGIN
+    CASE iState OF
+        0: // Wait for box at entry
+            ConveyorIn := TRUE;
+            Emitter := TRUE;
+            IF AtEntry THEN
+                ConveyorIn := FALSE;
+                Emitter := FALSE;
+                // Calculate target position from slot
+                CraneMoveX := INT_TO_REAL(TargetSlot MOD COLS) * SLOT_SPACING_X;
+                CraneMoveZ := INT_TO_REAL(TargetSlot / COLS) * SLOT_SPACING_Z;
+                iState := 1;
+            END_IF;
+            
+        1: // Pick box at entry
+            ForkExtend := TRUE;
+            IF CraneFork THEN
+                ForkExtend := FALSE;
+                iState := 2;
+            END_IF;
+            
+        2: // Move crane to target slot
+            IF ABS(CraneX - CraneMoveX) < TOLERANCE AND ABS(CraneZ - CraneMoveZ) < TOLERANCE THEN
+                iState := 3;
+            END_IF;
+            
+        3: // Place box in slot
+            ForkRetract := TRUE;
+            IF NOT CraneFork THEN
+                ForkRetract := FALSE;
+                // Move to next slot
+                CurrentSlot := CurrentSlot + 1;
+                IF CurrentSlot > 24 THEN
+                    CurrentSlot := 0;
+                END_IF;
+                TargetSlot := CurrentSlot;
+                CraneMoveX := 0.0;
+                CraneMoveZ := 0.0;
+                iState := 0;
+            END_IF;
+    END_CASE;
+END_FUNCTION_BLOCK

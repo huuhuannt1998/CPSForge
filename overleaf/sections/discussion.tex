@@ -1,0 +1,28 @@
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{Why Real PLC Execution Matters}
+
+A central design choice in CPSForge is the use of a real Siemens PLC rather than a purely synthetic or mock controller. This choice increases implementation complexity, but it also strengthens the realism of the evaluation. Real controller scan timing, actual tag behavior, and live interaction with Factory I/O provide a more faithful substrate for studying attack validity and defense response. For a paper focused on LLM use in CPS security, this realism is important because it reduces the risk that observed results are artifacts of an overly simplified backend.
+
+\subsection{Why the LLM Is Constrained}
+
+CPSForge intentionally avoids treating the LLM as a trusted autonomous controller. This is both a safety decision and a research decision. From a safety perspective, unrestricted direct actuation is inappropriate in a live CPS setting. From a research perspective, a structured and mediated interface makes it possible to evaluate the LLM’s reasoning quality without conflating model output quality with uncontrolled execution privilege. The framework therefore studies what the LLM can contribute under explicit process and safety constraints.
+
+\subsection{Observed Strengths}
+
+The preliminary evaluation confirms three strengths of CPSForge. First, the hardware-in-the-loop environment produces meaningful and measurable process impact: scripted attacks on the Level Control scene achieved 100\% success with an average impact of 1.450, demonstrating that the framework enables realistic attack evaluation. Second, the safety-aware experimental workflow preserved auditability and bounded execution throughout all six runs, with the shield approving all safe actions and filtering two unsafe random actions. Third, the defender stack achieved perfect recall across all configurations, detecting every attack-period step, confirming that the threshold and invariant detectors provide a reliable baseline for identifying anomalous behavior.
+
+These results validate the framework as a functional research testbed rather than only an engineering artifact. The artifact outputs (traces, metrics, attack records, shield decisions) are structured and reproducible, enabling systematic comparison across experiments.
+
+\subsection{Limitations}
+
+The current evaluation has several limitations. First, the framework does not model arbitrary industrial intrusions, firmware compromise, or unrestricted network adversaries; the action space is intentionally constrained for safe experimentation. Second, the preliminary evaluation uses only scripted and random attackers; the LLM attacker, while implemented, has not yet been evaluated due to LLM provider configuration constraints. Third, the detector precision ranges from 0.515 to 0.696 across configurations, indicating substantial false positive rates that would need to be reduced for operational deployment. Fourth, the Sorting by Height scene showed zero attack success, suggesting that the current single-shot attack model may be insufficient for complex discrete-control scenes where multi-step coordinated perturbations are needed.
+
+Another limitation is that attacks are currently single-shot writes: the attacker writes once at the start of the attack window, and the PLC may immediately overwrite the value on its next scan cycle. This reduces the effectiveness of attacks on scenes with fast scan times. Future work should support sustained or repeated writes within an attack window.
+
+LLM-generated actions may also be sensitive to prompt design, available context, and model selection. Accordingly, prompt choice and schema design may materially affect results once the LLM attacker is evaluated.
+
+\subsection{Future Directions}
+
+Several extensions are planned. The immediate next step is evaluating the LLM attacker to determine whether it generates more targeted, stealthy, or impactful attacks than the scripted and random baselines. The framework can also be expanded to additional Factory I/O scenes, more advanced learned defenders, richer attacker memory for multi-step campaigns, and LLM-assisted invariant synthesis. Another valuable direction is reducing detector false positives through adaptive threshold calibration or learned anomaly scoring. Sustained attack writes (repeated PLC writes within attack windows) would improve attack realism for scenes with fast scan times. Finally, CPSForge may be integrated with broader digital-twin or industrial testbed infrastructures to support larger-scale experiments.

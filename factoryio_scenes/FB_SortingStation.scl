@@ -1,0 +1,58 @@
+// MANTIS — Scene 21: Sorting Station
+// Separate green and blue items using a vision sensor.
+// DB30: I/O mapping
+
+FUNCTION_BLOCK "FB_SortingStation"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+
+VAR
+    ItemAtEntry    : BOOL;  // 0.0
+    _pad0          : BYTE;
+    VisionColor    : INT;   // 2     (0=none, 1=green, 2=blue)
+    AtDiverter     : BOOL;  // 4.0
+    _pad1          : BYTE;
+    AtExitGreen    : BOOL;  // 6.0
+    _pad2          : BYTE;
+    AtExitBlue     : BOOL;  // 8.0
+    _pad3          : BYTE;
+    ConveyorIn     : BOOL;  // 10.0
+    _pad4          : BYTE;
+    ConveyorGreen  : BOOL;  // 12.0
+    _pad5          : BYTE;
+    ConveyorBlue   : BOOL;  // 14.0
+    _pad6          : BYTE;
+    Diverter       : BOOL;  // 16.0   (FALSE=green, TRUE=blue)
+    _pad7          : BYTE;
+    Emitter        : BOOL;  // 18.0
+    _pad8          : BYTE;
+    RemoverGreen   : BOOL;  // 20.0
+    _pad9          : BYTE;
+    RemoverBlue    : BOOL;  // 22.0
+    _pad10         : BYTE;
+    
+    DetectedColor : INT := 0;
+END_VAR
+
+BEGIN
+    Emitter := TRUE;
+    ConveyorIn := TRUE;
+    ConveyorGreen := TRUE;
+    ConveyorBlue := TRUE;
+    RemoverGreen := TRUE;
+    RemoverBlue := TRUE;
+    
+    // Detect color
+    IF ItemAtEntry AND VisionColor > 0 THEN
+        DetectedColor := VisionColor;
+    END_IF;
+    
+    // Divert based on color
+    IF AtDiverter THEN
+        IF DetectedColor = 1 THEN
+            Diverter := FALSE;  // Green path
+        ELSIF DetectedColor = 2 THEN
+            Diverter := TRUE;   // Blue path
+        END_IF;
+    END_IF;
+END_FUNCTION_BLOCK

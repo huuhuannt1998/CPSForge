@@ -1,0 +1,47 @@
+\section{Methodology}
+\label{sec:methodology}
+
+Our evaluation methodology measures both attacker effectiveness and defender robustness in a closed-loop CPS setting.
+
+\subsection{Experiment Workflow}
+Each experiment proceeds as follows:
+\begin{enumerate}[leftmargin=1.2em]
+    \item Initialize the process in a known safe state.
+    \item Start the PLC--Factory I/O control loop and the logging service.
+    \item Execute a benign warm-up period.
+    \item Invoke an attacker to propose one or more structured actions.
+    \item Pass each action through the safety shield.
+    \item Execute approved actions and continue polling.
+    \item Run defenders online over the collected snapshots.
+    \item Record attack outcome, physical impact, detector behavior, and shield events.
+    \item Store the run as a replayable artifact.
+\end{enumerate}
+
+\subsection{Attacker Variants}
+We compare three attacker classes:
+\begin{itemize}[leftmargin=1.2em]
+    \item \textbf{Scripted attacker:} deterministic templates with targeted process-aware actions.
+    \item \textbf{Random attacker:} bounded random perturbations over the configured attack surface.
+    \item \textbf{LLM attacker:} process-aware planning over structured scene and state context (implemented; evaluation pending LLM provider configuration).
+\end{itemize}
+
+\subsection{Defender Variants}
+We evaluate threshold-based and invariant-based detectors as primary baselines. A sequence-model detector scaffold is implemented for future learned-detector evaluation. Additional LLM-based explanation components are treated as auxiliary analysis modules rather than primary detectors.
+
+\subsection{Metrics}
+We measure:
+\begin{itemize}[leftmargin=1.2em]
+    \item \textbf{Attack validity:} fraction of attacker outputs that compile and execute successfully.
+    \item \textbf{Attack success:} fraction of attacks that produce measurable process deviation.
+    \item \textbf{Physical impact:} process deviation measured as the difference between attack-period and baseline tag values.
+    \item \textbf{Shield effectiveness:} fraction of proposals approved versus rejected, and unsafe action block rate.
+    \item \textbf{Detection performance:} precision, recall, F1, false-positive count, and detection latency.
+    \item \textbf{Adaptation gain:} improvement in detection robustness across iterative rounds.
+\end{itemize}
+
+\subsection{Scenes and Scale}
+
+The preliminary evaluation covers three Factory I/O scenes of increasing complexity: From A to B (4 tags, discrete transport), Level Control (15 tags, continuous process), and Sorting by Height (30 tags, mixed discrete/continuous). For each scene, both scripted and random attackers are evaluated, yielding six experiment configurations. Each configuration runs 120--200 steps at a 500\,ms polling interval against the live PLC.
+
+\subsection{Closed-Loop Adaptation}
+After each evaluation round, traces corresponding to missed or weakly detected attacks are added to a hard-case bank. These traces are then used to refine learned defenders or detector policies in the next round.

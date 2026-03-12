@@ -1,0 +1,78 @@
+// MANTIS — Scene 8: Buffer Station
+// Buffer and separate up to five boxes.
+// DB17: I/O mapping
+
+FUNCTION_BLOCK "FB_BufferStation"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+
+VAR
+    Sensor1   : BOOL;  // 0.0
+    _pad0     : BYTE;
+    Sensor2   : BOOL;  // 2.0
+    _pad1     : BYTE;
+    Sensor3   : BOOL;  // 4.0
+    _pad2     : BYTE;
+    Sensor4   : BOOL;  // 6.0
+    _pad3     : BYTE;
+    Sensor5   : BOOL;  // 8.0
+    _pad4     : BYTE;
+    AtExit    : BOOL;  // 10.0
+    _pad5     : BYTE;
+    Conveyor  : BOOL;  // 12.0
+    _pad6     : BYTE;
+    Stopper1  : BOOL;  // 14.0
+    _pad7     : BYTE;
+    Stopper2  : BOOL;  // 16.0
+    _pad8     : BYTE;
+    Emitter   : BOOL;  // 18.0
+    _pad9     : BYTE;
+    Remover   : BOOL;  // 20.0
+    _pad10    : BYTE;
+    
+    iState     : INT := 0;
+    BoxCount  : INT := 0;
+    BUFFER_MAX : INT := 5;
+END_VAR
+
+BEGIN
+    Conveyor := TRUE;
+    Remover := TRUE;
+    
+    // Fill buffer
+    IF BoxCount < BUFFER_MAX THEN
+        Emitter := TRUE;
+    ELSE
+        Emitter := FALSE;
+    END_IF;
+    
+    // Count boxes (simplified)
+    IF Sensor1 THEN BoxCount := 1; END_IF;
+    IF Sensor2 THEN BoxCount := 2; END_IF;
+    IF Sensor3 THEN BoxCount := 3; END_IF;
+    IF Sensor4 THEN BoxCount := 4; END_IF;
+    IF Sensor5 THEN BoxCount := 5; END_IF;
+    
+    // Release one box at a time
+    CASE iState OF
+        0: // Buffer full — release first stopper
+            IF BoxCount >= BUFFER_MAX THEN
+                Stopper1 := TRUE;  // Retract stopper 1
+                iState := 1;
+            END_IF;
+            
+        1: // Wait for box to pass stopper 1
+            IF NOT Sensor1 THEN
+                Stopper1 := FALSE;
+                Stopper2 := TRUE;
+                iState := 2;
+            END_IF;
+            
+        2: // Wait for box to clear
+            IF AtExit THEN
+                Stopper2 := FALSE;
+                BoxCount := BoxCount - 1;
+                iState := 0;
+            END_IF;
+    END_CASE;
+END_FUNCTION_BLOCK

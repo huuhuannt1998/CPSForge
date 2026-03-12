@@ -1,0 +1,43 @@
+# =============================================================================
+# CPSForge Defender — Threshold Detector (Sorting Height Basic)
+# =============================================================================
+name: threshold_sorting_height_basic
+detector_type: threshold
+scene_name: sorting_height_basic
+enabled: true
+
+thresholds:
+  - tag: state
+    operator: ">"
+    value: 4
+    severity: high
+    label: "invalid_state"
+    description: "State machine value exceeds maximum (valid: 0-4)"
+
+  - tag: state
+    operator: "<"
+    value: 0
+    severity: high
+    label: "invalid_state_low"
+    description: "State machine value negative"
+
+  - tag: emergency_stop
+    operator: "=="
+    value: true
+    severity: critical
+    label: "emergency_stop_active"
+    description: "Emergency stop has been triggered"
+
+  - tag: enable
+    operator: "=="
+    value: 0
+    severity: high
+    label: "enable_off"
+    description: "System enable flag is FALSE — entire sorter halted"
+
+  - tag: conveyor_entry
+    operator: "=="
+    value: 0
+    severity: medium
+    label: "entry_conveyor_stopped"
+    description: "Entry conveyor stopped — item feed disrupted"

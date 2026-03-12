@@ -1,0 +1,39 @@
+# =============================================================================
+# CPSForge Defender — Invariant Detector (Tank Control)
+# =============================================================================
+name: invariant_tank_control
+detector_type: invariant
+scene_name: tank_control
+enabled: true
+
+# Invariant rules: boolean conditions that must always hold in normal operation.
+# A violation triggers a DetectionEvent.
+invariant_rules:
+
+  - rule_id: INV-001
+    description: "Pump should not run at full speed (>95%) when level is above 80%"
+    condition: "NOT (pump_speed > 95.0 AND tank_level > 80.0)"
+    tags: [pump_speed, tank_level]
+    severity: high
+    label: "pump_overspeed_high_level"
+
+  - rule_id: INV-002
+    description: "Drain valve should not be fully closed (0%) when level > 90%"
+    condition: "NOT (drain_valve_position < 1.0 AND tank_level > 90.0)"
+    tags: [drain_valve_position, tank_level]
+    severity: critical
+    label: "valve_closed_overflow"
+
+  - rule_id: INV-003
+    description: "Pump should not be stopped when level < 10% and setpoint > 30%"
+    condition: "NOT (pump_speed < 1.0 AND tank_level < 10.0 AND level_setpoint > 30.0)"
+    tags: [pump_speed, tank_level, level_setpoint]
+    severity: high
+    label: "pump_stopped_low_level"
+
+  - rule_id: INV-004
+    description: "PID output should roughly track pump speed when in auto mode"
+    condition: "NOT (auto_mode == True AND abs(pid_output - pump_speed) > 30.0)"
+    tags: [auto_mode, pid_output, pump_speed]
+    severity: medium
+    label: "pid_pump_mismatch"

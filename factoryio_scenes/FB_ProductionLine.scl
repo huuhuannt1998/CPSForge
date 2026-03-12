@@ -1,0 +1,72 @@
+// MANTIS — Scene 16: Production Line
+// Produce matching lids and bases by controlling two machining centers.
+// DB25: I/O mapping
+
+FUNCTION_BLOCK "FB_ProductionLine"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+
+VAR
+    LidReady       : BOOL;  // 0.0
+    _pad0          : BYTE;
+    BaseReady      : BOOL;  // 2.0
+    _pad1          : BYTE;
+    LidAtAssembly  : BOOL;  // 4.0
+    _pad2          : BYTE;
+    BaseAtAssembly : BOOL;  // 6.0
+    _pad3          : BYTE;
+    LidCount       : INT;   // 8
+    BaseCount      : INT;   // 10
+    LidMachine     : BOOL;  // 12.0
+    _pad4          : BYTE;
+    BaseMachine    : BOOL;  // 14.0
+    _pad5          : BYTE;
+    ConveyorLid    : BOOL;  // 16.0
+    _pad6          : BYTE;
+    ConveyorBase   : BOOL;  // 18.0
+    _pad7          : BYTE;
+    ConveyorOut    : BOOL;  // 20.0
+    _pad8          : BYTE;
+    Emitter        : BOOL;  // 22.0
+    _pad9          : BYTE;
+    
+    LidsProduced  : INT := 0;
+    BasesProduced : INT := 0;
+END_VAR
+
+BEGIN
+    Emitter := TRUE;
+    ConveyorOut := TRUE;
+    
+    // Run both machines to keep production balanced
+    // Simple balancing: if one is ahead, slow it down
+    IF LidsProduced <= BasesProduced THEN
+        LidMachine := TRUE;
+    ELSE
+        LidMachine := FALSE;  // Pause lid production to balance
+    END_IF;
+    
+    IF BasesProduced <= LidsProduced THEN
+        BaseMachine := TRUE;
+    ELSE
+        BaseMachine := FALSE;
+    END_IF;
+    
+    // Count produced items
+    IF LidReady THEN
+        ConveyorLid := TRUE;
+        LidsProduced := LidsProduced + 1;
+        LidCount := LidsProduced;
+    END_IF;
+    
+    IF BaseReady THEN
+        ConveyorBase := TRUE;
+        BasesProduced := BasesProduced + 1;
+        BaseCount := BasesProduced;
+    END_IF;
+    
+    // Enable output when both parts are at assembly
+    IF LidAtAssembly AND BaseAtAssembly THEN
+        ConveyorOut := TRUE;
+    END_IF;
+END_FUNCTION_BLOCK

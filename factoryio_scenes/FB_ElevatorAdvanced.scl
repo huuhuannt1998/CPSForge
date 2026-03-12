@@ -1,0 +1,552 @@
+// MANTIS — Scene 10: Elevator (Advanced)
+// Single elevator servicing 4 floors (0-3), collecting items into a box.
+// DB19: Instance DB (non-optimized access)
+//
+// OBJECTIVE: Collect exactly 5 items into a stackable box using the elevator.
+//   Items arrive randomly at floors 1-3. The elevator carries a box, visits
+//   each floor with waiting items, loads items into the box, and after 5 items
+//   are collected, returns to floor 0 to unload the full box. A new empty box
+//   is then loaded and the cycle repeats.
+//
+// Factory I/O layout:
+//   4-floor structure with a single elevator shaft.
+//   Items spawn randomly at floors 1-3 (emitters on auto).
+//   Box sits on elevator platform, items loaded into box at each floor.
+//   After 5 items collected, box exits at floor 0 (remover on auto).
+//   Control panel with Start/Stop/Reset/EmergencyStop/Auto.
+//   Traffic lights per floor (Green/Yellow/Red for floors 1-3).
+//   Floor indicator lights (Floor 1/2/3).
+//   Display shows items collected (ItemCount).
+//
+// Driver mapping (from Factory I/O):
+//   SENSORS (Inputs): NOTE — remapped to %I10.x+ to avoid S7-1200 built-in DI conflict
+//     At 1             → %I10.0  (floor 1 call)
+//     At 2             → %I10.1  (floor 2 call)
+//     At 3             → %I10.2  (floor 3 call)
+//     At elevator      → %I10.3  (item on elevator)
+//     At entry         → %I10.4  (item at entry)
+//     At exit          → %I10.5  (item at exit)
+//     At 0 (low)       → %I10.6
+//     At 0 (high)      → %I10.7
+//     At 1 (low)       → %I11.0
+//     At 1 (high)      → %I11.1
+//     At 2 (low)       → %I11.2
+//     At 2 (high)      → %I11.3
+//     At 3 (low)       → %I11.4
+//     At 3 (high)      → %I11.5
+//     Start            → %I11.6
+//     Reset            → %I11.7
+//     Stop             → %I12.0
+//     Emergency stop   → %I12.1
+//     Auto             → %I12.2
+//     FACTORY I/O (Running) → %I12.3
+//
+//   ACTUATORS (Outputs):
+//     Conveyor 0       → %Q0.0
+//     Conveyor 1       → %Q0.1
+//     Conveyor 2       → %Q0.2
+//     Conveyor 3       → %Q0.3
+//     Exit conveyor    → %Q0.4
+//     Load             → %Q0.5
+//     Unload           → %Q0.6
+//     Up               → %Q0.7
+//     Down             → %Q1.0
+//     Slow             → %Q1.1
+//     Warning light    → %Q1.2
+//     Start light      → %Q1.3
+//     Reset light      → %Q1.4
+//     Stop light       → %Q1.5
+//     Floor 1          → %Q1.6
+//     Floor 2          → %Q1.7
+//     Floor 3          → %Q2.0
+//     Green 1          → %Q2.1
+//     Yellow 1         → %Q2.2
+//     Red 1            → %Q2.3
+//     Green 2          → %Q2.4
+//     Yellow 2         → %Q2.5
+//     Red 2            → %Q2.6
+//     Green 3          → %Q2.7
+//     Yellow 3         → %Q3.0
+//     Red 3            → %Q3.1
+//     Display          → (DINT) %QD100
+//
+// DB19 byte layout (non-optimized):
+//   Sensors:
+//     0:  At1          2: At2          4: At3
+//     6:  AtElevator   8: AtEntry     10: AtExit
+//    12:  At0Low      14: At0High     16: At1Low
+//    18:  At1High     20: At2Low      22: At2High
+//    24:  At3Low      26: At3High
+//    28:  BtnStart    30: BtnReset    32: BtnStop
+//    34:  EmergencyStop  36: BtnAuto
+//   Actuators:
+//    38:  Conveyor0   40: Conveyor1   42: Conveyor2
+//    44:  Conveyor3   46: ExitConveyor
+//    48:  Load        50: Unload
+//    52:  Up          54: Down        56: Slow
+//    58:  WarningLight
+//    60:  StartLight  62: ResetLight  64: StopLight
+//    66:  Floor1Ind   68: Floor2Ind   70: Floor3Ind
+//    72:  Green1      74: Yellow1     76: Red1
+//    78:  Green2      80: Yellow2     82: Red2
+//    84:  Green3      86: Yellow3     88: Red3
+//    90-93: Display (DINT)
+//   Internal:
+//    94:  iState (INT)      96: TargetFloor (INT)
+//    98:  CurrentFloor (INT) 100: DwellTimer (INT)
+//   102:  Running (BOOL)   104: Enable (BOOL)
+//   106:  ItemCount (INT)  108: MaxItems (INT, default 5)
+//   Total = 110 bytes
+//
+// State machine (6 states):
+//   S0 = LOAD_BOX:  At floor 0, load new empty box onto elevator
+//   S1 = SCAN:      Check floors 1-3 for waiting items
+//   S2 = MOVING:    Go to target floor
+//   S3 = COLLECT:   At target floor, load item into box, increment ItemCount
+//   S4 = RETURN:    Box full (ItemCount >= MaxItems), go back to floor 0
+//   S5 = UNLOAD:    At floor 0, push full box off, reset ItemCount
+//
+// Vulnerability: Enable (byte 104) — read but NEVER written by PLC.
+// Attack vectors:
+//   - ItemCount (byte 106): set to 5 early → box exits with fewer items
+//   - ItemCount (byte 106): reset to 0 → box never exits, items overflow
+//   - MaxItems (byte 108): set to 1 → box exits after 1 item
+//   - Enable (byte 104): set FALSE → system shuts down completely
+
+FUNCTION_BLOCK "FB_ElevatorAdvanced"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.4
+
+VAR
+    // ── Sensors (inputs) ──
+    At1             : BOOL;         // byte 0   — %I10.0 floor 1 call
+    _p00            : BYTE;
+    At2             : BOOL;         // byte 2   — %I10.1 floor 2 call
+    _p01            : BYTE;
+    At3             : BOOL;         // byte 4   — %I10.2 floor 3 call
+    _p02            : BYTE;
+    AtElevator      : BOOL;         // byte 6   — %I10.3 item on elevator
+    _p03            : BYTE;
+    AtEntry         : BOOL;         // byte 8   — %I10.4 item at entry
+    _p04            : BYTE;
+    AtExit          : BOOL;         // byte 10  — %I10.5 item at exit
+    _p05            : BYTE;
+    At0Low          : BOOL;         // byte 12  — %I10.6 elevator near floor 0
+    _p06            : BYTE;
+    At0High         : BOOL;         // byte 14  — %I10.7 elevator at floor 0
+    _p07            : BYTE;
+    At1Low          : BOOL;         // byte 16  — %I11.0 elevator near floor 1
+    _p08            : BYTE;
+    At1High         : BOOL;         // byte 18  — %I11.1 elevator at floor 1
+    _p09            : BYTE;
+    At2Low          : BOOL;         // byte 20  — %I11.2 elevator near floor 2
+    _p10            : BYTE;
+    At2High         : BOOL;         // byte 22  — %I11.3 elevator at floor 2
+    _p11            : BYTE;
+    At3Low          : BOOL;         // byte 24  — %I11.4 elevator near floor 3
+    _p12            : BYTE;
+    At3High         : BOOL;         // byte 26  — %I11.5 elevator at floor 3
+    _p13            : BYTE;
+    BtnStart        : BOOL;         // byte 28  — %I11.6
+    _p14            : BYTE;
+    BtnReset        : BOOL;         // byte 30  — %I11.7
+    _p15            : BYTE;
+    BtnStop         : BOOL;         // byte 32  — %I12.0
+    _p16            : BYTE;
+    EmergencyStop   : BOOL;         // byte 34  — %I12.1
+    _p17            : BYTE;
+    BtnAuto         : BOOL;         // byte 36  — %I12.2
+    _p18            : BYTE;
+
+    // ── Actuators (outputs) ──
+    Conveyor0       : BOOL;         // byte 38  — %Q0.0
+    _p19            : BYTE;
+    Conveyor1       : BOOL;         // byte 40  — %Q0.1
+    _p20            : BYTE;
+    Conveyor2       : BOOL;         // byte 42  — %Q0.2
+    _p21            : BYTE;
+    Conveyor3       : BOOL;         // byte 44  — %Q0.3
+    _p22            : BYTE;
+    ExitConveyor    : BOOL;         // byte 46  — %Q0.4
+    _p23            : BYTE;
+    Load            : BOOL;         // byte 48  — %Q0.5
+    _p24            : BYTE;
+    Unload          : BOOL;         // byte 50  — %Q0.6
+    _p25            : BYTE;
+    Up              : BOOL;         // byte 52  — %Q0.7
+    _p26            : BYTE;
+    Down            : BOOL;         // byte 54  — %Q1.0
+    _p27            : BYTE;
+    Slow            : BOOL;         // byte 56  — %Q1.1
+    _p28            : BYTE;
+    WarningLight    : BOOL;         // byte 58  — %Q1.2
+    _p29            : BYTE;
+    StartLight      : BOOL;         // byte 60  — %Q1.3
+    _p30            : BYTE;
+    ResetLight      : BOOL;         // byte 62  — %Q1.4
+    _p31            : BYTE;
+    StopLight       : BOOL;         // byte 64  — %Q1.5
+    _p32            : BYTE;
+    Floor1Ind       : BOOL;         // byte 66  — %Q1.6
+    _p33            : BYTE;
+    Floor2Ind       : BOOL;         // byte 68  — %Q1.7
+    _p34            : BYTE;
+    Floor3Ind       : BOOL;         // byte 70  — %Q2.0
+    _p35            : BYTE;
+    Green1          : BOOL;         // byte 72  — %Q2.1
+    _p36            : BYTE;
+    Yellow1         : BOOL;         // byte 74  — %Q2.2
+    _p37            : BYTE;
+    Red1            : BOOL;         // byte 76  — %Q2.3
+    _p38            : BYTE;
+    Green2          : BOOL;         // byte 78  — %Q2.4
+    _p39            : BYTE;
+    Yellow2         : BOOL;         // byte 80  — %Q2.5
+    _p40            : BYTE;
+    Red2            : BOOL;         // byte 82  — %Q2.6
+    _p41            : BYTE;
+    Green3          : BOOL;         // byte 84  — %Q2.7
+    _p42            : BYTE;
+    Yellow3         : BOOL;         // byte 86  — %Q3.0
+    _p43            : BYTE;
+    Red3            : BOOL;         // byte 88  — %Q3.1
+    _p44            : BYTE;
+    Display         : DINT;         // byte 90  — %QD100 (floor display)
+
+    // ── Internal state ──
+    iState          : INT := 0;     // byte 94  — state machine
+    TargetFloor     : INT := 0;     // byte 96  — where to go (0-3)
+    CurrentFloor    : INT := 0;     // byte 98  — last known floor
+    DwellTimer      : INT := 0;    // byte 100 — load/unload dwell
+    Running         : BOOL := FALSE; // byte 102 — system running
+    _p45            : BYTE;
+    Enable          : BOOL := TRUE; // byte 104 — system enable (default ON)
+    _p46            : BYTE;
+    ItemCount       : INT := 0;     // byte 106 — items collected in current box
+    MaxItems        : INT := 5;     // byte 108 — target items per box (default 5)
+    // Total: 110 bytes
+END_VAR
+
+VAR_TEMP
+    atTarget : BOOL;
+    nearTarget : BOOL;
+END_VAR
+
+BEGIN
+    // ════════════════════════════════════════════════════
+    // Safety gate: if Enable is FALSE, shut everything down
+    // ════════════════════════════════════════════════════
+    IF NOT Enable THEN
+        Running := FALSE;
+        Up := FALSE; Down := FALSE; Slow := FALSE;
+        Load := FALSE; Unload := FALSE;
+        Conveyor0 := FALSE; Conveyor1 := FALSE;
+        Conveyor2 := FALSE; Conveyor3 := FALSE;
+        ExitConveyor := FALSE;
+        WarningLight := TRUE;
+        StartLight := FALSE; StopLight := TRUE; ResetLight := FALSE;
+        Floor1Ind := FALSE; Floor2Ind := FALSE; Floor3Ind := FALSE;
+        Green1 := FALSE; Yellow1 := FALSE; Red1 := TRUE;
+        Green2 := FALSE; Yellow2 := FALSE; Red2 := TRUE;
+        Green3 := FALSE; Yellow3 := FALSE; Red3 := TRUE;
+        Display := 0;
+        RETURN;
+    END_IF;
+
+    // ════════════════════════════════════════════════════
+    // Button handling (NC buttons: TRUE = safe/not pressed)
+    //   EmergencyStop: TRUE = not activated (safe)
+    //   BtnStop: TRUE = not pressed (safe)
+    //   BtnStart: TRUE = pressed (momentary)
+    // Auto-start: when safe conditions met and system not running
+    // ════════════════════════════════════════════════════
+    IF EmergencyStop AND BtnStop AND NOT BtnStart AND NOT Running THEN
+        Running := TRUE;   // Auto-start when safe
+    END_IF;
+    IF BtnStart AND NOT Running AND EmergencyStop THEN
+        Running := TRUE;
+    END_IF;
+
+    IF NOT BtnStop OR NOT EmergencyStop THEN
+        Running := FALSE;
+    END_IF;
+
+    IF BtnReset THEN
+        Running := FALSE;
+        iState := 0;
+        TargetFloor := 0;
+        DwellTimer := 0;
+        ItemCount := 0;
+        Up := FALSE; Down := FALSE; Slow := FALSE;
+        Load := FALSE; Unload := FALSE;
+        ResetLight := TRUE;
+        StartLight := FALSE; StopLight := FALSE;
+        RETURN;
+    END_IF;
+
+    // ════════════════════════════════════════════════════
+    // Panel indicator lights
+    // ════════════════════════════════════════════════════
+    StartLight := Running;
+    StopLight := NOT Running;
+    ResetLight := FALSE;
+
+    // ════════════════════════════════════════════════════
+    // Track current floor from position sensors
+    // High sensor = elevator platform aligned at floor level
+    // Low sensor = approaching floor (triggered first)
+    // Use High sensor as the primary floor-aligned indicator
+    // ════════════════════════════════════════════════════
+    IF At0High THEN CurrentFloor := 0; END_IF;
+    IF At1High THEN CurrentFloor := 1; END_IF;
+    IF At2High THEN CurrentFloor := 2; END_IF;
+    IF At3High THEN CurrentFloor := 3; END_IF;
+
+    // Floor indicator lights
+    Floor1Ind := (CurrentFloor = 1);
+    Floor2Ind := (CurrentFloor = 2);
+    Floor3Ind := (CurrentFloor = 3);
+
+    // Display shows items collected in current box
+    Display := INT_TO_DINT(ItemCount);
+
+    // ════════════════════════════════════════════════════
+    // NOT running → stop everything
+    // ════════════════════════════════════════════════════
+    IF NOT Running THEN
+        Up := FALSE; Down := FALSE; Slow := FALSE;
+        Load := FALSE; Unload := FALSE;
+        Conveyor0 := FALSE; Conveyor1 := FALSE;
+        Conveyor2 := FALSE; Conveyor3 := FALSE;
+        ExitConveyor := FALSE;
+        WarningLight := FALSE;
+        Green1 := FALSE; Yellow1 := TRUE; Red1 := FALSE;
+        Green2 := FALSE; Yellow2 := TRUE; Red2 := FALSE;
+        Green3 := FALSE; Yellow3 := TRUE; Red3 := FALSE;
+        RETURN;
+    END_IF;
+
+    // ════════════════════════════════════════════════════
+    // RUNNING — Floor conveyors 1-3 always ON (items advance to pickup)
+    // Conveyor0 and ExitConveyor controlled by state machine
+    // ════════════════════════════════════════════════════
+    Conveyor1 := TRUE;
+    Conveyor2 := TRUE;
+    Conveyor3 := TRUE;
+
+    // ════════════════════════════════════════════════════
+    // Elevator state machine — collect MaxItems items into box
+    //   S0 = LOAD_BOX:  At floor 0, wait for box from emitter, load onto elevator
+    //   S1 = SCAN:      Check floors 1-3 for waiting items
+    //   S2 = MOVING:    Go to target floor
+    //   S3 = COLLECT:   At target floor, load item into box on elevator
+    //   S4 = RETURN:    Box full, go back to floor 0
+    //   S5 = UNLOAD:    At floor 0, push full box off elevator
+    //
+    // Floor arrival: use High sensor only (robust against overshoot)
+    // Floor approach: use Low sensor (triggers before High)
+    // ════════════════════════════════════════════════════
+    CASE iState OF
+        0: // LOAD_BOX — at floor 0, wait for empty box, load it
+            Unload := FALSE;
+            WarningLight := FALSE;
+            ExitConveyor := FALSE;
+
+            // First ensure we're at floor 0
+            IF NOT At0High THEN
+                // Not at floor 0 — drive down
+                Load := FALSE;
+                Conveyor0 := FALSE;
+                IF At0Low THEN
+                    Down := TRUE; Up := FALSE; Slow := TRUE;
+                ELSE
+                    Down := TRUE; Up := FALSE; Slow := FALSE;
+                END_IF;
+            ELSE
+                // At floor 0 — run conveyor to bring box, activate Load
+                Up := FALSE; Down := FALSE; Slow := FALSE;
+                Conveyor0 := TRUE;
+                Load := TRUE;
+                DwellTimer := DwellTimer + 1;
+
+                // AtElevator = box/item on elevator platform
+                // Wait at least 200 scans (~2s) for box to settle on platform
+                IF AtElevator AND DwellTimer > 200 THEN
+                    // Box is on elevator and settled
+                    Load := FALSE;
+                    Conveyor0 := FALSE;
+                    ItemCount := 0;
+                    DwellTimer := 0;
+                    iState := 1;
+                END_IF;
+
+                // Safety timeout: if no box after long wait, keep trying
+                IF DwellTimer > 1000 THEN
+                    DwellTimer := 0;
+                END_IF;
+            END_IF;
+
+        1: // SCAN — check which floors have items waiting
+            Up := FALSE; Down := FALSE; Slow := FALSE;
+            Load := FALSE; Unload := FALSE;
+            WarningLight := FALSE;
+            Conveyor0 := FALSE;
+            ExitConveyor := FALSE;
+
+            // Priority scan: floor 1 → 2 → 3
+            IF At1 THEN
+                TargetFloor := 1;
+                DwellTimer := 0;
+                iState := 2;
+            ELSIF At2 THEN
+                TargetFloor := 2;
+                DwellTimer := 0;
+                iState := 2;
+            ELSIF At3 THEN
+                TargetFloor := 3;
+                DwellTimer := 0;
+                iState := 2;
+            END_IF;
+            // If no items waiting, keep scanning — emitters will spawn items
+
+        2: // MOVING — go to target floor
+            Load := FALSE; Unload := FALSE;
+            Conveyor0 := FALSE; ExitConveyor := FALSE;
+            WarningLight := TRUE;
+
+            // Check position using High sensor for arrival, Low for approach
+            CASE TargetFloor OF
+                0: atTarget := At0High;
+                   nearTarget := At0Low AND NOT At0High;
+                1: atTarget := At1High;
+                   nearTarget := At1Low AND NOT At1High;
+                2: atTarget := At2High;
+                   nearTarget := At2Low AND NOT At2High;
+                3: atTarget := At3High;
+                   nearTarget := At3Low AND NOT At3High;
+            END_CASE;
+
+            IF atTarget THEN
+                // Arrived at target floor — stop immediately
+                Up := FALSE; Down := FALSE; Slow := FALSE;
+                WarningLight := FALSE;
+                DwellTimer := 0;
+                iState := 3;
+            ELSIF nearTarget THEN
+                // Approaching — slow down, keep same direction
+                Slow := TRUE;
+                IF CurrentFloor < TargetFloor THEN
+                    Up := TRUE; Down := FALSE;
+                ELSE
+                    Up := FALSE; Down := TRUE;
+                END_IF;
+            ELSE
+                // Far from target — full speed
+                Slow := FALSE;
+                IF CurrentFloor < TargetFloor THEN
+                    Up := TRUE; Down := FALSE;
+                ELSE
+                    Up := FALSE; Down := TRUE;
+                END_IF;
+            END_IF;
+
+        3: // COLLECT — at target floor, load item into box
+            Up := FALSE; Down := FALSE; Slow := FALSE;
+            Unload := FALSE;
+            WarningLight := FALSE;
+
+            // Run the floor conveyor to push item toward elevator + Load
+            CASE TargetFloor OF
+                1: Conveyor1 := TRUE;
+                2: Conveyor2 := TRUE;
+                3: Conveyor3 := TRUE;
+            END_CASE;
+            Load := TRUE;
+
+            DwellTimer := DwellTimer + 1;
+
+            // Fixed dwell: 400 scans (~4 seconds) for reliable physical transfer
+            // This ensures the item physically moves from floor conveyor into box
+            IF DwellTimer > 400 THEN
+                Load := FALSE;
+                ItemCount := ItemCount + 1;
+                DwellTimer := 0;
+
+                // Check if box is full
+                IF ItemCount >= MaxItems THEN
+                    // Box full — go unload at floor 0
+                    TargetFloor := 0;
+                    iState := 4;
+                ELSE
+                    // Need more items — rescan
+                    iState := 1;
+                END_IF;
+            END_IF;
+
+        4: // RETURN — full box, go back to floor 0
+            Load := FALSE; Unload := FALSE;
+            Conveyor0 := FALSE; ExitConveyor := FALSE;
+            WarningLight := TRUE;
+
+            atTarget := At0High;
+            nearTarget := At0Low AND NOT At0High;
+
+            IF atTarget THEN
+                // Arrived at floor 0
+                Up := FALSE; Down := FALSE; Slow := FALSE;
+                WarningLight := FALSE;
+                DwellTimer := 0;
+                iState := 5;
+            ELSIF nearTarget THEN
+                Up := FALSE; Down := TRUE; Slow := TRUE;
+            ELSE
+                Up := FALSE; Down := TRUE; Slow := FALSE;
+            END_IF;
+
+        5: // UNLOAD — push full box off at floor 0
+            Up := FALSE; Down := FALSE; Slow := FALSE;
+            Load := FALSE;
+            Unload := TRUE;
+            Conveyor0 := TRUE;
+            ExitConveyor := TRUE;
+            WarningLight := FALSE;
+
+            DwellTimer := DwellTimer + 1;
+
+            // Wait for box to leave elevator platform
+            // Min 300 scans (~3s) to ensure box physically exits
+            IF (NOT AtElevator AND DwellTimer > 300) OR (DwellTimer > 500) THEN
+                Unload := FALSE;
+                Conveyor0 := FALSE;
+                ExitConveyor := FALSE;
+                DwellTimer := 0;
+                ItemCount := 0;
+                iState := 0;  // Go load next empty box
+            END_IF;
+
+    ELSE
+        iState := 0;
+    END_CASE;
+
+    // ════════════════════════════════════════════════════
+    // Traffic lights per floor (1-3)
+    //   Green  = elevator at this floor, collecting item
+    //   Yellow = elevator approaching this floor
+    //   Red    = elevator busy elsewhere
+    // ════════════════════════════════════════════════════
+    // Floor 1
+    Green1  := (CurrentFloor = 1) AND (iState = 3);
+    Yellow1 := (TargetFloor = 1) AND (iState = 2) AND (At1Low OR At1High);
+    Red1    := NOT Green1 AND NOT Yellow1 AND ((iState = 2) OR (iState = 4));
+
+    // Floor 2
+    Green2  := (CurrentFloor = 2) AND (iState = 3);
+    Yellow2 := (TargetFloor = 2) AND (iState = 2) AND (At2Low OR At2High);
+    Red2    := NOT Green2 AND NOT Yellow2 AND ((iState = 2) OR (iState = 4));
+
+    // Floor 3
+    Green3  := (CurrentFloor = 3) AND (iState = 3);
+    Yellow3 := (TargetFloor = 3) AND (iState = 2) AND (At3Low OR At3High);
+    Red3    := NOT Green3 AND NOT Yellow3 AND ((iState = 2) OR (iState = 4));
+
+END_FUNCTION_BLOCK

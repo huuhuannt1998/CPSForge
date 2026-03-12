@@ -1,0 +1,57 @@
+# =============================================================================
+# CPSForge Defender — Threshold Detector (Level Control)
+# =============================================================================
+name: threshold_level_control
+detector_type: threshold
+scene_name: level_control
+enabled: true
+
+thresholds:
+  - tag: level_meter
+    operator: ">"
+    value: 9.0
+    severity: high
+    label: "high_level"
+    description: "Level exceeds 9.0V — potential overflow"
+
+  - tag: level_meter
+    operator: "<"
+    value: 0.5
+    severity: high
+    label: "low_level"
+    description: "Level below 0.5V — risk of dry run"
+
+  - tag: fill_valve
+    operator: ">"
+    value: 9.5
+    severity: medium
+    label: "fill_valve_max"
+    description: "Fill valve near maximum"
+
+  - tag: setpoint_in
+    operator: ">"
+    value: 9.0
+    severity: medium
+    label: "setpoint_high"
+    description: "Setpoint exceeds 9.0V"
+
+  - tag: setpoint_in
+    operator: "<"
+    value: 1.0
+    severity: medium
+    label: "setpoint_low"
+    description: "Setpoint below 1.0V"
+
+  - tag: discharge_valve
+    operator: ">"
+    value: 9.5
+    severity: medium
+    label: "discharge_max"
+    description: "Discharge valve near maximum — rapid drain risk"
+
+  - tag: enable
+    operator: "=="
+    value: 0
+    severity: high
+    label: "enable_off"
+    description: "System enable flag is FALSE — control loop halted"

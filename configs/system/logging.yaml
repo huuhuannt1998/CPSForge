@@ -1,0 +1,23 @@
+# =============================================================================
+# CPSForge Logging Configuration
+# =============================================================================
+
+# Logging level: DEBUG | INFO | WARNING | ERROR
+log_level: INFO
+
+# Root directory for run artifacts (traces, metrics, etc.)
+log_dir: data/raw
+
+# Use Rich library for colourised console output
+console_rich: true
+
+# Log raw LLM prompts and responses to disk
+# WARNING: may contain sensitive API keys if not redacted — keep false unless debugging
+log_prompts: false
+
+# Keys to redact from any logged JSON structures
+redact_keys:
+  - api_key
+  - password
+  - token
+  - secret

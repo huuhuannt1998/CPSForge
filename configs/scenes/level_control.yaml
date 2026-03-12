@@ -1,0 +1,300 @@
+# =============================================================================
+# CPSForge Scene Configuration — Level Control (Tank Fill/Drain)
+# =============================================================================
+# Factory I/O scene: Level Control
+# DB21: Instance DB for FB_LevelControl (non-optimized, 44 bytes)
+#
+# Physical setup:
+#   - Siemens S7 PLC at 192.168.0.1, TIA Portal v17
+#   - Tank with fill valve, discharge valve, level meter, flow meter
+#   - Start/Stop/Reset buttons on panel
+#   - Proportional controller: error = SetpointIn - LevelMeter
+#   - All analog values in Factory I/O 0-10V range
+#
+# Attack surfaces:
+#   - SetpointIn: frozen when Running=TRUE, never written by PLC (write-once target)
+#   - FillValve / DischargeValve: direct actuator override
+#   - Enable: global kill switch (never written by PLC)
+# =============================================================================
+
+scene_name: level_control
+
+description: >
+  Tank level control process with proportional controller. Fill valve opens
+  proportionally to (SetpointIn - LevelMeter) error. SetpointIn is copied
+  from the panel knob only while stopped; once running, it freezes. This
+  makes SetpointIn a write-once attack target. The Enable flag provides a
+  global kill switch. All analog signals use Factory I/O 0-10V range.
+
+sampling_interval_ms: 500
+
+# ---------------------------------------------------------------------------
+# Tag Definitions (DB21, 44 bytes total)
+# ---------------------------------------------------------------------------
+tags:
+
+  # --- Buttons (sensors) ---
+  - name: start_button
+    address: "DB21,BOOL0.0"
+    data_type: bool
+    access: read
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Start button — momentary, TRUE=pressed"
+    category: sensor
+    scene_name: level_control
+
+  - name: reset_button
+    address: "DB21,BOOL2.0"
+    data_type: bool
+    access: read
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Reset button — momentary, TRUE=pressed"
+    category: sensor
+    scene_name: level_control
+
+  - name: stop_button
+    address: "DB21,BOOL4.0"
+    data_type: bool
+    access: read
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Stop button — NC alternate, TRUE=not pressed (safe)"
+    category: sensor
+    scene_name: level_control
+
+  # --- Indicator lights (actuators) ---
+  - name: start_light
+    address: "DB21,BOOL6.0"
+    data_type: bool
+    access: read
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Start indicator light"
+    category: actuator
+    scene_name: level_control
+
+  - name: reset_light
+    address: "DB21,BOOL8.0"
+    data_type: bool
+    access: read
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Reset indicator light"
+    category: actuator
+    scene_name: level_control
+
+  - name: stop_light
+    address: "DB21,BOOL10.0"
+    data_type: bool
+    access: read
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Stop indicator light"
+    category: actuator
+    scene_name: level_control
+
+  # --- Analog sensors ---
+  - name: level_meter
+    address: "DB21,REAL12"
+    data_type: real
+    access: read
+    unit: "V"
+    min_value: 0.0
+    max_value: 10.0
+    description: "Tank level measurement (0-10V range)"
+    category: sensor
+    scene_name: level_control
+
+  - name: flow_meter
+    address: "DB21,REAL16"
+    data_type: real
+    access: read
+    unit: "V"
+    min_value: 0.0
+    max_value: 10.0
+    description: "Flow rate measurement (0-10V range)"
+    category: sensor
+    scene_name: level_control
+
+  # --- Setpoint ---
+  - name: setpoint_in
+    address: "DB21,REAL20"
+    data_type: real
+    access: read_write
+    unit: "V"
+    min_value: 0.0
+    max_value: 10.0
+    description: "Level setpoint — frozen when running, write-once attack target"
+    category: setpoint
+    scene_name: level_control
+
+  # --- Analog actuators ---
+  - name: fill_valve
+    address: "DB21,REAL24"
+    data_type: real
+    access: read_write
+    unit: "V"
+    min_value: 0.0
+    max_value: 10.0
+    description: "Fill valve opening (0=closed, 10V=fully open)"
+    category: actuator
+    scene_name: level_control
+
+  - name: discharge_valve
+    address: "DB21,REAL28"
+    data_type: real
+    access: read_write
+    unit: "V"
+    min_value: 0.0
+    max_value: 10.0
+    description: "Discharge valve opening (0=closed, 10V=fully open)"
+    category: actuator
+    scene_name: level_control
+
+  # --- Display outputs ---
+  - name: sp_display
+    address: "DB21,DINT32"
+    data_type: dint
+    access: read
+    unit: null
+    min_value: 0
+    max_value: 100
+    description: "Setpoint display (scaled 0-100)"
+    category: internal
+    scene_name: level_control
+
+  - name: pv_display
+    address: "DB21,DINT36"
+    data_type: dint
+    access: read
+    unit: null
+    min_value: 0
+    max_value: 100
+    description: "Process value display (scaled 0-100)"
+    category: internal
+    scene_name: level_control
+
+  # --- Internal state ---
+  - name: running
+    address: "DB21,BOOL40.0"
+    data_type: bool
+    access: read
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Process running state"
+    category: internal
+    scene_name: level_control
+
+  - name: enable
+    address: "DB21,BOOL42.0"
+    data_type: bool
+    access: read_write
+    unit: null
+    min_value: null
+    max_value: null
+    description: "System enable flag — never written by PLC logic (kill switch)"
+    category: mode_bit
+    scene_name: level_control
+
+# ---------------------------------------------------------------------------
+# Writable Tags
+# ---------------------------------------------------------------------------
+writable_tags:
+  - setpoint_in
+  - fill_valve
+  - discharge_valve
+  - enable
+
+# ---------------------------------------------------------------------------
+# Attack Surface
+# ---------------------------------------------------------------------------
+attack_surface:
+  - setpoint_in
+  - fill_valve
+  - discharge_valve
+  - enable
+
+# ---------------------------------------------------------------------------
+# Safety Rules
+# ---------------------------------------------------------------------------
+safety_rules:
+
+  - rule_id: LC-SR-001
+    description: "Fill valve must stay in 0-10V range"
+    rule_type: range
+    tags: [fill_valve]
+    parameters:
+      min: 0.0
+      max: 10.0
+    enabled: true
+    priority: 100
+
+  - rule_id: LC-SR-002
+    description: "Discharge valve must stay in 0-10V range"
+    rule_type: range
+    tags: [discharge_valve]
+    parameters:
+      min: 0.0
+      max: 10.0
+    enabled: true
+    priority: 100
+
+  - rule_id: LC-SR-003
+    description: "Setpoint must stay in 0-10V range"
+    rule_type: range
+    tags: [setpoint_in]
+    parameters:
+      min: 0.0
+      max: 10.0
+    enabled: true
+    priority: 100
+
+  - rule_id: LC-SR-004
+    description: "Tank level must not exceed 9.5V (overflow protection)"
+    rule_type: invariant
+    tags: [level_meter]
+    parameters:
+      max: 9.5
+    enabled: true
+    priority: 100
+
+  - rule_id: LC-SR-005
+    description: "Enable must not be held FALSE for more than 30 seconds"
+    rule_type: duration
+    tags: [enable]
+    parameters:
+      max_duration_ms: 30000
+      forbidden_value: false
+    enabled: true
+    priority: 100
+
+  - rule_id: LC-SR-006
+    description: "Fill and discharge valves must not both be fully open simultaneously"
+    rule_type: mutual_exclusion
+    tags: [fill_valve, discharge_valve]
+    parameters:
+      threshold: 8.0
+    enabled: true
+    priority: 80
+
+# ---------------------------------------------------------------------------
+# Reset Procedure
+# ---------------------------------------------------------------------------
+reset_procedure:
+  - tag: enable
+    value: true
+  - tag: fill_valve
+    value: 0.0
+  - tag: discharge_valve
+    value: 0.0
+  - tag: setpoint_in
+    value: 5.0

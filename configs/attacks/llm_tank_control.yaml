@@ -1,0 +1,47 @@
+# CPSForge Attack Policy Config -- LLM Attacker for Tank Control Scene
+# =====================================================================
+# Uses the local OpenAI-compatible provider (LM Studio) by default.
+#
+# Run a dry-run LLM attack with:
+#   cpsforge run attack --scene tank_control --attacker llm_tank_control
+#
+# For a live eval run (requires PLC connection and LM Studio running):
+#   cpsforge run attack \
+#     --scene tank_control --attacker llm_tank_control \
+#     --experiment configs/experiments/llm_eval_tank.yaml
+
+name: llm_tank_control
+attacker_type: llm
+scene_name: tank_control
+
+# LLM provider settings
+llm_provider: local_openai_compatible
+llm_model: null                # null = use model from configs/llm/local.yaml
+llm_max_retries: 3             # max schema-correction retries per call
+
+# Allow multi-step chaining (pass prior actions to subsequent LLM calls)
+multi_step: false
+
+# Actions per LLM call
+max_actions: 3
+
+# Minimum gap between consecutive attack executions (milliseconds)
+inter_attack_delay_ms: 3000
+
+# Permitted attack types for this policy
+# The LLM is instructed to use these; any other types are filtered out post-parse
+attack_types:
+  - actuator_override
+  - setpoint_shift
+  - sensor_spoof
+  - timing_delay
+
+# Freeform parameters passed to the LLM prompt builder
+parameters:
+  attacker_objective: >
+    Destabilise the tank level control loop without triggering immediate alarms.
+    Prefer gradual deviations that accumulate over time. Aim for overflow or
+    dry-run conditions. The defender uses threshold and invariant checks.
+  prompt_notes: >
+    Focus on the pump and inlet/outlet valves. Setpoint manipulation combined
+    with actuator override is the most effective class of attack for this scene.

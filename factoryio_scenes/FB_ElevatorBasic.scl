@@ -1,0 +1,510 @@
+// MANTIS — Scene 11: Elevator (Basic)
+// Two elevators transport items through 3 levels (0, 1, 2).
+// Left elevator shuttles Level 0 ↔ Level 1.
+// Right elevator shuttles Level 1 ↔ Level 2.
+// DB20: Instance DB (non-optimized access)
+//
+// Factory I/O layout:
+//   3-level structure with left and right elevator shafts.
+//   Entry conveyor feeds items at level 0.
+//   Left elevator carries items from level 0 → level 1.
+//   Right elevator carries items from level 1 → level 2.
+//   Exit conveyor removes items at level 2.
+//   Load/Unload conveyors at each elevator stop.
+//   Traffic lights (3 sets) and warning lights for safety.
+//   Start/Stop/Reset/EmergencyStop/Auto buttons on control panel.
+//
+// Driver mapping (from Factory I/O):
+//   SENSORS (Inputs):
+//     NOTE: Use %I10.x-%I13.x (NOT %I0.x-%I3.x) because the PLC's
+//     built-in physical DI module owns %IB0/%IB1 and overwrites external writes.
+//     At entry        → %I10.0   At entry left    → %I10.1
+//     At exit left    → %I10.2   At entry 0       → %I10.3
+//     At exit 0       → %I10.4   At entry right   → %I10.5
+//     At exit right   → %I10.6   At exit          → %I10.7
+//     At entry 1      → %I11.0   At exit 1        → %I11.1
+//     At entry 2      → %I11.2   At exit 2        → %I11.3
+//     At left low 0   → %I11.4   At left high 0   → %I11.5
+//     At left low 1   → %I11.6   At left high 1   → %I11.7
+//     At left low 2   → %I12.0   At left high 2   → %I12.1
+//     At right low 0  → %I12.2   At right high 0  → %I12.3
+//     At right low 1  → %I12.4   At right high 1  → %I12.5
+//     At right low 2  → %I12.6   At right high 2  → %I12.7
+//     Start           → %I13.0   Reset            → %I13.1
+//     Stop            → %I13.2   Emergency stop   → %I13.3
+//     Auto            → %I13.4   FACTORY I/O (Running) → %I13.5
+//
+//   ACTUATORS (Outputs):
+//     Entry conveyor  → %Q0.0    Unload left      → %Q0.1
+//     Load left       → %Q0.2    Conveyor 0       → %Q0.3
+//     Unload right    → %Q0.4    Load right       → %Q0.5
+//     Exit conveyor   → %Q0.6    Left up          → %Q0.7
+//     Left slow       → %Q1.0    Left down        → %Q1.1
+//     Right up        → %Q1.2    Right slow       → %Q1.3
+//     Right down      → %Q1.4    Conveyor 1       → %Q1.5
+//     Conveyor 2      → %Q1.6    Left warning     → %Q1.7
+//     Right warning   → %Q2.0    Green 0          → %Q2.1
+//     Yellow 0        → %Q2.2    Red 0            → %Q2.3
+//     B green         → %Q2.4    B yellow         → %Q2.5
+//     B red           → %Q2.6    C green          → %Q2.7
+//     C yellow        → %Q3.0    C red            → %Q3.1
+//     Start light     → %Q3.2    Reset light      → %Q3.3
+//     Stop light      → %Q3.4
+//
+// DB20 byte layout (non-optimized, BOOL = 2 bytes):
+//   Sensors:
+//     0:  AtEntry          2:  AtEntryLeft      4:  AtExitLeft
+//     6:  AtEntry0         8:  AtExit0         10:  AtEntryRight
+//    12:  AtExitRight     14:  AtExit          16:  AtEntry1
+//    18:  AtExit1         20:  AtEntry2        22:  AtExit2
+//    24:  AtLeftLow0      26:  AtLeftHigh0     28:  AtLeftLow1
+//    30:  AtLeftHigh1     32:  AtLeftLow2      34:  AtLeftHigh2
+//    36:  AtRightLow0     38:  AtRightHigh0    40:  AtRightLow1
+//    42:  AtRightHigh1    44:  AtRightLow2     46:  AtRightHigh2
+//    48:  BtnStart        50:  BtnReset        52:  BtnStop
+//    54:  EmergencyStop   56:  BtnAuto
+//   Actuators:
+//    58:  EntryConveyor   60:  UnloadLeft      62:  LoadLeft
+//    64:  Conveyor0       66:  UnloadRight     68:  LoadRight
+//    70:  ExitConveyor    72:  LeftUp          74:  LeftSlow
+//    76:  LeftDown        78:  RightUp         80:  RightSlow
+//    82:  RightDown       84:  Conveyor1       86:  Conveyor2
+//    88:  LeftWarning     90:  RightWarning    92:  Green0
+//    94:  Yellow0         96:  Red0            98:  BGreen
+//   100:  BYellow        102:  BRed           104:  CGreen
+//   106:  CYellow        108:  CRed           110:  StartLight
+//   112:  ResetLight     114:  StopLight
+//   Internal:
+//   116:  LeftState (INT)  118: RightState (INT)
+//   120:  LeftTimer (INT)  122: RightTimer (INT)
+//   124:  Running (BOOL)   126: Enable (BOOL)
+//   Total = 128 bytes
+//
+// Vulnerability: Enable (byte 126, default TRUE) is read by logic
+//   but NEVER written. Setting Enable=FALSE stops all elevators
+//   and conveyors permanently.
+
+FUNCTION_BLOCK "FB_ElevatorBasic"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.4
+
+VAR
+    // ── Sensors (inputs) ──
+    AtEntry         : BOOL;         // byte 0   — %I10.0
+    _p00            : BYTE;
+    AtEntryLeft     : BOOL;         // byte 2   — %I10.1
+    _p01            : BYTE;
+    AtExitLeft      : BOOL;         // byte 4   — %I10.2
+    _p02            : BYTE;
+    AtEntry0        : BOOL;         // byte 6   — %I10.3
+    _p03            : BYTE;
+    AtExit0         : BOOL;         // byte 8   — %I10.4
+    _p04            : BYTE;
+    AtEntryRight    : BOOL;         // byte 10  — %I10.5
+    _p05            : BYTE;
+    AtExitRight     : BOOL;         // byte 12  — %I10.6
+    _p06            : BYTE;
+    AtExit          : BOOL;         // byte 14  — %I10.7
+    _p07            : BYTE;
+    AtEntry1        : BOOL;         // byte 16  — %I11.0
+    _p08            : BYTE;
+    AtExit1         : BOOL;         // byte 18  — %I11.1
+    _p09            : BYTE;
+    AtEntry2        : BOOL;         // byte 20  — %I11.2
+    _p10            : BYTE;
+    AtExit2         : BOOL;         // byte 22  — %I11.3
+    _p11            : BYTE;
+    AtLeftLow0      : BOOL;         // byte 24  — %I11.4
+    _p12            : BYTE;
+    AtLeftHigh0     : BOOL;         // byte 26  — %I11.5
+    _p13            : BYTE;
+    AtLeftLow1      : BOOL;         // byte 28  — %I11.6
+    _p14            : BYTE;
+    AtLeftHigh1     : BOOL;         // byte 30  — %I11.7
+    _p15            : BYTE;
+    AtLeftLow2      : BOOL;         // byte 32  — %I12.0
+    _p16            : BYTE;
+    AtLeftHigh2     : BOOL;         // byte 34  — %I12.1
+    _p17            : BYTE;
+    AtRightLow0     : BOOL;         // byte 36  — %I12.2
+    _p18            : BYTE;
+    AtRightHigh0    : BOOL;         // byte 38  — %I12.3
+    _p19            : BYTE;
+    AtRightLow1     : BOOL;         // byte 40  — %I12.4
+    _p20            : BYTE;
+    AtRightHigh1    : BOOL;         // byte 42  — %I12.5
+    _p21            : BYTE;
+    AtRightLow2     : BOOL;         // byte 44  — %I12.6
+    _p22            : BYTE;
+    AtRightHigh2    : BOOL;         // byte 46  — %I12.7
+    _p23            : BYTE;
+    BtnStart        : BOOL;         // byte 48  — %I13.0
+    _p24            : BYTE;
+    BtnReset        : BOOL;         // byte 50  — %I13.1
+    _p25            : BYTE;
+    BtnStop         : BOOL;         // byte 52  — %I13.2
+    _p26            : BYTE;
+    EmergencyStop   : BOOL;         // byte 54  — %I13.3
+    _p27            : BYTE;
+    BtnAuto         : BOOL;         // byte 56  — %I13.4
+    _p28            : BYTE;
+
+    // ── Actuators (outputs) ──
+    EntryConveyor   : BOOL;         // byte 58  — %Q0.0
+    _p29            : BYTE;
+    UnloadLeft      : BOOL;         // byte 60  — %Q0.1
+    _p30            : BYTE;
+    LoadLeft        : BOOL;         // byte 62  — %Q0.2
+    _p31            : BYTE;
+    Conveyor0       : BOOL;         // byte 64  — %Q0.3
+    _p32            : BYTE;
+    UnloadRight     : BOOL;         // byte 66  — %Q0.4
+    _p33            : BYTE;
+    LoadRight       : BOOL;         // byte 68  — %Q0.5
+    _p34            : BYTE;
+    ExitConveyor    : BOOL;         // byte 70  — %Q0.6
+    _p35            : BYTE;
+    LeftUp          : BOOL;         // byte 72  — %Q0.7
+    _p36            : BYTE;
+    LeftSlow        : BOOL;         // byte 74  — %Q1.0
+    _p37            : BYTE;
+    LeftDown        : BOOL;         // byte 76  — %Q1.1
+    _p38            : BYTE;
+    RightUp         : BOOL;         // byte 78  — %Q1.2
+    _p39            : BYTE;
+    RightSlow       : BOOL;         // byte 80  — %Q1.3
+    _p40            : BYTE;
+    RightDown       : BOOL;         // byte 82  — %Q1.4
+    _p41            : BYTE;
+    Conveyor1       : BOOL;         // byte 84  — %Q1.5
+    _p42            : BYTE;
+    Conveyor2       : BOOL;         // byte 86  — %Q1.6
+    _p43            : BYTE;
+    LeftWarning     : BOOL;         // byte 88  — %Q1.7
+    _p44            : BYTE;
+    RightWarning    : BOOL;         // byte 90  — %Q2.0
+    _p45            : BYTE;
+    Green0          : BOOL;         // byte 92  — %Q2.1
+    _p46            : BYTE;
+    Yellow0         : BOOL;         // byte 94  — %Q2.2
+    _p47            : BYTE;
+    Red0            : BOOL;         // byte 96  — %Q2.3
+    _p48            : BYTE;
+    BGreen          : BOOL;         // byte 98  — %Q2.4
+    _p49            : BYTE;
+    BYellow         : BOOL;         // byte 100 — %Q2.5
+    _p50            : BYTE;
+    BRed            : BOOL;         // byte 102 — %Q2.6
+    _p51            : BYTE;
+    CGreen          : BOOL;         // byte 104 — %Q2.7
+    _p52            : BYTE;
+    CYellow         : BOOL;         // byte 106 — %Q3.0
+    _p53            : BYTE;
+    CRed            : BOOL;         // byte 108 — %Q3.1
+    _p54            : BYTE;
+    StartLight      : BOOL;         // byte 110 — %Q3.2
+    _p55            : BYTE;
+    ResetLight      : BOOL;         // byte 112 — %Q3.3
+    _p56            : BYTE;
+    StopLight       : BOOL;         // byte 114 — %Q3.4
+    _p57            : BYTE;
+
+    // ── Internal state ──
+    LeftState       : INT := 0;     // byte 116 — left elevator state machine
+    RightState      : INT := 0;     // byte 118 — right elevator state machine
+    LeftTimer       : INT := 0;     // byte 120 — left elevator dwell timer
+    RightTimer      : INT := 0;     // byte 122 — right elevator dwell timer
+    Running         : BOOL := FALSE; // byte 124 — system running
+    _p58            : BYTE;
+    Enable          : BOOL := TRUE; // byte 126 — system enable (default ON)
+    _p59            : BYTE;
+    // Total: 128 bytes
+END_VAR
+
+BEGIN
+    // ════════════════════════════════════════════════════
+    // Safety gate: if Enable is FALSE, shut everything down
+    // ════════════════════════════════════════════════════
+    IF NOT Enable THEN
+        Running := FALSE;
+        // Stop elevators
+        LeftUp := FALSE; LeftSlow := FALSE; LeftDown := FALSE;
+        RightUp := FALSE; RightSlow := FALSE; RightDown := FALSE;
+        // Stop conveyors
+        EntryConveyor := FALSE; ExitConveyor := FALSE;
+        Conveyor0 := FALSE; Conveyor1 := FALSE; Conveyor2 := FALSE;
+        LoadLeft := FALSE; UnloadLeft := FALSE;
+        LoadRight := FALSE; UnloadRight := FALSE;
+        // Warnings ON, all traffic lights RED
+        LeftWarning := TRUE; RightWarning := TRUE;
+        Green0 := FALSE; Yellow0 := FALSE; Red0 := TRUE;
+        BGreen := FALSE; BYellow := FALSE; BRed := TRUE;
+        CGreen := FALSE; CYellow := FALSE; CRed := TRUE;
+        // Panel lights
+        StartLight := FALSE; ResetLight := FALSE; StopLight := TRUE;
+        RETURN;
+    END_IF;
+
+    // ════════════════════════════════════════════════════
+    // Button handling
+    //
+    // Factory I/O button conventions:
+    //   Start  → momentary, normally OPEN   (FALSE=idle, TRUE=pressed)
+    //   Stop   → momentary, normally CLOSED (TRUE=idle, FALSE=pressed)
+    //   Reset  → momentary, normally OPEN   (FALSE=idle, TRUE=pressed)
+    //   E-Stop → latching,  normally CLOSED (TRUE=normal, FALSE=engaged)
+    //   Auto   → selector switch
+    // ════════════════════════════════════════════════════
+    IF BtnStart AND NOT Running AND EmergencyStop THEN
+        Running := TRUE;
+    END_IF;
+
+    IF NOT BtnStop OR NOT EmergencyStop THEN
+        Running := FALSE;
+    END_IF;
+
+    // Auto-start: if E-stop normal AND Stop not pressed, start automatically
+    IF EmergencyStop AND BtnStop AND NOT BtnStart THEN
+        Running := TRUE;
+    END_IF;
+
+    IF BtnReset THEN
+        Running := FALSE;
+        LeftState := 0;
+        RightState := 0;
+        LeftTimer := 0;
+        RightTimer := 0;
+        // Stop elevators
+        LeftUp := FALSE; LeftSlow := FALSE; LeftDown := FALSE;
+        RightUp := FALSE; RightSlow := FALSE; RightDown := FALSE;
+        // Stop conveyors
+        EntryConveyor := FALSE; ExitConveyor := FALSE;
+        Conveyor0 := FALSE; Conveyor1 := FALSE; Conveyor2 := FALSE;
+        LoadLeft := FALSE; UnloadLeft := FALSE;
+        LoadRight := FALSE; UnloadRight := FALSE;
+        // Lights
+        ResetLight := TRUE;
+        StartLight := FALSE;
+        StopLight := FALSE;
+        LeftWarning := FALSE; RightWarning := FALSE;
+        Green0 := FALSE; Yellow0 := TRUE; Red0 := FALSE;
+        BGreen := FALSE; BYellow := TRUE; BRed := FALSE;
+        CGreen := FALSE; CYellow := TRUE; CRed := FALSE;
+        RETURN;
+    END_IF;
+
+    // ════════════════════════════════════════════════════
+    // Panel indicator lights
+    // ════════════════════════════════════════════════════
+    StartLight := Running;
+    StopLight := NOT Running;
+    ResetLight := FALSE;
+
+    // ════════════════════════════════════════════════════
+    // NOT running → all outputs OFF
+    // ════════════════════════════════════════════════════
+    IF NOT Running THEN
+        LeftUp := FALSE; LeftSlow := FALSE; LeftDown := FALSE;
+        RightUp := FALSE; RightSlow := FALSE; RightDown := FALSE;
+        EntryConveyor := FALSE; ExitConveyor := FALSE;
+        Conveyor0 := FALSE; Conveyor1 := FALSE; Conveyor2 := FALSE;
+        LoadLeft := FALSE; UnloadLeft := FALSE;
+        LoadRight := FALSE; UnloadRight := FALSE;
+        LeftWarning := FALSE; RightWarning := FALSE;
+        Green0 := FALSE; Yellow0 := TRUE; Red0 := FALSE;
+        BGreen := FALSE; BYellow := TRUE; BRed := FALSE;
+        CGreen := FALSE; CYellow := TRUE; CRed := FALSE;
+        RETURN;
+    END_IF;
+
+    // ════════════════════════════════════════════════════
+    // RUNNING — Conveyors always ON
+    // ════════════════════════════════════════════════════
+    EntryConveyor := TRUE;
+    ExitConveyor := TRUE;
+    Conveyor0 := TRUE;
+    Conveyor1 := TRUE;
+    Conveyor2 := TRUE;
+
+    // ════════════════════════════════════════════════════
+    // LEFT ELEVATOR — Level 0 ↔ Level 1
+    // State 0: At Level 0, loading (wait for item)
+    // State 1: Going up to Level 1
+    // State 2: At Level 1, unloading (dwell timer)
+    // State 3: Going down to Level 0
+    // ════════════════════════════════════════════════════
+    CASE LeftState OF
+        0: // At Level 0 — load item onto elevator
+            LeftUp := FALSE;
+            LeftSlow := FALSE;
+            LeftDown := FALSE;
+            LoadLeft := TRUE;       // Elevator rollers pull item in
+            UnloadLeft := FALSE;
+            LeftWarning := FALSE;
+            IF AtEntryLeft THEN
+                LeftTimer := LeftTimer + 1;
+                IF LeftTimer > 50 THEN   // ~500ms dwell for loading
+                    LeftTimer := 0;
+                    LoadLeft := FALSE;
+                    LeftState := 1;
+                END_IF;
+            ELSE
+                LeftTimer := 0;
+            END_IF;
+
+        1: // Going up to Level 1
+            LoadLeft := FALSE;
+            UnloadLeft := FALSE;
+            LeftWarning := TRUE;
+            // Dual-sensor: BOTH = at floor, EITHER = approaching
+            IF AtLeftLow1 AND AtLeftHigh1 THEN
+                // Arrived at Level 1
+                LeftUp := FALSE; LeftDown := FALSE; LeftSlow := FALSE;
+                LeftTimer := 0;
+                LeftState := 2;
+            ELSIF AtLeftLow1 OR AtLeftHigh1 THEN
+                // Approaching — slow down
+                LeftUp := TRUE; LeftDown := FALSE; LeftSlow := TRUE;
+            ELSE
+                // Far — full speed
+                LeftUp := TRUE; LeftDown := FALSE; LeftSlow := FALSE;
+            END_IF;
+
+        2: // At Level 1 — unload item off elevator
+            LeftUp := FALSE;
+            LeftSlow := FALSE;
+            LeftDown := FALSE;
+            LoadLeft := FALSE;
+            UnloadLeft := TRUE;     // Elevator rollers push item out
+            LeftWarning := FALSE;
+            LeftTimer := LeftTimer + 1;
+            IF LeftTimer > 100 THEN      // ~1s dwell for unloading
+                LeftTimer := 0;
+                UnloadLeft := FALSE;
+                LeftState := 3;
+            END_IF;
+
+        3: // Going down to Level 0
+            UnloadLeft := FALSE;
+            LoadLeft := FALSE;
+            LeftWarning := TRUE;
+            // Dual-sensor position detection
+            IF AtLeftLow0 AND AtLeftHigh0 THEN
+                // Arrived at Level 0
+                LeftUp := FALSE; LeftDown := FALSE; LeftSlow := FALSE;
+                LeftState := 0;
+            ELSIF AtLeftLow0 OR AtLeftHigh0 THEN
+                // Approaching — slow down
+                LeftUp := FALSE; LeftDown := TRUE; LeftSlow := TRUE;
+            ELSE
+                // Far — full speed
+                LeftUp := FALSE; LeftDown := TRUE; LeftSlow := FALSE;
+            END_IF;
+
+    ELSE
+        LeftState := 0;
+    END_CASE;
+
+    // ════════════════════════════════════════════════════
+    // RIGHT ELEVATOR — Level 1 ↔ Level 2
+    // State 0: At Level 1, loading (wait for item)
+    // State 1: Going up to Level 2
+    // State 2: At Level 2, unloading (dwell timer)
+    // State 3: Going down to Level 1
+    // ════════════════════════════════════════════════════
+    CASE RightState OF
+        0: // At Level 1 — load item onto elevator
+            RightUp := FALSE;
+            RightSlow := FALSE;
+            RightDown := FALSE;
+            LoadRight := TRUE;      // Elevator rollers pull item in
+            UnloadRight := FALSE;
+            RightWarning := FALSE;
+            IF AtEntryRight THEN
+                RightTimer := RightTimer + 1;
+                IF RightTimer > 50 THEN   // ~500ms dwell for loading
+                    RightTimer := 0;
+                    LoadRight := FALSE;
+                    RightState := 1;
+                END_IF;
+            ELSE
+                RightTimer := 0;
+            END_IF;
+
+        1: // Going up to Level 2
+            LoadRight := FALSE;
+            UnloadRight := FALSE;
+            RightWarning := TRUE;
+            // Dual-sensor: BOTH = at floor, EITHER = approaching
+            IF AtRightLow2 AND AtRightHigh2 THEN
+                // Arrived at Level 2
+                RightUp := FALSE; RightDown := FALSE; RightSlow := FALSE;
+                RightTimer := 0;
+                RightState := 2;
+            ELSIF AtRightLow2 OR AtRightHigh2 THEN
+                // Approaching — slow down
+                RightUp := TRUE; RightDown := FALSE; RightSlow := TRUE;
+            ELSE
+                // Far — full speed
+                RightUp := TRUE; RightDown := FALSE; RightSlow := FALSE;
+            END_IF;
+
+        2: // At Level 2 — unload item off elevator
+            RightUp := FALSE;
+            RightSlow := FALSE;
+            RightDown := FALSE;
+            LoadRight := FALSE;
+            UnloadRight := TRUE;    // Elevator rollers push item out
+            RightWarning := FALSE;
+            RightTimer := RightTimer + 1;
+            IF RightTimer > 100 THEN     // ~1s dwell for unloading
+                RightTimer := 0;
+                UnloadRight := FALSE;
+                RightState := 3;
+            END_IF;
+
+        3: // Going down to Level 1
+            UnloadRight := FALSE;
+            LoadRight := FALSE;
+            RightWarning := TRUE;
+            // Dual-sensor position detection
+            IF AtRightLow1 AND AtRightHigh1 THEN
+                // Arrived at Level 1
+                RightUp := FALSE; RightDown := FALSE; RightSlow := FALSE;
+                RightState := 0;
+            ELSIF AtRightLow1 OR AtRightHigh1 THEN
+                // Approaching — slow down
+                RightUp := FALSE; RightDown := TRUE; RightSlow := TRUE;
+            ELSE
+                // Far — full speed
+                RightUp := FALSE; RightDown := TRUE; RightSlow := FALSE;
+            END_IF;
+
+    ELSE
+        RightState := 0;
+    END_CASE;
+
+    // ════════════════════════════════════════════════════
+    // Traffic lights
+    //   Level 0: Green=safe, Yellow=approaching, Red=moving
+    //   Level 1 (B): same
+    //   Level 2 (C): same
+    // ════════════════════════════════════════════════════
+    // Level 0 lights — based on left elevator
+    Green0  := (LeftState = 0);                         // Idle at level 0
+    Yellow0 := (LeftState = 3) AND (AtLeftLow0 OR AtLeftHigh0);   // Approaching
+    Red0    := (LeftState = 1) OR (LeftState = 3);      // Moving
+
+    // Level 1 lights (B) — both elevators interact here
+    BGreen  := (LeftState = 2) OR (RightState = 0);     // Elevator at level 1
+    BYellow := ((LeftState = 1) AND (AtLeftLow1 OR AtLeftHigh1))
+            OR ((RightState = 3) AND (AtRightLow1 OR AtRightHigh1));   // Approaching
+    BRed    := (LeftState = 1) OR (LeftState = 3)
+            OR (RightState = 1) OR (RightState = 3);    // Any moving
+
+    // Level 2 lights (C) — based on right elevator
+    CGreen  := (RightState = 2);                        // At level 2
+    CYellow := (RightState = 1) AND (AtRightLow2 OR AtRightHigh2);   // Approaching
+    CRed    := (RightState = 1) OR (RightState = 3);   // Moving
+
+END_FUNCTION_BLOCK

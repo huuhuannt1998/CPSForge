@@ -1,0 +1,481 @@
+// =============================================================================
+// MANTIS — TIA Portal Main Program (OB1)
+// 
+// Calls the active scene's function block each scan cycle.
+// Set "ActiveScene" in DB1 to select which scene runs.
+//
+// Scene IDs:
+//   1  = From A to B               (DB10)
+//   2  = From A to B (Set/Reset)   (DB11)
+//   3  = Filling Tank (Timers)     (DB12)
+//   4  = Queue of Items (Counters) (DB13)
+//   5  = Assembler                 (DB14)
+//   6  = Assembler (Analog)        (DB15)
+//   7  = Automated Warehouse       (DB16)
+//   8  = Buffer Station            (DB17)
+//   9  = Converge Station          (DB18)
+//   10 = Elevator (Advanced)       (DB19)
+//   11 = Elevator (Basic)          (DB20)
+//   12 = Level Control             (DB21)
+//   13 = Palletizer                (DB22)
+//   14 = Pick & Place (Basic)      (DB23)
+//   15 = Pick & Place XYZ          (DB24)
+//   16 = Production Line           (DB25)
+//   17 = Separating Station        (DB26)
+//   18 = Sorting Height (Advanced) (DB27)
+//   19 = Sorting Height (Basic)    (DB28)
+//   20 = Sorting by Weight         (DB29)
+//   21 = Sorting Station           (DB30)
+// =============================================================================
+
+ORGANIZATION_BLOCK "Main"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+
+VAR_TEMP
+    // Temporary variables
+END_VAR
+
+BEGIN
+    // Call the active scene FB based on DB1.ActiveScene
+    // Each scene uses its own instance DB
+    
+    // ================================================================
+    // I/O BRIDGE — Maps Factory I/O %I/%Q to Scene DB variables.
+    //
+    // Factory I/O communicates via physical I/O addresses (%I, %Q).
+    // MANTIS reads/writes via Data Blocks (DB) using Snap7.
+    // This bridge copies:
+    //   %I (sensors)   → DB  (before FB call)
+    //   DB (actuators) → %Q  (after FB call)
+    //
+    // I/O assignment rule (per Factory I/O defaults):
+    //   BOOL sensors:   %I0.0, %I0.1, %I0.2, ... (sequential bits)
+    //   BOOL actuators: %Q0.0, %Q0.1, %Q0.2, ... (sequential bits)
+    //
+    // NOTE: Verify that the Factory I/O driver config matches the
+    // order below. Adjust addresses if Factory I/O lists them
+    // in a different order.
+    // ================================================================
+    
+    CASE "DB_Config".ActiveScene OF
+    
+        1:  // Scene 1: From A to B (DB10)
+            // Sensors: 1 BOOL (diffuse sensor at exit end)
+            "FB_FromAtoB_DB".Sensor := %I0.0;
+            // Run FB
+            "FB_FromAtoB_DB"();
+            // Actuators: 1 BOOL (conveyor only, emitter/remover are automatic)
+            %Q0.0 := "FB_FromAtoB_DB".Conveyor;
+            
+        2:  // Scene 2: From A to B Set/Reset (DB11)
+            // Sensors: SensorA=%I0.0, SensorB=%I0.1
+            "FB_FromAtoB_SR_DB".SensorA := %I0.0;
+            "FB_FromAtoB_SR_DB".SensorB := %I0.1;
+            // Run FB
+            "FB_FromAtoB_SR_DB"();
+            // Actuators: Conveyor=%Q0.0 only (Emitter/Remover are automatic)
+            %Q0.0 := "FB_FromAtoB_SR_DB".Conveyor;
+            
+        3:  // Scene 3: Filling Tank (DB12)
+            "FB_FillingTank_DB".LevelHigh := %I0.0;
+            "FB_FillingTank_DB".LevelLow  := %I0.1;
+            "FB_FillingTank_DB"();
+            %Q0.0 := "FB_FillingTank_DB".FillValve;
+            %Q0.1 := "FB_FillingTank_DB".DrainValve;
+            
+        4:  // Scene 4: Queue of Items (DB13)
+            "FB_QueueItems_DB".AtEntry := %I0.0;
+            "FB_QueueItems_DB".AtExit  := %I0.1;
+            "FB_QueueItems_DB"();
+            %Q0.0 := "FB_QueueItems_DB".Conveyor;
+            %Q0.1 := "FB_QueueItems_DB".Emitter;
+            %Q0.2 := "FB_QueueItems_DB".Remover;
+            
+        5:  // Scene 5: Assembler (DB14)
+            "FB_Assembler_DB".PartAtPickup := %I0.0;
+            "FB_Assembler_DB".PartAtPlace  := %I0.1;
+            "FB_Assembler_DB".LidAtPickup  := %I0.2;
+            "FB_Assembler_DB".ClampSensor  := %I0.3;
+            "FB_Assembler_DB".MovingX      := %I0.4;
+            "FB_Assembler_DB".MovingZ      := %I0.5;
+            "FB_Assembler_DB"();
+            %Q0.0 := "FB_Assembler_DB".ConveyorBase;
+            %Q0.1 := "FB_Assembler_DB".ConveyorLid;
+            %Q0.2 := "FB_Assembler_DB".ConveyorOut;
+            %Q0.3 := "FB_Assembler_DB".MoveX;
+            %Q0.4 := "FB_Assembler_DB".MoveZ;
+            %Q0.5 := "FB_Assembler_DB".Clamp;
+            %Q1.0 := "FB_Assembler_DB".Emitter;
+            
+        6:  // Scene 6: Assembler Analog (DB15) — has REAL I/O
+            "FB_AssemblerAnalog_DB".PartAtPickup := %I0.0;
+            "FB_AssemblerAnalog_DB".PartAtPlace  := %I0.1;
+            "FB_AssemblerAnalog_DB".LidAtPickup  := %I0.2;
+            "FB_AssemblerAnalog_DB".ClampSensor  := %I0.3;
+            "FB_AssemblerAnalog_DB"();
+            %Q0.0 := "FB_AssemblerAnalog_DB".ConveyorBase;
+            %Q0.1 := "FB_AssemblerAnalog_DB".ConveyorLid;
+            %Q0.2 := "FB_AssemblerAnalog_DB".ConveyorOut;
+            %Q0.3 := "FB_AssemblerAnalog_DB".Clamp;
+            %Q0.4 := "FB_AssemblerAnalog_DB".Emitter;
+            // NOTE: REAL I/O (PosX, PosZ, SetpointX, SetpointZ) need
+            // analog mapping — configure in Factory I/O driver.
+            
+        7:  // Scene 7: Automated Warehouse (DB16)
+            "FB_Warehouse_DB".AtEntry   := %I0.0;
+            "FB_Warehouse_DB".AtExit    := %I0.1;
+            "FB_Warehouse_DB".CraneFork := %I0.2;
+            "FB_Warehouse_DB"();
+            %Q0.0 := "FB_Warehouse_DB".ConveyorIn;
+            %Q0.1 := "FB_Warehouse_DB".ConveyorOut;
+            %Q0.2 := "FB_Warehouse_DB".ForkExtend;
+            %Q0.3 := "FB_Warehouse_DB".ForkRetract;
+            %Q0.4 := "FB_Warehouse_DB".Emitter;
+            // NOTE: REAL I/O (CraneX, CraneZ, CraneMoveX, CraneMoveZ) need
+            // analog mapping — configure in Factory I/O driver.
+            
+        8:  // Scene 8: Buffer Station (DB17)
+            "FB_BufferStation_DB".Sensor1 := %I0.0;
+            "FB_BufferStation_DB".Sensor2 := %I0.1;
+            "FB_BufferStation_DB".Sensor3 := %I0.2;
+            "FB_BufferStation_DB".Sensor4 := %I0.3;
+            "FB_BufferStation_DB".Sensor5 := %I0.4;
+            "FB_BufferStation_DB".AtExit  := %I0.5;
+            "FB_BufferStation_DB"();
+            %Q0.0 := "FB_BufferStation_DB".Conveyor;
+            %Q0.1 := "FB_BufferStation_DB".Stopper1;
+            %Q0.2 := "FB_BufferStation_DB".Stopper2;
+            %Q0.3 := "FB_BufferStation_DB".Emitter;
+            %Q0.4 := "FB_BufferStation_DB".Remover;
+            
+        9:  // Scene 9: Converge Station (DB18)
+            "FB_ConvergeStation_DB".SensorLeft  := %I0.0;
+            "FB_ConvergeStation_DB".SensorRight := %I0.1;
+            "FB_ConvergeStation_DB".SensorMerge := %I0.2;
+            "FB_ConvergeStation_DB".AtExit      := %I0.3;
+            "FB_ConvergeStation_DB"();
+            %Q0.0 := "FB_ConvergeStation_DB".ConveyorLeft;
+            %Q0.1 := "FB_ConvergeStation_DB".ConveyorRight;
+            %Q0.2 := "FB_ConvergeStation_DB".ConveyorOut;
+            %Q0.3 := "FB_ConvergeStation_DB".Emitter1;
+            %Q0.4 := "FB_ConvergeStation_DB".Emitter2;
+            %Q0.5 := "FB_ConvergeStation_DB".Remover;
+            
+        10: // Scene 10: Elevator Advanced (DB19) — 20 inputs, 26 BOOL + 1 DINT outputs
+            // ── Sensors (inputs) ── NOTE: remapped to %I10.x+ to avoid built-in DI conflict
+            "FB_ElevatorAdvanced_DB".At1            := %I10.0;
+            "FB_ElevatorAdvanced_DB".At2            := %I10.1;
+            "FB_ElevatorAdvanced_DB".At3            := %I10.2;
+            "FB_ElevatorAdvanced_DB".AtElevator     := %I10.3;
+            "FB_ElevatorAdvanced_DB".AtEntry        := %I10.4;
+            "FB_ElevatorAdvanced_DB".AtExit         := %I10.5;
+            "FB_ElevatorAdvanced_DB".At0Low         := %I10.6;
+            "FB_ElevatorAdvanced_DB".At0High        := %I10.7;
+            "FB_ElevatorAdvanced_DB".At1Low         := %I11.0;
+            "FB_ElevatorAdvanced_DB".At1High        := %I11.1;
+            "FB_ElevatorAdvanced_DB".At2Low         := %I11.2;
+            "FB_ElevatorAdvanced_DB".At2High        := %I11.3;
+            "FB_ElevatorAdvanced_DB".At3Low         := %I11.4;
+            "FB_ElevatorAdvanced_DB".At3High        := %I11.5;
+            "FB_ElevatorAdvanced_DB".BtnStart       := %I11.6;
+            "FB_ElevatorAdvanced_DB".BtnReset       := %I11.7;
+            "FB_ElevatorAdvanced_DB".BtnStop        := %I12.0;
+            "FB_ElevatorAdvanced_DB".EmergencyStop  := %I12.1;
+            "FB_ElevatorAdvanced_DB".BtnAuto        := %I12.2;
+            
+            "FB_ElevatorAdvanced_DB"();
+            
+            // ── Actuators (outputs) ──
+            %Q0.0 := "FB_ElevatorAdvanced_DB".Conveyor0;
+            %Q0.1 := "FB_ElevatorAdvanced_DB".Conveyor1;
+            %Q0.2 := "FB_ElevatorAdvanced_DB".Conveyor2;
+            %Q0.3 := "FB_ElevatorAdvanced_DB".Conveyor3;
+            %Q0.4 := "FB_ElevatorAdvanced_DB".ExitConveyor;
+            %Q0.5 := "FB_ElevatorAdvanced_DB".Load;
+            %Q0.6 := "FB_ElevatorAdvanced_DB".Unload;
+            %Q0.7 := "FB_ElevatorAdvanced_DB".Up;
+            %Q1.0 := "FB_ElevatorAdvanced_DB".Down;
+            %Q1.1 := "FB_ElevatorAdvanced_DB".Slow;
+            %Q1.2 := "FB_ElevatorAdvanced_DB".WarningLight;
+            %Q1.3 := "FB_ElevatorAdvanced_DB".StartLight;
+            %Q1.4 := "FB_ElevatorAdvanced_DB".ResetLight;
+            %Q1.5 := "FB_ElevatorAdvanced_DB".StopLight;
+            %Q1.6 := "FB_ElevatorAdvanced_DB".Floor1Ind;
+            %Q1.7 := "FB_ElevatorAdvanced_DB".Floor2Ind;
+            %Q2.0 := "FB_ElevatorAdvanced_DB".Floor3Ind;
+            %Q2.1 := "FB_ElevatorAdvanced_DB".Green1;
+            %Q2.2 := "FB_ElevatorAdvanced_DB".Yellow1;
+            %Q2.3 := "FB_ElevatorAdvanced_DB".Red1;
+            %Q2.4 := "FB_ElevatorAdvanced_DB".Green2;
+            %Q2.5 := "FB_ElevatorAdvanced_DB".Yellow2;
+            %Q2.6 := "FB_ElevatorAdvanced_DB".Red2;
+            %Q2.7 := "FB_ElevatorAdvanced_DB".Green3;
+            %Q3.0 := "FB_ElevatorAdvanced_DB".Yellow3;
+            %Q3.1 := "FB_ElevatorAdvanced_DB".Red3;
+            // DINT output for display
+            %QD100 := DINT_TO_DWORD("FB_ElevatorAdvanced_DB".Display);
+            
+        11: // Scene 11: Elevator Basic (DB20) — 30 inputs, 29 outputs
+            // ── Sensors (inputs) ──
+            // NOTE: Use %I10.x-%I13.x to avoid built-in DI module conflict
+            "FB_ElevatorBasic_DB".AtEntry       := %I10.0;
+            "FB_ElevatorBasic_DB".AtEntryLeft   := %I10.1;
+            "FB_ElevatorBasic_DB".AtExitLeft    := %I10.2;
+            "FB_ElevatorBasic_DB".AtEntry0      := %I10.3;
+            "FB_ElevatorBasic_DB".AtExit0       := %I10.4;
+            "FB_ElevatorBasic_DB".AtEntryRight  := %I10.5;
+            "FB_ElevatorBasic_DB".AtExitRight   := %I10.6;
+            "FB_ElevatorBasic_DB".AtExit        := %I10.7;
+            "FB_ElevatorBasic_DB".AtEntry1      := %I11.0;
+            "FB_ElevatorBasic_DB".AtExit1       := %I11.1;
+            "FB_ElevatorBasic_DB".AtEntry2      := %I11.2;
+            "FB_ElevatorBasic_DB".AtExit2       := %I11.3;
+            "FB_ElevatorBasic_DB".AtLeftLow0    := %I11.4;
+            "FB_ElevatorBasic_DB".AtLeftHigh0   := %I11.5;
+            "FB_ElevatorBasic_DB".AtLeftLow1    := %I11.6;
+            "FB_ElevatorBasic_DB".AtLeftHigh1   := %I11.7;
+            "FB_ElevatorBasic_DB".AtLeftLow2    := %I12.0;
+            "FB_ElevatorBasic_DB".AtLeftHigh2   := %I12.1;
+            "FB_ElevatorBasic_DB".AtRightLow0   := %I12.2;
+            "FB_ElevatorBasic_DB".AtRightHigh0  := %I12.3;
+            "FB_ElevatorBasic_DB".AtRightLow1   := %I12.4;
+            "FB_ElevatorBasic_DB".AtRightHigh1  := %I12.5;
+            "FB_ElevatorBasic_DB".AtRightLow2   := %I12.6;
+            "FB_ElevatorBasic_DB".AtRightHigh2  := %I12.7;
+            "FB_ElevatorBasic_DB".BtnStart      := %I13.0;
+            "FB_ElevatorBasic_DB".BtnReset      := %I13.1;
+            "FB_ElevatorBasic_DB".BtnStop       := %I13.2;
+            "FB_ElevatorBasic_DB".EmergencyStop := %I13.3;
+            "FB_ElevatorBasic_DB".BtnAuto       := %I13.4;
+            
+            "FB_ElevatorBasic_DB"();
+            
+            // ── Actuators (outputs) ──
+            %Q0.0 := "FB_ElevatorBasic_DB".EntryConveyor;
+            %Q0.1 := "FB_ElevatorBasic_DB".UnloadLeft;
+            %Q0.2 := "FB_ElevatorBasic_DB".LoadLeft;
+            %Q0.3 := "FB_ElevatorBasic_DB".Conveyor0;
+            %Q0.4 := "FB_ElevatorBasic_DB".UnloadRight;
+            %Q0.5 := "FB_ElevatorBasic_DB".LoadRight;
+            %Q0.6 := "FB_ElevatorBasic_DB".ExitConveyor;
+            %Q0.7 := "FB_ElevatorBasic_DB".LeftUp;
+            %Q1.0 := "FB_ElevatorBasic_DB".LeftSlow;
+            %Q1.1 := "FB_ElevatorBasic_DB".LeftDown;
+            %Q1.2 := "FB_ElevatorBasic_DB".RightUp;
+            %Q1.3 := "FB_ElevatorBasic_DB".RightSlow;
+            %Q1.4 := "FB_ElevatorBasic_DB".RightDown;
+            %Q1.5 := "FB_ElevatorBasic_DB".Conveyor1;
+            %Q1.6 := "FB_ElevatorBasic_DB".Conveyor2;
+            %Q1.7 := "FB_ElevatorBasic_DB".LeftWarning;
+            %Q2.0 := "FB_ElevatorBasic_DB".RightWarning;
+            %Q2.1 := "FB_ElevatorBasic_DB".Green0;
+            %Q2.2 := "FB_ElevatorBasic_DB".Yellow0;
+            %Q2.3 := "FB_ElevatorBasic_DB".Red0;
+            %Q2.4 := "FB_ElevatorBasic_DB".BGreen;
+            %Q2.5 := "FB_ElevatorBasic_DB".BYellow;
+            %Q2.6 := "FB_ElevatorBasic_DB".BRed;
+            %Q2.7 := "FB_ElevatorBasic_DB".CGreen;
+            %Q3.0 := "FB_ElevatorBasic_DB".CYellow;
+            %Q3.1 := "FB_ElevatorBasic_DB".CRed;
+            %Q3.2 := "FB_ElevatorBasic_DB".StartLight;
+            %Q3.3 := "FB_ElevatorBasic_DB".ResetLight;
+            %Q3.4 := "FB_ElevatorBasic_DB".StopLight;
+            
+        12: // Scene 12: Level Control (DB21) — BOOL + analog REAL/DINT I/O
+            // BOOL inputs — use %I10.x to avoid built-in DI module conflict
+            "FB_LevelControl_DB".Start := %I10.0;
+            "FB_LevelControl_DB".Reset := %I10.1;
+            "FB_LevelControl_DB".Stop  := %I10.2;
+            // Analog inputs (REAL via DWORD reinterpret)
+            "FB_LevelControl_DB".LevelMeter  := DWORD_TO_REAL(%ID100);
+            "FB_LevelControl_DB".FlowMeter   := DWORD_TO_REAL(%ID104);
+            // Setpoint knob: copy ONLY while system is stopped.
+            // Once Running=TRUE, SetpointIn freezes → becomes write-once attack target.
+            IF NOT "FB_LevelControl_DB".Running THEN
+                "FB_LevelControl_DB".SetpointIn := DWORD_TO_REAL(%ID108);
+            END_IF;
+            
+            "FB_LevelControl_DB"();
+            
+            // BOOL outputs
+            %Q0.0 := "FB_LevelControl_DB".StartLight;
+            %Q0.1 := "FB_LevelControl_DB".ResetLight;
+            %Q0.2 := "FB_LevelControl_DB".StopLight;
+            // Analog outputs (REAL via DWORD reinterpret)
+            %QD100 := REAL_TO_DWORD("FB_LevelControl_DB".FillValve);
+            %QD104 := REAL_TO_DWORD("FB_LevelControl_DB".DischargeValve);
+            // DINT outputs for SP/PV displays
+            %QD108 := DINT_TO_DWORD("FB_LevelControl_DB".SP_Display);
+            %QD112 := DINT_TO_DWORD("FB_LevelControl_DB".PV_Display);
+            
+        13: // Scene 13: Palletizer (DB22)
+            "FB_Palletizer_DB".BoxAtEntry    := %I0.0;
+            "FB_Palletizer_DB".BoxAtPickup   := %I0.1;
+            "FB_Palletizer_DB".PalletReady   := %I0.2;
+            "FB_Palletizer_DB".LayerComplete := %I0.3;
+            "FB_Palletizer_DB".ClampSensor   := %I0.4;
+            "FB_Palletizer_DB"();
+            %Q0.0 := "FB_Palletizer_DB".ConveyorIn;
+            %Q0.1 := "FB_Palletizer_DB".Clamp;
+            %Q0.2 := "FB_Palletizer_DB".ConveyorOut;
+            %Q0.3 := "FB_Palletizer_DB".Emitter;
+            // NOTE: REAL I/O (PosX, PosZ, MoveX, MoveZ) need analog mapping.
+            
+        14: // Scene 14: Pick & Place Basic (DB23)
+            "FB_PickPlaceBasic_DB".ItemAtPick   := %I0.0;
+            "FB_PickPlaceBasic_DB".ItemAtPlace  := %I0.1;
+            "FB_PickPlaceBasic_DB".GripperClosed := %I0.2;
+            "FB_PickPlaceBasic_DB".ArmAtPick    := %I0.3;
+            "FB_PickPlaceBasic_DB".ArmAtPlace   := %I0.4;
+            "FB_PickPlaceBasic_DB"();
+            %Q0.0 := "FB_PickPlaceBasic_DB".ConveyorIn;
+            %Q0.1 := "FB_PickPlaceBasic_DB".ConveyorOut;
+            %Q0.2 := "FB_PickPlaceBasic_DB".Gripper;
+            %Q0.3 := "FB_PickPlaceBasic_DB".ArmRotate;
+            %Q0.4 := "FB_PickPlaceBasic_DB".ArmUp;
+            %Q0.5 := "FB_PickPlaceBasic_DB".ArmDown;
+            %Q1.0 := "FB_PickPlaceBasic_DB".Emitter;
+            
+        15: // Scene 15: Pick & Place XYZ (DB24)
+            "FB_PickPlaceXYZ_DB".BoxAtPick     := %I0.0;
+            "FB_PickPlaceXYZ_DB".PalletReady   := %I0.1;
+            "FB_PickPlaceXYZ_DB".GripperClosed := %I0.2;
+            "FB_PickPlaceXYZ_DB"();
+            %Q0.0 := "FB_PickPlaceXYZ_DB".Gripper;
+            %Q0.1 := "FB_PickPlaceXYZ_DB".ConveyorIn;
+            %Q0.2 := "FB_PickPlaceXYZ_DB".ConveyorPallet;
+            %Q0.3 := "FB_PickPlaceXYZ_DB".Emitter;
+            // NOTE: REAL I/O (PosX, PosY, PosZ, SetpointX, SetpointY, SetpointZ)
+            // need analog mapping — configure in Factory I/O driver.
+            
+        16: // Scene 16: Production Line (DB25)
+            "FB_ProductionLine_DB".LidReady      := %I0.0;
+            "FB_ProductionLine_DB".BaseReady     := %I0.1;
+            "FB_ProductionLine_DB".LidAtAssembly := %I0.2;
+            "FB_ProductionLine_DB".BaseAtAssembly := %I0.3;
+            "FB_ProductionLine_DB"();
+            %Q0.0 := "FB_ProductionLine_DB".LidMachine;
+            %Q0.1 := "FB_ProductionLine_DB".BaseMachine;
+            %Q0.2 := "FB_ProductionLine_DB".ConveyorLid;
+            %Q0.3 := "FB_ProductionLine_DB".ConveyorBase;
+            %Q0.4 := "FB_ProductionLine_DB".ConveyorOut;
+            %Q0.5 := "FB_ProductionLine_DB".Emitter;
+            // NOTE: INT I/O (LidCount, BaseCount) need word mapping.
+            
+        17: // Scene 17: Separating Station (DB26)
+            "FB_SeparatingStation_DB".PartAtEntry  := %I0.0;
+            "FB_SeparatingStation_DB".AtDiverter   := %I0.1;
+            "FB_SeparatingStation_DB".AtExitLeft   := %I0.2;
+            "FB_SeparatingStation_DB".AtExitRight  := %I0.3;
+            "FB_SeparatingStation_DB"();
+            %Q0.0 := "FB_SeparatingStation_DB".ConveyorIn;
+            %Q0.1 := "FB_SeparatingStation_DB".ConveyorLeft;
+            %Q0.2 := "FB_SeparatingStation_DB".ConveyorRight;
+            %Q0.3 := "FB_SeparatingStation_DB".Diverter;
+            %Q0.4 := "FB_SeparatingStation_DB".Emitter;
+            %Q0.5 := "FB_SeparatingStation_DB".RemoverLeft;
+            %Q1.0 := "FB_SeparatingStation_DB".RemoverRight;
+            // NOTE: INT I/O (VisionSensor) needs word mapping.
+            
+        18: // Scene 18: Sorting Height Advanced (DB27) — 16 inputs, 13 BOOL + 1 DINT outputs
+            // ── Sensors (inputs) ──
+            "FB_SortingHeightAdv_DB".AtEntry          := %I0.0;
+            "FB_SortingHeightAdv_DB".LowBox           := %I0.1;
+            "FB_SortingHeightAdv_DB".HighBox          := %I0.2;
+            "FB_SortingHeightAdv_DB".AtTurntableEntry := %I0.3;
+            "FB_SortingHeightAdv_DB".AtLoadPosition   := %I0.4;
+            "FB_SortingHeightAdv_DB".AtUnloadPosition := %I0.5;
+            "FB_SortingHeightAdv_DB".AtFront          := %I0.6;
+            "FB_SortingHeightAdv_DB".AtRightEntry     := %I0.7;
+            "FB_SortingHeightAdv_DB".AtLeftEntry      := %I1.0;
+            "FB_SortingHeightAdv_DB".AtRightExit      := %I1.1;
+            "FB_SortingHeightAdv_DB".AtLeftExit       := %I1.2;
+            "FB_SortingHeightAdv_DB".BtnStart         := %I1.3;
+            "FB_SortingHeightAdv_DB".BtnReset         := %I1.4;
+            "FB_SortingHeightAdv_DB".BtnStop          := %I1.5;
+            "FB_SortingHeightAdv_DB".EmergencyStop    := %I1.6;
+            "FB_SortingHeightAdv_DB".BtnAuto          := %I1.7;
+            // ── Execute FB ──
+            "FB_SortingHeightAdv_DB"();
+            // ── Actuators (outputs) ──
+            %Q0.0  := "FB_SortingHeightAdv_DB".FeederConveyor;
+            %Q0.1  := "FB_SortingHeightAdv_DB".EntryConveyor;
+            %Q0.2  := "FB_SortingHeightAdv_DB".LoadAct;
+            %Q0.3  := "FB_SortingHeightAdv_DB".UnloadAct;
+            %Q0.4  := "FB_SortingHeightAdv_DB".TurnAct;
+            %Q0.5  := "FB_SortingHeightAdv_DB".LeftConveyor;
+            %Q0.6  := "FB_SortingHeightAdv_DB".RightConveyor;
+            %Q0.7  := "FB_SortingHeightAdv_DB".GreenIndicator;
+            %Q1.0  := "FB_SortingHeightAdv_DB".YellowIndicator;
+            %Q1.1  := "FB_SortingHeightAdv_DB".RedIndicator;
+            %Q1.2  := "FB_SortingHeightAdv_DB".StartLight;
+            %Q1.3  := "FB_SortingHeightAdv_DB".ResetLight;
+            %Q1.4  := "FB_SortingHeightAdv_DB".StopLight;
+            %QD100 := DINT_TO_DWORD("FB_SortingHeightAdv_DB".CounterOut);
+            
+        19: // Scene 19: Sorting Height Basic (DB28) — 14 inputs, 10 BOOL + 1 DINT outputs
+            // ── Sensors (inputs) ──
+            // NOTE: Sensors use %I10.x instead of %I0.x to avoid conflict
+            // with the PLC's built-in physical digital input module at %IB0.
+            "FB_SortingHeightBasic_DB".HighSensor     := %I10.0;
+            "FB_SortingHeightBasic_DB".LowSensor      := %I10.1;
+            "FB_SortingHeightBasic_DB".PalletSensor   := %I10.2;
+            "FB_SortingHeightBasic_DB".Loaded         := %I10.3;
+            "FB_SortingHeightBasic_DB".AtLeftEntry    := %I10.4;
+            "FB_SortingHeightBasic_DB".AtLeftExit     := %I10.5;
+            "FB_SortingHeightBasic_DB".AtRightEntry   := %I10.6;
+            "FB_SortingHeightBasic_DB".AtRightExit    := %I10.7;
+            "FB_SortingHeightBasic_DB".BtnStart       := %I11.0;
+            "FB_SortingHeightBasic_DB".BtnReset       := %I11.1;
+            "FB_SortingHeightBasic_DB".BtnStop        := %I11.2;
+            "FB_SortingHeightBasic_DB".EmergencyStop  := %I11.3;
+            "FB_SortingHeightBasic_DB".BtnAuto        := %I11.4;
+            
+            "FB_SortingHeightBasic_DB"();
+            
+            // ── Actuators (outputs) ──
+            %Q0.0 := "FB_SortingHeightBasic_DB".ConveyorEntry;
+            %Q0.1 := "FB_SortingHeightBasic_DB".LoadAct;
+            %Q0.2 := "FB_SortingHeightBasic_DB".UnloadAct;
+            %Q0.3 := "FB_SortingHeightBasic_DB".TransfLeft;
+            %Q0.4 := "FB_SortingHeightBasic_DB".TransfRight;
+            %Q0.5 := "FB_SortingHeightBasic_DB".ConveyorLeft;
+            %Q0.6 := "FB_SortingHeightBasic_DB".ConveyorRight;
+            %Q0.7 := "FB_SortingHeightBasic_DB".StartLight;
+            %Q1.0 := "FB_SortingHeightBasic_DB".ResetLight;
+            %Q1.1 := "FB_SortingHeightBasic_DB".StopLight;
+            // DINT output for counter display
+            %QD100 := DINT_TO_DWORD("FB_SortingHeightBasic_DB".CounterOut);
+            
+        20: // Scene 20: Sorting by Weight (DB29)
+            "FB_SortingWeight_DB".BoxAtEntry  := %I0.0;
+            "FB_SortingWeight_DB".BoxOnScale  := %I0.1;
+            "FB_SortingWeight_DB".AtPusher    := %I0.2;
+            "FB_SortingWeight_DB".AtExit      := %I0.3;
+            "FB_SortingWeight_DB"();
+            %Q0.0 := "FB_SortingWeight_DB".ConveyorIn;
+            %Q0.1 := "FB_SortingWeight_DB".ConveyorScale;
+            %Q0.2 := "FB_SortingWeight_DB".Pusher;
+            %Q0.3 := "FB_SortingWeight_DB".ConveyorHeavy;
+            %Q0.4 := "FB_SortingWeight_DB".ConveyorLight;
+            %Q0.5 := "FB_SortingWeight_DB".Emitter;
+            // NOTE: REAL I/O (BoxWeight, WeightThreshold) need analog mapping.
+            
+        21: // Scene 21: Sorting Station (DB30)
+            "FB_SortingStation_DB".ItemAtEntry := %I0.0;
+            "FB_SortingStation_DB".AtDiverter  := %I0.1;
+            "FB_SortingStation_DB".AtExitGreen := %I0.2;
+            "FB_SortingStation_DB".AtExitBlue  := %I0.3;
+            "FB_SortingStation_DB"();
+            %Q0.0 := "FB_SortingStation_DB".ConveyorIn;
+            %Q0.1 := "FB_SortingStation_DB".ConveyorGreen;
+            %Q0.2 := "FB_SortingStation_DB".ConveyorBlue;
+            %Q0.3 := "FB_SortingStation_DB".Diverter;
+            %Q0.4 := "FB_SortingStation_DB".Emitter;
+            %Q0.5 := "FB_SortingStation_DB".RemoverGreen;
+            %Q1.0 := "FB_SortingStation_DB".RemoverBlue;
+            
+    END_CASE;
+    
+END_ORGANIZATION_BLOCK

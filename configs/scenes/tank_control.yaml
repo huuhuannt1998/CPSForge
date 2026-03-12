@@ -1,0 +1,275 @@
+# =============================================================================
+# CPSForge Scene Configuration — Tank Level Control
+# =============================================================================
+# This is the reference scene for CPSForge Phase 1 experiments.
+#
+# Physical setup:
+#   - Siemens S7 PLC at 192.168.0.1 running TIA Portal v17 logic
+#   - Factory I/O scene: Tank Level Control
+#   - A pump (P1) fills a tank; a drain valve (V1) controls outflow
+#   - A level sensor (LT1) measures tank fill percentage (0–100 %)
+#   - A high-level alarm (HA) and low-level alarm (LA) protect limits
+#   - A PID setpoint (SP_LEVEL) drives the pump output
+#
+# Address notation used here is Siemens S7 canonical abbreviations.
+# Adjust DB numbers and byte offsets to match your TIA Portal symbol table.
+# =============================================================================
+
+scene_name: tank_control
+
+description: >
+  Single-tank level control process. A centrifugal pump (P1) fills the tank.
+  A motorised drain valve (V1) controls outflow. A PID controller tracks a
+  level setpoint. Safety cutoffs prevent overflow and pump cavitation.
+
+# Polling interval for this scene (ms)
+sampling_interval_ms: 500
+
+# ---------------------------------------------------------------------------
+# Tag Definitions
+# ---------------------------------------------------------------------------
+# Each entry matches the TagDefinition schema.
+# Address format: <area>,<type><byte_offset>   e.g. DB1,REAL4
+# Supported areas: DB (data block), MW (memory word), IW (input word), QW (output word)
+# ---------------------------------------------------------------------------
+tags:
+
+  # --- Sensors ---
+  - name: tank_level
+    address: "DB1,REAL0"
+    data_type: real
+    access: read
+    unit: "%"
+    min_value: 0.0
+    max_value: 100.0
+    description: "Tank fill level as a percentage (0=empty, 100=full)"
+    category: sensor
+    scene_name: tank_control
+
+  - name: inlet_flow
+    address: "DB1,REAL4"
+    data_type: real
+    access: read
+    unit: "L/min"
+    min_value: 0.0
+    max_value: 50.0
+    description: "Inlet flow rate measured by FM1"
+    category: sensor
+    scene_name: tank_control
+
+  - name: outlet_flow
+    address: "DB1,REAL8"
+    data_type: real
+    access: read
+    unit: "L/min"
+    min_value: 0.0
+    max_value: 50.0
+    description: "Outlet flow rate measured by FM2"
+    category: sensor
+    scene_name: tank_control
+
+  # --- Actuators ---
+  - name: pump_speed
+    address: "DB2,REAL0"
+    data_type: real
+    access: read_write
+    unit: "%"
+    min_value: 0.0
+    max_value: 100.0
+    description: "Pump P1 speed command (0=stopped, 100=full speed)"
+    category: actuator
+    scene_name: tank_control
+
+  - name: drain_valve_position
+    address: "DB2,REAL4"
+    data_type: real
+    access: read_write
+    unit: "%"
+    min_value: 0.0
+    max_value: 100.0
+    description: "Drain valve V1 opening percentage (0=closed, 100=fully open)"
+    category: actuator
+    scene_name: tank_control
+
+  # --- Setpoints ---
+  - name: level_setpoint
+    address: "DB3,REAL0"
+    data_type: real
+    access: read_write
+    unit: "%"
+    min_value: 10.0
+    max_value: 90.0
+    description: "PID level setpoint in percent"
+    category: setpoint
+    scene_name: tank_control
+
+  # --- Controller state ---
+  - name: pid_output
+    address: "DB3,REAL4"
+    data_type: real
+    access: read
+    unit: "%"
+    min_value: 0.0
+    max_value: 100.0
+    description: "PID controller output to pump"
+    category: internal
+    scene_name: tank_control
+
+  - name: auto_mode
+    address: "DB3,BOOL8.0"
+    data_type: bool
+    access: read_write
+    unit: null
+    min_value: null
+    max_value: null
+    description: "True = PID in automatic mode; False = manual override"
+    category: mode_bit
+    scene_name: tank_control
+
+  # --- Alarms ---
+  - name: high_level_alarm
+    address: "DB4,BOOL0.0"
+    data_type: bool
+    access: read
+    unit: null
+    min_value: null
+    max_value: null
+    description: "High-level alarm (tank > 90 %)"
+    category: alarm
+    scene_name: tank_control
+
+  - name: low_level_alarm
+    address: "DB4,BOOL0.1"
+    data_type: bool
+    access: read
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Low-level alarm (tank < 10 %)"
+    category: alarm
+    scene_name: tank_control
+
+  - name: pump_fault
+    address: "DB4,BOOL0.2"
+    data_type: bool
+    access: read
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Pump fault alarm bit"
+    category: alarm
+    scene_name: tank_control
+
+# ---------------------------------------------------------------------------
+# Writable Tags (allowed to be written during any operation)
+# ---------------------------------------------------------------------------
+writable_tags:
+  - pump_speed
+  - drain_valve_position
+  - level_setpoint
+  - auto_mode
+
+# ---------------------------------------------------------------------------
+# Attack Surface (subset of writable_tags exposed to attackers)
+# ---------------------------------------------------------------------------
+attack_surface:
+  - pump_speed
+  - drain_valve_position
+  - level_setpoint
+
+# ---------------------------------------------------------------------------
+# Safety Rules (enforced by the shield before every write)
+# ---------------------------------------------------------------------------
+safety_rules:
+
+  - rule_id: SR-001
+    description: "Tank level must stay between 5% and 95%"
+    rule_type: invariant
+    tags: [tank_level]
+    parameters:
+      min: 5.0
+      max: 95.0
+    enabled: true
+    priority: 100
+
+  - rule_id: SR-002
+    description: "Pump speed write must be within 0–100%"
+    rule_type: range
+    tags: [pump_speed]
+    parameters:
+      min: 0.0
+      max: 100.0
+    enabled: true
+    priority: 90
+
+  - rule_id: SR-003
+    description: "Drain valve position write must be within 0–100%"
+    rule_type: range
+    tags: [drain_valve_position]
+    parameters:
+      min: 0.0
+      max: 100.0
+    enabled: true
+    priority: 90
+
+  - rule_id: SR-004
+    description: "Level setpoint write must be within 10–90%"
+    rule_type: range
+    tags: [level_setpoint]
+    parameters:
+      min: 10.0
+      max: 90.0
+    enabled: true
+    priority: 90
+
+  - rule_id: SR-005
+    description: "Max single attack duration is 30 seconds"
+    rule_type: duration
+    tags: []
+    parameters:
+      max_duration_ms: 30000
+    enabled: true
+    priority: 80
+
+  - rule_id: SR-006
+    description: "Minimum cooldown between attacks on the same tag: 5 seconds"
+    rule_type: cooldown
+    tags: [pump_speed, drain_valve_position, level_setpoint]
+    parameters:
+      cooldown_ms: 5000
+    enabled: true
+    priority: 70
+
+  - rule_id: SR-007
+    description: "Pump speed must not be set to 0 while high-level alarm is active"
+    rule_type: interlock
+    tags: [pump_speed]
+    parameters:
+      condition_tag: high_level_alarm
+      condition_value: false
+      forbidden_value: 0.0
+    enabled: true
+    priority: 95
+
+  - rule_id: SR-008
+    description: "Do not write to tags while pump_fault alarm is active"
+    rule_type: mode_gate
+    tags: [pump_speed, drain_valve_position]
+    parameters:
+      gate_tag: pump_fault
+      gate_must_be: false
+    enabled: true
+    priority: 95
+
+# ---------------------------------------------------------------------------
+# Reset Procedure (restores safe state after a run)
+# ---------------------------------------------------------------------------
+reset_procedure:
+  - tag: level_setpoint
+    value: 50.0
+  - tag: auto_mode
+    value: true
+  - tag: pump_speed
+    value: 0.0
+  - tag: drain_valve_position
+    value: 0.0

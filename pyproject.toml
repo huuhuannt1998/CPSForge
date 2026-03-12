@@ -1,0 +1,72 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cpsforge"
+version = "0.1.0"
+description = "CPSForge: A Closed-Loop LLM Red-Team/Blue-Team Testbed for Cyber-Physical Systems"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "CPSForge Research Team" }]
+
+dependencies = [
+    # PLC communication
+    "python-snap7>=1.3",
+    # Schema and validation
+    "pydantic>=2.5",
+    # CLI
+    "typer[all]>=0.12",
+    "rich>=13.7",
+    # Configuration
+    "pyyaml>=6.0",
+    # Async and web API
+    "fastapi>=0.109",
+    "uvicorn[standard]>=0.27",
+    # Data handling
+    "pandas>=2.1",
+    "numpy>=1.26",
+    "pyarrow>=14.0",  # parquet support
+    # ML / detectors
+    "scikit-learn>=1.4",
+    # HTTP for LLM providers
+    "httpx>=0.26",
+    # Environment variable loading
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+torch = ["torch>=2.1"]
+anthropic = ["anthropic>=0.20"]
+openai = ["openai>=1.12"]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=4.1",
+    "ruff>=0.2",
+    "mypy>=1.8",
+]
+all = [
+    "cpsforge[torch,anthropic,openai,dev]",
+]
+
+[project.scripts]
+cpsforge = "cpsforge.cli.app:app"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["cpsforge*"]
+
+[tool.pytest.ini_options]
+testpaths = ["cpsforge/tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+strict = false
+ignore_missing_imports = true

@@ -1,0 +1,104 @@
+// MANTIS — Scene 15: Pick & Place XYZ
+// Place boxes onto pallets using a three-axis manipulator.
+// DB24: I/O mapping
+
+FUNCTION_BLOCK "FB_PickPlaceXYZ"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+
+VAR
+    BoxAtPick      : BOOL;  // 0.0
+    _pad0          : BYTE;
+    PalletReady    : BOOL;  // 2.0
+    _pad1          : BYTE;
+    GripperClosed  : BOOL;  // 4.0
+    _pad2          : BYTE;
+    PosX           : REAL;  // 6
+    PosY           : REAL;  // 10
+    PosZ           : REAL;  // 14
+    SetpointX      : REAL;  // 18
+    SetpointY      : REAL;  // 22
+    SetpointZ      : REAL;  // 26
+    Gripper        : BOOL;  // 30.0
+    _pad3          : BYTE;
+    ConveyorIn     : BOOL;  // 32.0
+    _pad4          : BYTE;
+    ConveyorPallet : BOOL;  // 34.0
+    _pad5          : BYTE;
+    Emitter        : BOOL;  // 36.0
+    _pad6          : BYTE;
+    
+    iState      : INT := 0;
+    BoxIndex   : INT := 0;
+    TOLERANCE  : REAL := 10.0;
+    
+    // Positions
+    PICK_X : REAL := 100.0;
+    PICK_Y : REAL := 100.0;
+    PICK_Z : REAL := 50.0;
+    HOME_Z : REAL := 300.0;
+    
+    PlaceX : REAL := 0.0;
+    PlaceY : REAL := 0.0;
+END_VAR
+
+BEGIN
+    Emitter := TRUE;
+    
+    CASE iState OF
+        0: // Wait for box
+            ConveyorIn := TRUE;
+            SetpointZ := HOME_Z;
+            IF BoxAtPick THEN
+                ConveyorIn := FALSE;
+                iState := 1;
+            END_IF;
+            
+        1: // Move to pick XY
+            SetpointX := PICK_X;
+            SetpointY := PICK_Y;
+            IF ABS(PosX - PICK_X) < TOLERANCE AND ABS(PosY - PICK_Y) < TOLERANCE THEN
+                iState := 2;
+            END_IF;
+            
+        2: // Lower to pick
+            SetpointZ := PICK_Z;
+            IF ABS(PosZ - PICK_Z) < TOLERANCE THEN
+                Gripper := TRUE;
+                iState := 3;
+            END_IF;
+            
+        3: // Grip and raise
+            IF GripperClosed THEN
+                SetpointZ := HOME_Z;
+                iState := 4;
+            END_IF;
+            
+        4: // Move to place (grid pattern)
+            IF ABS(PosZ - HOME_Z) < TOLERANCE THEN
+                PlaceX := 500.0 + INT_TO_REAL(BoxIndex MOD 3) * 150.0;
+                PlaceY := 100.0 + INT_TO_REAL(BoxIndex / 3) * 150.0;
+                SetpointX := PlaceX;
+                SetpointY := PlaceY;
+                iState := 5;
+            END_IF;
+            
+        5: // Lower to place
+            IF ABS(PosX - PlaceX) < TOLERANCE AND ABS(PosY - PlaceY) < TOLERANCE THEN
+                SetpointZ := PICK_Z;
+                iState := 6;
+            END_IF;
+            
+        6: // Release
+            IF ABS(PosZ - PICK_Z) < TOLERANCE THEN
+                Gripper := FALSE;
+                BoxIndex := BoxIndex + 1;
+                IF BoxIndex >= 9 THEN
+                    BoxIndex := 0;
+                    ConveyorPallet := TRUE;  // Eject full pallet
+                END_IF;
+                SetpointZ := HOME_Z;
+                iState := 0;
+            END_IF;
+    END_CASE;
+END_FUNCTION_BLOCK

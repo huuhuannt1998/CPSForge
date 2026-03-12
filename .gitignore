@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.pyo
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Environment
+.env
+.venv/
+venv/
+env/
+
+# Data — raw PLC traces and eval artifacts (large files, not committed)
+data/raw/
+data/processed/
+data/replays/
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Snap7 native libs (platform-specific, install separately)
+*.dll
+*.so
+*.dylib
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Secrets
+*.pem
+*.key
+secrets/

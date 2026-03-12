@@ -1,0 +1,36 @@
+# =============================================================================
+# CPSForge Defender — Invariant Detector (From A to B)
+# =============================================================================
+name: invariant_from_a_to_b
+detector_type: invariant
+scene_name: from_a_to_b
+enabled: true
+
+invariant_rules:
+  - rule_id: FAB-INV-001
+    description: "Conveyor should be running when state is Transport (0) and enable is True"
+    condition: "NOT (state == 0 AND enable == True AND conveyor == False)"
+    tags: [state, enable, conveyor]
+    severity: high
+    label: "conveyor_stopped_during_transport"
+
+  - rule_id: FAB-INV-002
+    description: "Sensor should be True when state is Arrived (1)"
+    condition: "NOT (state == 1 AND sensor == False)"
+    tags: [state, sensor]
+    severity: medium
+    label: "arrived_without_sensor"
+
+  - rule_id: FAB-INV-003
+    description: "Conveyor should not run when state is Arrived (1) — box already removed"
+    condition: "NOT (state == 1 AND conveyor == True)"
+    tags: [state, conveyor]
+    severity: medium
+    label: "conveyor_running_after_arrival"
+
+  - rule_id: FAB-INV-004
+    description: "Enable must not be off while system is in Transport state"
+    condition: "NOT (enable == False AND state == 0)"
+    tags: [enable, state]
+    severity: high
+    label: "enable_off_during_transport"

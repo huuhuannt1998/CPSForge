@@ -1,0 +1,452 @@
+# =============================================================================
+# CPSForge Scene Configuration — Sorting by Height (Basic)
+# =============================================================================
+# Factory I/O scene: Sorting by Height (Basic)
+# DB28: Instance DB for FB_SortingHeightBasic (non-optimized, 62 bytes)
+#
+# Physical setup:
+#   - Siemens S7 PLC at 192.168.0.1, TIA Portal v17
+#   - Entry conveyor feeds items onto loading area
+#   - High/Low sensors determine item height
+#   - Short items (low only) → transfer LEFT
+#   - Tall items (high sensor) → transfer RIGHT
+#   - Left and right exit conveyors carry sorted items
+#   - 5-state machine: Feed→Load→Transfer→Clear→Finish
+#
+# Attack surface: conveyors, transfer gates, enable flag
+# =============================================================================
+
+scene_name: sorting_height_basic
+
+description: >
+  Sorting by height scene with 5-state machine. Items arrive on entry
+  conveyor, are measured by height sensors, and sorted: short items go
+  LEFT, tall items go RIGHT. The Enable flag is never written by PLC
+  logic. Transfer left/right are mutual-exclusion actuators.
+
+sampling_interval_ms: 500
+
+# ---------------------------------------------------------------------------
+# Tag Definitions (DB28, 62 bytes total)
+# ---------------------------------------------------------------------------
+tags:
+
+  # --- Sensors ---
+  - name: high_sensor
+    address: "DB28,BOOL0.0"
+    data_type: bool
+    access: read
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Height sensor — TRUE if tall item detected"
+    category: sensor
+    scene_name: sorting_height_basic
+
+  - name: low_sensor
+    address: "DB28,BOOL2.0"
+    data_type: bool
+    access: read
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Low sensor — TRUE if any item present"
+    category: sensor
+    scene_name: sorting_height_basic
+
+  - name: pallet_sensor
+    address: "DB28,BOOL4.0"
+    data_type: bool
+    access: read
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Pallet sensor — TRUE if pallet ready"
+    category: sensor
+    scene_name: sorting_height_basic
+
+  - name: loaded
+    address: "DB28,BOOL6.0"
+    data_type: bool
+    access: read
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Loaded flag — TRUE when item loaded on pallet"
+    category: sensor
+    scene_name: sorting_height_basic
+
+  - name: at_left_entry
+    address: "DB28,BOOL8.0"
+    data_type: bool
+    access: read
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Pallet at left sorting entry"
+    category: sensor
+    scene_name: sorting_height_basic
+
+  - name: at_left_exit
+    address: "DB28,BOOL10.0"
+    data_type: bool
+    access: read
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Pallet at left exit"
+    category: sensor
+    scene_name: sorting_height_basic
+
+  - name: at_right_entry
+    address: "DB28,BOOL12.0"
+    data_type: bool
+    access: read
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Pallet at right sorting entry"
+    category: sensor
+    scene_name: sorting_height_basic
+
+  - name: at_right_exit
+    address: "DB28,BOOL14.0"
+    data_type: bool
+    access: read
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Pallet at right exit"
+    category: sensor
+    scene_name: sorting_height_basic
+
+  - name: btn_start
+    address: "DB28,BOOL16.0"
+    data_type: bool
+    access: read
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Start button — momentary"
+    category: sensor
+    scene_name: sorting_height_basic
+
+  - name: btn_reset
+    address: "DB28,BOOL18.0"
+    data_type: bool
+    access: read
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Reset button — momentary"
+    category: sensor
+    scene_name: sorting_height_basic
+
+  - name: btn_stop
+    address: "DB28,BOOL20.0"
+    data_type: bool
+    access: read
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Stop button — NC alternate"
+    category: sensor
+    scene_name: sorting_height_basic
+
+  - name: emergency_stop
+    address: "DB28,BOOL22.0"
+    data_type: bool
+    access: read
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Emergency stop button"
+    category: alarm
+    scene_name: sorting_height_basic
+
+  - name: btn_auto
+    address: "DB28,BOOL24.0"
+    data_type: bool
+    access: read
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Auto mode selector"
+    category: sensor
+    scene_name: sorting_height_basic
+
+  # --- Actuators ---
+  - name: conveyor_entry
+    address: "DB28,BOOL26.0"
+    data_type: bool
+    access: read_write
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Entry conveyor motor"
+    category: actuator
+    scene_name: sorting_height_basic
+
+  - name: load_act
+    address: "DB28,BOOL28.0"
+    data_type: bool
+    access: read_write
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Load actuator — pushes item onto pallet"
+    category: actuator
+    scene_name: sorting_height_basic
+
+  - name: unload_act
+    address: "DB28,BOOL30.0"
+    data_type: bool
+    access: read_write
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Unload actuator — removes item from pallet"
+    category: actuator
+    scene_name: sorting_height_basic
+
+  - name: transf_left
+    address: "DB28,BOOL32.0"
+    data_type: bool
+    access: read_write
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Transfer LEFT gate — moves pallet to left conveyor"
+    category: actuator
+    scene_name: sorting_height_basic
+
+  - name: transf_right
+    address: "DB28,BOOL34.0"
+    data_type: bool
+    access: read_write
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Transfer RIGHT gate — moves pallet to right conveyor"
+    category: actuator
+    scene_name: sorting_height_basic
+
+  - name: conveyor_left
+    address: "DB28,BOOL36.0"
+    data_type: bool
+    access: read_write
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Left exit conveyor motor"
+    category: actuator
+    scene_name: sorting_height_basic
+
+  - name: conveyor_right
+    address: "DB28,BOOL38.0"
+    data_type: bool
+    access: read_write
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Right exit conveyor motor"
+    category: actuator
+    scene_name: sorting_height_basic
+
+  - name: start_light
+    address: "DB28,BOOL40.0"
+    data_type: bool
+    access: read
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Start indicator light"
+    category: actuator
+    scene_name: sorting_height_basic
+
+  - name: reset_light
+    address: "DB28,BOOL42.0"
+    data_type: bool
+    access: read
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Reset indicator light"
+    category: actuator
+    scene_name: sorting_height_basic
+
+  - name: stop_light
+    address: "DB28,BOOL44.0"
+    data_type: bool
+    access: read
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Stop indicator light"
+    category: actuator
+    scene_name: sorting_height_basic
+
+  - name: counter_out
+    address: "DB28,DINT46"
+    data_type: dint
+    access: read
+    unit: null
+    min_value: 0
+    max_value: 99999
+    description: "Items sorted counter display"
+    category: internal
+    scene_name: sorting_height_basic
+
+  # --- Internal state ---
+  - name: state
+    address: "DB28,INT50"
+    data_type: int
+    access: read
+    unit: null
+    min_value: 0
+    max_value: 4
+    description: "State machine: 0=Feed, 1=Load, 2=Transfer, 3=Clear, 4=Finish"
+    category: internal
+    scene_name: sorting_height_basic
+
+  - name: item_count
+    address: "DB28,INT52"
+    data_type: int
+    access: read
+    unit: null
+    min_value: 0
+    max_value: 99999
+    description: "Internal item count"
+    category: internal
+    scene_name: sorting_height_basic
+
+  - name: is_tall
+    address: "DB28,BOOL54.0"
+    data_type: bool
+    access: read
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Height classification: TRUE=tall, FALSE=short"
+    category: internal
+    scene_name: sorting_height_basic
+
+  - name: dwell_timer
+    address: "DB28,INT56"
+    data_type: int
+    access: read
+    unit: "cycles"
+    min_value: 0
+    max_value: 60000
+    description: "Dwell timer for timed state transitions"
+    category: internal
+    scene_name: sorting_height_basic
+
+  - name: running
+    address: "DB28,BOOL58.0"
+    data_type: bool
+    access: read
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Process running state"
+    category: internal
+    scene_name: sorting_height_basic
+
+  - name: enable
+    address: "DB28,BOOL60.0"
+    data_type: bool
+    access: read_write
+    unit: null
+    min_value: null
+    max_value: null
+    description: "System enable flag — never written by PLC logic (attack target)"
+    category: mode_bit
+    scene_name: sorting_height_basic
+
+# ---------------------------------------------------------------------------
+# Writable Tags
+# ---------------------------------------------------------------------------
+writable_tags:
+  - conveyor_entry
+  - load_act
+  - unload_act
+  - transf_left
+  - transf_right
+  - conveyor_left
+  - conveyor_right
+  - enable
+
+# ---------------------------------------------------------------------------
+# Attack Surface
+# ---------------------------------------------------------------------------
+attack_surface:
+  - conveyor_entry
+  - load_act
+  - unload_act
+  - transf_left
+  - transf_right
+  - enable
+
+# ---------------------------------------------------------------------------
+# Safety Rules
+# ---------------------------------------------------------------------------
+safety_rules:
+
+  - rule_id: SH-SR-001
+    description: "TransfLeft and TransfRight must not be active simultaneously"
+    rule_type: mutual_exclusion
+    tags: [transf_left, transf_right]
+    parameters:
+      forbidden_pairs: [[true, true]]
+    enabled: true
+    priority: 100
+
+  - rule_id: SH-SR-002
+    description: "Enable must not be held FALSE for more than 30 seconds"
+    rule_type: duration
+    tags: [enable]
+    parameters:
+      max_duration_ms: 30000
+      forbidden_value: false
+    enabled: true
+    priority: 100
+
+  - rule_id: SH-SR-003
+    description: "Conveyor entry override duration capped at 20 seconds"
+    rule_type: duration
+    tags: [conveyor_entry]
+    parameters:
+      max_duration_ms: 20000
+    enabled: true
+    priority: 50
+
+  - rule_id: SH-SR-004
+    description: "Load and unload must not activate simultaneously"
+    rule_type: mutual_exclusion
+    tags: [load_act, unload_act]
+    parameters:
+      forbidden_pairs: [[true, true]]
+    enabled: true
+    priority: 90
+
+# ---------------------------------------------------------------------------
+# Reset Procedure
+# ---------------------------------------------------------------------------
+reset_procedure:
+  - tag: enable
+    value: true
+  - tag: conveyor_entry
+    value: false
+  - tag: load_act
+    value: false
+  - tag: unload_act
+    value: false
+  - tag: transf_left
+    value: false
+  - tag: transf_right
+    value: false
+  - tag: conveyor_left
+    value: false
+  - tag: conveyor_right
+    value: false

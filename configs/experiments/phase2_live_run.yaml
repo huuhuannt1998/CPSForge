@@ -1,0 +1,64 @@
+# =============================================================================
+# CPSForge Experiment Configuration — Phase 2 Live Hardware Eval Run
+# =============================================================================
+#
+# !!! WARNING — THIS CONFIG ISSUES REAL PLC WRITES !!!
+#
+# Requirements before running:
+#   1. PLC at 192.168.0.1 is powered on and running the TIA Portal v17 project.
+#   2. Factory I/O scene is running and in PLAY mode.
+#   3. You have reviewed the safety rules in configs/scenes/tank_control.yaml.
+#   4. Emergency stop is accessible and functional.
+#   5. Confirm: CPSFORGE_LIVE_WRITES=true is set in your .env *and* this file.
+#
+# Usage:
+#   # Set in .env first:
+#   #   CPSFORGE_LIVE_WRITES=true
+#   cpsforge run attack --scene tank_control --experiment phase2_live_run --no-dry-run
+#
+# After the run, a reset is automatically applied (reset_after_run: true).
+# =============================================================================
+
+name: phase2_live_run
+description: >
+  Phase 2 LIVE eval run against the real Siemens S7 PLC at 192.168.0.1.
+  Sends scripted attacks through the shield. Threshold and invariant detectors
+  are evaluated. Metrics and trace are saved for paper analysis.
+
+# Scene
+scene_config: "scenes/tank_control.yaml"
+plc_config:   "system/plc.yaml"     # host: 192.168.0.1
+
+# Attackers (scripted only for the first live eval — deterministic and auditable)
+attackers:
+  - scripted_tank_control
+
+# Defenders
+defenders:
+  - threshold_tank_control
+  - invariant_tank_control
+
+# -----------------------------------------------------------------------
+# SAFETY FLAGS
+# Both flags MUST be explicitly true for real PLC writes.
+# The CPSFORGE_LIVE_WRITES env var also overrides live_writes_enabled.
+# -----------------------------------------------------------------------
+live_writes_enabled: true   # REQUIRED: enables real PLC writes
+dry_run: false              # REQUIRED: disable dry-run mode
+eval_run: true              # Mark as an official paper-result run
+reset_after_run: true       # Write reset_procedure tags back after run
+
+# -----------------------------------------------------------------------
+# Run Control
+# 300 polling steps @ 500 ms = 150 s ≈ 2.5 minutes on hardware
+# -----------------------------------------------------------------------
+max_steps: 300
+run_duration_s: 200.0       # Hard wall-clock cap
+adaptation_round: 0
+
+# -----------------------------------------------------------------------
+# Output Artifacts
+# All artifacts are required for eval runs; do not disable.
+# -----------------------------------------------------------------------
+save_trace: true
+save_metrics: true

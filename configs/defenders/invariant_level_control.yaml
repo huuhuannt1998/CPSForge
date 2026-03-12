@@ -1,0 +1,29 @@
+# =============================================================================
+# CPSForge Defender — Invariant Detector (Level Control)
+# =============================================================================
+name: invariant_level_control
+detector_type: invariant
+scene_name: level_control
+enabled: true
+
+invariant_rules:
+  - rule_id: LC-INV-001
+    description: "Fill valve should not exceed 10V when level is above 9V"
+    condition: "NOT (fill_valve > 9.0 AND level_meter > 9.0)"
+    tags: [fill_valve, level_meter]
+    severity: critical
+    label: "filling_overflow"
+
+  - rule_id: LC-INV-002
+    description: "Discharge valve should not be fully closed when level exceeds 9.5V"
+    condition: "NOT (discharge_valve < 0.1 AND level_meter > 9.5)"
+    tags: [discharge_valve, level_meter]
+    severity: high
+    label: "drain_closed_overflow"
+
+  - rule_id: LC-INV-003
+    description: "Fill valve should not run when system is stopped"
+    condition: "NOT (running == False AND fill_valve > 0.5)"
+    tags: [running, fill_valve]
+    severity: medium
+    label: "fill_while_stopped"

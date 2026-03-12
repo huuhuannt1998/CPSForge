@@ -1,0 +1,36 @@
+# =============================================================================
+# CPSForge Defender — Threshold Detector (From A to B)
+# =============================================================================
+name: threshold_from_a_to_b
+detector_type: threshold
+scene_name: from_a_to_b
+enabled: true
+
+thresholds:
+  - tag: state
+    operator: ">"
+    value: 1
+    severity: high
+    label: "invalid_state"
+    description: "State machine value out of range (valid: 0 or 1)"
+
+  - tag: state
+    operator: "<"
+    value: 0
+    severity: high
+    label: "invalid_state_low"
+    description: "State machine value negative (impossible)"
+
+  - tag: enable
+    operator: "=="
+    value: 0
+    severity: high
+    label: "enable_off"
+    description: "System enable flag is FALSE — process halted"
+
+  - tag: conveyor
+    operator: "=="
+    value: 0
+    severity: medium
+    label: "conveyor_stopped"
+    description: "Conveyor is stopped — possible actuator override attack"

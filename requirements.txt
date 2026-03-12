@@ -1,0 +1,41 @@
+# CPSForge dependencies
+# Install with: pip install -e .
+# Or: pip install -r requirements.txt
+
+# PLC communication
+python-snap7>=1.3
+
+# Schema and validation
+pydantic>=2.5
+
+# CLI
+typer[all]>=0.12
+rich>=13.7
+
+# Configuration
+pyyaml>=6.0
+
+# Async and web API
+fastapi>=0.109
+uvicorn[standard]>=0.27
+
+# Data handling
+pandas>=2.1
+numpy>=1.26
+pyarrow>=14.0
+
+# ML / detectors
+scikit-learn>=1.4
+
+# HTTP for LLM providers
+httpx>=0.26
+
+# Environment variable loading
+python-dotenv>=1.0
+
+# Optional: deep learning detector scaffold
+# torch>=2.1
+
+# Optional: LLM provider SDKs
+# anthropic>=0.20
+# openai>=1.12

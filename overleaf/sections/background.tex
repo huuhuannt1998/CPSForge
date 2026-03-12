@@ -1,0 +1,37 @@
+\section{Background and Motivation}
+\label{sec:background}
+
+\subsection{Cyber-Physical Systems and Industrial Control}
+
+Cyber-physical systems combine software control, networked communication, and physical dynamics. In industrial automation, PLCs serve as the primary control components that execute ladder logic or structured text, interact with sensors and actuators, and enforce operational sequences. The correctness of such systems depends not only on software behavior, but also on scan timing, process feedback, interlocks, and safety thresholds.
+
+Compared to traditional IT environments, CPS attacks are constrained by the physical process. A successful adversary must reason about actuator timing, sensor semantics, controller state, and process dependencies. Similarly, effective defense must consider more than network traces or software logs; it must also account for physical behavior and unsafe state transitions.
+
+\subsection{Why LLMs Matter in CPS Security}
+
+LLMs offer flexible reasoning over unstructured descriptions, structured telemetry, process semantics, and attacker objectives. In principle, they can help generate process-aware attacks, synthesize invariants, explain anomalies, and support adaptive security analysis. However, LLMs also introduce well-known risks: they can hallucinate, over-generalize, misinterpret context, or propose unsafe actions. These risks are amplified in CPS because model outputs may influence physical behavior.
+
+Therefore, the appropriate research question is not whether an LLM should be granted unrestricted plant control. Instead, the relevant question is whether LLM reasoning can be embedded into a rigorously constrained environment where actions are structured, validated, logged, and evaluated against real process behavior.
+
+\subsection{Limits of Existing Evaluation Practice}
+
+Much of the current CPS security literature relies on benchmark datasets, offline detection experiments, or scripted attack scenarios. While these methods are useful, they do not fully capture the interaction between a live controller, evolving plant state, and actuation decisions. Offline traces cannot reproduce real controller scan cycles, online state transitions, or the consequences of repeated attack attempts.
+
+Likewise, recent LLM-based CPS studies often stop at anomaly explanation, invariant extraction, or attack ideation. Without a closed-loop execution environment, it remains unclear whether LLM-generated strategies are actually process-valid, whether they survive practical constraints, and whether defenses improve meaningfully after exposure to such attacks.
+
+\subsection{Motivation for a Closed-Loop Testbed}
+
+CPSForge is motivated by the need for a realistic yet safe experimental platform that can study offensive and defensive LLM use together. The real PLC provides authentic controller timing and execution semantics, while Factory I/O supplies reproducible physical-process scenes. This combination offers a practical hardware-in-the-loop substrate for evaluating process-grounded attacks and defenses.
+
+The design also emphasizes a closed-loop attacker-defender cycle. A one-shot attacker evaluation reveals only whether a particular defense succeeds on a fixed set of cases. In contrast, a closed-loop system can reveal how defenders fail, how attacks diversify, and whether repeated adaptation improves resilience. This aligns more closely with real-world adversarial evolution and provides a stronger foundation for research claims about robustness.
+
+\subsection{Design Goals}
+
+The design of CPSForge is guided by four main goals:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Realism.} The system should operate over a real PLC and a live process emulator rather than relying solely on offline traces.
+    \item \textbf{Safety.} No model or attack component should write directly to the controller without mediation by a safety layer.
+    \item \textbf{Reproducibility.} Every experiment should produce structured artifacts that support replay, auditing, and analysis.
+    \item \textbf{Adaptation.} The framework should support repeated attack and defense rounds so that defender improvement can be measured over time.
+\end{itemize}

@@ -1,0 +1,67 @@
+// MANTIS — Scene 9: Converge Station
+// Converge two paths into a single output conveyor.
+// DB18: I/O mapping
+
+FUNCTION_BLOCK "FB_ConvergeStation"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+
+VAR
+    SensorLeft    : BOOL;  // 0.0
+    _pad0         : BYTE;
+    SensorRight   : BOOL;  // 2.0
+    _pad1         : BYTE;
+    SensorMerge   : BOOL;  // 4.0
+    _pad2         : BYTE;
+    AtExit        : BOOL;  // 6.0
+    _pad3         : BYTE;
+    ConveyorLeft  : BOOL;  // 8.0
+    _pad4         : BYTE;
+    ConveyorRight : BOOL;  // 10.0
+    _pad5         : BYTE;
+    ConveyorOut   : BOOL;  // 12.0
+    _pad6         : BYTE;
+    Emitter1      : BOOL;  // 14.0
+    _pad7         : BYTE;
+    Emitter2      : BOOL;  // 16.0
+    _pad8         : BYTE;
+    Remover       : BOOL;  // 18.0
+    _pad9         : BYTE;
+    
+    Priority : BOOL := FALSE;  // FALSE=left first, TRUE=right first
+END_VAR
+
+BEGIN
+    ConveyorOut := TRUE;
+    Remover := TRUE;
+    Emitter1 := TRUE;
+    Emitter2 := TRUE;
+    
+    // Alternate priority to prevent starvation
+    IF NOT SensorMerge THEN
+        IF Priority THEN
+            // Right has priority
+            IF SensorRight THEN
+                ConveyorRight := TRUE;
+                ConveyorLeft := FALSE;
+            ELSIF SensorLeft THEN
+                ConveyorLeft := TRUE;
+                ConveyorRight := FALSE;
+            END_IF;
+        ELSE
+            // Left has priority
+            IF SensorLeft THEN
+                ConveyorLeft := TRUE;
+                ConveyorRight := FALSE;
+            ELSIF SensorRight THEN
+                ConveyorRight := TRUE;
+                ConveyorLeft := FALSE;
+            END_IF;
+        END_IF;
+    ELSE
+        // Merge point occupied — stop both inputs
+        ConveyorLeft := FALSE;
+        ConveyorRight := FALSE;
+        Priority := NOT Priority;  // Toggle for next
+    END_IF;
+END_FUNCTION_BLOCK

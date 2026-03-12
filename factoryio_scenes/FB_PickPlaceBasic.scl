@@ -1,0 +1,100 @@
+// MANTIS — Scene 14: Pick & Place (Basic)
+// Pick and place items from one conveyor into another.
+// DB23: I/O mapping
+
+FUNCTION_BLOCK "FB_PickPlaceBasic"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+
+VAR
+    ItemAtPick    : BOOL;  // 0.0
+    _pad0         : BYTE;
+    ItemAtPlace   : BOOL;  // 2.0
+    _pad1         : BYTE;
+    GripperClosed : BOOL;  // 4.0
+    _pad2         : BYTE;
+    ArmAtPick     : BOOL;  // 6.0
+    _pad3         : BYTE;
+    ArmAtPlace    : BOOL;  // 8.0
+    _pad4         : BYTE;
+    ConveyorIn    : BOOL;  // 10.0
+    _pad5         : BYTE;
+    ConveyorOut   : BOOL;  // 12.0
+    _pad6         : BYTE;
+    Gripper       : BOOL;  // 14.0
+    _pad7         : BYTE;
+    ArmRotate     : BOOL;  // 16.0
+    _pad8         : BYTE;
+    ArmUp         : BOOL;  // 18.0
+    _pad9         : BYTE;
+    ArmDown       : BOOL;  // 20.0
+    _pad10        : BYTE;
+    Emitter       : BOOL;  // 22.0
+    _pad11        : BYTE;
+    
+    iState : INT := 0;
+END_VAR
+
+BEGIN
+    Emitter := TRUE;
+    
+    CASE iState OF
+        0: // Wait for item at pick position
+            ConveyorIn := TRUE;
+            ConveyorOut := TRUE;
+            IF ItemAtPick AND ArmAtPick THEN
+                ConveyorIn := FALSE;
+                iState := 1;
+            END_IF;
+            
+        1: // Lower arm
+            ArmDown := TRUE;
+            ArmUp := FALSE;
+            IF NOT ArmAtPick THEN  // Arm has moved down
+                ArmDown := FALSE;
+                iState := 2;
+            END_IF;
+            
+        2: // Grip item
+            Gripper := TRUE;
+            IF GripperClosed THEN
+                iState := 3;
+            END_IF;
+            
+        3: // Raise arm
+            ArmUp := TRUE;
+            ArmDown := FALSE;
+            IF ArmAtPick THEN
+                ArmUp := FALSE;
+                iState := 4;
+            END_IF;
+            
+        4: // Rotate to place
+            ArmRotate := TRUE;
+            IF ArmAtPlace THEN
+                ArmRotate := FALSE;
+                iState := 5;
+            END_IF;
+            
+        5: // Lower arm
+            ArmDown := TRUE;
+            IF NOT ArmAtPlace THEN
+                ArmDown := FALSE;
+                iState := 6;
+            END_IF;
+            
+        6: // Release
+            Gripper := FALSE;
+            IF NOT GripperClosed THEN
+                ArmUp := TRUE;
+                iState := 7;
+            END_IF;
+            
+        7: // Return to pick position
+            IF ArmAtPlace THEN
+                ArmUp := FALSE;
+                ArmRotate := FALSE;  // Rotate back
+                iState := 0;
+            END_IF;
+    END_CASE;
+END_FUNCTION_BLOCK

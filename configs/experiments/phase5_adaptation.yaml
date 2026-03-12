@@ -1,0 +1,56 @@
+# CPSForge Experiment Config — Phase 5 Adaptation
+# =================================================
+# Multi-round closed-loop experiment: attack → detect → extract hard cases
+# → retrain sequence detector → repeat.
+#
+# Usage:
+#   Single closed-loop round:
+#     cpsforge run closed-loop --scene tank_control --experiment phase5_adaptation
+#
+#   Multi-round via adaptation loop:
+#     cpsforge adapt run-rounds --experiment phase5_adaptation --rounds 5
+#
+# Safety:
+#   This config defaults to dry-run mode.  Set live_writes_enabled: true
+#   and dry_run: false ONLY when connected to the real PLC.
+#
+# Adaptation:
+#   min_hard_cases_to_retrain: 10
+#   The sequence detector is retrained when the HardCaseBank accumulates
+#   >= 10 hard cases.  Model files are saved under:
+#     data/models/phase5_adaptation/round_<N>/sequence_model.pkl
+
+name: "phase5_adaptation"
+description: >
+  Phase 5 multi-round adaptation experiment.
+  All three defenders (threshold, invariant, sequence model) run in parallel.
+  The sequence model is retrained between rounds on accumulated hard cases.
+
+scene_config: "scenes/tank_control.yaml"
+plc_config: "system/plc.yaml"
+
+attackers:
+  - "scripted_tank_control"
+  - "random_tank_control"
+
+defenders:
+  - "threshold_tank_control"
+  - "invariant_tank_control"
+  - "sequence_model_tank_control"
+
+# Safety flags — MUST be explicitly overridden for live PLC runs
+live_writes_enabled: false
+dry_run: true
+
+# Set to true to label this as an official eval-run (paper results)
+eval_run: false
+
+# Run control
+max_steps: 400
+run_duration_s: 220.0
+adaptation_round: 0   # incremented automatically by AdaptationLoop
+
+# Artifact flags
+save_trace: true
+save_metrics: true
+reset_after_run: false

@@ -1,0 +1,92 @@
+// MANTIS — Scene 5: Assembler
+// Assemble parts (lids + bases) using a two-axis pick and place.
+// DB14: I/O mapping
+
+FUNCTION_BLOCK "FB_Assembler"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+
+VAR
+    PartAtPickup  : BOOL;  // 0.0
+    _pad0         : BYTE;
+    PartAtPlace   : BOOL;  // 2.0
+    _pad1         : BYTE;
+    LidAtPickup   : BOOL;  // 4.0
+    _pad2         : BYTE;
+    ClampSensor   : BOOL;  // 6.0
+    _pad3         : BYTE;
+    MovingX       : BOOL;  // 8.0
+    _pad4         : BYTE;
+    MovingZ       : BOOL;  // 10.0
+    _pad5         : BYTE;
+    ConveyorBase  : BOOL;  // 12.0
+    _pad6         : BYTE;
+    ConveyorLid   : BOOL;  // 14.0
+    _pad7         : BYTE;
+    ConveyorOut   : BOOL;  // 16.0
+    _pad8         : BYTE;
+    MoveX         : BOOL;  // 18.0
+    _pad9         : BYTE;
+    MoveZ         : BOOL;  // 20.0
+    _pad10        : BYTE;
+    Clamp         : BOOL;  // 22.0
+    _pad11        : BYTE;
+    Emitter       : BOOL;  // 24.0
+    _pad12        : BYTE;
+    
+    iState : INT := 0;
+END_VAR
+
+BEGIN
+    CASE iState OF
+        0: // Feed base part
+            ConveyorBase := TRUE;
+            ConveyorLid := TRUE;
+            Emitter := TRUE;
+            IF PartAtPickup THEN
+                ConveyorBase := FALSE;
+                iState := 1;
+            END_IF;
+            
+        1: // Move pick-and-place to pickup position
+            MoveX := FALSE;  // Move to pickup (left)
+            MoveZ := TRUE;   // Lower
+            IF NOT MovingZ THEN
+                iState := 2;
+            END_IF;
+            
+        2: // Clamp the part
+            Clamp := TRUE;
+            IF ClampSensor THEN
+                MoveZ := FALSE;  // Raise
+                iState := 3;
+            END_IF;
+            
+        3: // Move to place position
+            IF NOT MovingZ THEN
+                MoveX := TRUE;   // Move to place (right)
+                iState := 4;
+            END_IF;
+            
+        4: // Lower and place
+            IF NOT MovingX THEN
+                MoveZ := TRUE;   // Lower
+                iState := 5;
+            END_IF;
+            
+        5: // Release
+            IF NOT MovingZ THEN
+                Clamp := FALSE;
+                MoveZ := FALSE;
+                iState := 6;
+            END_IF;
+            
+        6: // Output assembled part
+            ConveyorOut := TRUE;
+            MoveX := FALSE;  // Return to home
+            IF NOT PartAtPlace THEN
+                ConveyorOut := FALSE;
+                iState := 0;
+            END_IF;
+    END_CASE;
+END_FUNCTION_BLOCK

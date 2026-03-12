@@ -1,0 +1,86 @@
+// MANTIS — Scene 20: Sorting by Weight
+// Sort boxes by weight using a conveyor scale.
+// DB29: I/O mapping
+
+FUNCTION_BLOCK "FB_SortingWeight"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+
+VAR
+    BoxAtEntry      : BOOL;  // 0.0
+    _pad0           : BYTE;
+    BoxWeight       : REAL;  // 2
+    BoxOnScale      : BOOL;  // 6.0
+    _pad1           : BYTE;
+    AtPusher        : BOOL;  // 8.0
+    _pad2           : BYTE;
+    AtExit          : BOOL;  // 10.0
+    _pad3           : BYTE;
+    ConveyorIn      : BOOL;  // 12.0
+    _pad4           : BYTE;
+    ConveyorScale   : BOOL;  // 14.0
+    _pad5           : BYTE;
+    Pusher          : BOOL;  // 16.0
+    _pad6           : BYTE;
+    ConveyorHeavy   : BOOL;  // 18.0
+    _pad7           : BYTE;
+    ConveyorLight   : BOOL;  // 20.0
+    _pad8           : BYTE;
+    Emitter         : BOOL;  // 22.0
+    _pad9           : BYTE;
+    WeightThreshold : REAL;  // 24
+    
+    MeasuredWeight : REAL := 0.0;
+    IsHeavy        : BOOL := FALSE;
+    iState          : INT := 0;
+END_VAR
+
+BEGIN
+    Emitter := TRUE;
+    ConveyorHeavy := TRUE;
+    ConveyorLight := TRUE;
+    
+    // Default threshold
+    IF WeightThreshold < 0.1 THEN
+        WeightThreshold := 5.0;
+    END_IF;
+    
+    CASE iState OF
+        0: // Feed box
+            ConveyorIn := TRUE;
+            ConveyorScale := TRUE;
+            Pusher := FALSE;
+            IF BoxOnScale THEN
+                ConveyorScale := FALSE;  // Stop for weighing
+                MeasuredWeight := BoxWeight;
+                IsHeavy := MeasuredWeight >= WeightThreshold;
+                iState := 1;
+            END_IF;
+            
+        1: // Weighed — continue to pusher
+            ConveyorScale := TRUE;
+            IF AtPusher THEN
+                ConveyorScale := FALSE;
+                IF NOT IsHeavy THEN
+                    // Light box: push to side
+                    Pusher := TRUE;
+                    iState := 2;
+                ELSE
+                    // Heavy box: continue straight
+                    ConveyorScale := TRUE;
+                    iState := 3;
+                END_IF;
+            END_IF;
+            
+        2: // Wait for push complete
+            IF NOT AtPusher THEN
+                Pusher := FALSE;
+                iState := 0;
+            END_IF;
+            
+        3: // Wait for heavy box to clear
+            IF AtExit THEN
+                iState := 0;
+            END_IF;
+    END_CASE;
+END_FUNCTION_BLOCK

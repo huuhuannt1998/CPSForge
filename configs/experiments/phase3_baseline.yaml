@@ -1,0 +1,54 @@
+# ============================================================
+# CPSForge Phase 3 -- Baseline Experiment
+# ============================================================
+# Purpose:
+#   Collect a "normal operation" trace from the tank-control scene
+#   with NO attacks active.  Run threshold and invariant detectors
+#   to measure their false-positive rate on clean data.
+#
+# This config is NOT an eval run -- it is used to establish baseline
+# detector behaviour and FPR before the attack experiments begin.
+#
+# Usage:
+#   cpsforge run baseline --scene tank_control \
+#     --experiment-config configs/experiments/phase3_baseline.yaml
+# ============================================================
+
+name: phase3_baseline
+description: >
+  Phase 3 baseline: no attacks, threshold + invariant detectors running,
+  collecting a normal-operation trace for false-positive rate estimation.
+
+scene_config: "scenes/tank_control.yaml"
+plc_config:   "system/plc.yaml"
+
+# -- Attackers -------------------------------------------------------
+# Empty list = baseline (no attacks injected)
+attackers: []
+
+# -- Defenders -------------------------------------------------------
+defenders:
+  - threshold_tank_control
+  - invariant_tank_control
+
+# -- Safety ------------------------------------------------------------
+# dry_run is forced True when live_writes_enabled=false (validator enforces).
+live_writes_enabled: false
+dry_run: true
+
+# -- Experiment flags --------------------------------------------------
+# eval_run: false  →  this run does NOT count toward paper-reported metrics.
+# It is used only for baseline calibration.
+eval_run: false
+reset_after_run: false
+
+# -- Run length --------------------------------------------------------
+max_steps: 200      # ~100 seconds at 500 ms/step
+run_duration_s: 110.0
+
+# -- Adaptation --------------------------------------------------------
+adaptation_round: 0
+
+# -- Artifacts ---------------------------------------------------------
+save_trace: true
+save_metrics: true

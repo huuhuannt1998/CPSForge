@@ -1,0 +1,75 @@
+\section{System Design}
+\label{sec:design}
+
+CPSForge is organized as a closed-loop CPS security framework built around six interacting layers: physical execution, observation and logging, attack generation, safety enforcement, defense, and adaptation. Figure~\ref{fig:architecture} should illustrate the complete pipeline once the implementation figure is finalized.
+
+\begin{figure}[t]
+    \centering
+    \fbox{
+        \parbox{0.95\linewidth}{
+            \vspace{0.5em}
+            \centering
+            \textbf{Placeholder for CPSForge architecture figure}
+            
+            Real PLC + Factory I/O $\rightarrow$ Telemetry/Logger $\rightarrow$ LLM Attacker $\rightarrow$ Safety Shield $\rightarrow$ Live Execution $\rightarrow$ Defender $\rightarrow$ Hard-Case Bank / Adaptation
+            \vspace{0.5em}
+        }
+    }
+    \caption{High-level CPSForge architecture.}
+    \label{fig:architecture}
+\end{figure}
+
+\subsection{Physical Execution Layer}
+
+At the foundation of CPSForge is a live hardware-in-the-loop environment. A Siemens PLC executes control logic deployed from TIA Portal v17, while Factory I/O emulates the physical process. This design provides realistic controller behavior, including actual scan timing, state transitions, and control-loop interactions that are difficult to reproduce through offline logs alone.
+
+Each process scene is represented as a scene profile containing tag metadata, process descriptions, attack surface definitions, safety rules, and reset procedures. The architecture is intended to support both continuous-process scenes and discrete event-driven scenes.
+
+\subsection{Observation and Logging Layer}
+
+A middleware bridge continuously reads the PLC state and records structured plant snapshots. A snapshot includes sensor values, actuator states, controller mode bits, alarms, setpoints, timestamps, and experiment context. Logging is designed to be replay-ready and audit-friendly.
+
+This layer serves several purposes. First, it provides current context for the attacker and defender. Second, it enables post hoc analysis of attack success, physical impact, and detection behavior. Third, it supports replay-based evaluation and adaptation.
+
+\subsection{Attack Layer}
+
+The attack layer supports multiple attacker types, including scripted baselines, bounded random perturbation, and an LLM-based attacker. The most important design decision is that attack actions are expressed in a structured semantic schema rather than as raw PLC memory writes.
+
+Example attack categories include sensor spoofing, actuator overrides, setpoint shifts, timing delays, and sequence perturbations. An LLM attacker receives scene context, current plant state, allowed capabilities, and attacker objectives, then returns one or more structured actions. These actions are interpreted as candidate plans, not automatically executed commands.
+
+This structured design improves reproducibility, simplifies validation, and makes the action space easier to reason about experimentally.
+
+\subsection{Safety Shield}
+
+The safety shield is the central enforcement mechanism in CPSForge. Every attack action, regardless of source, must pass through the shield before being translated into live writes. The shield evaluates whether the target is writable, whether the value is within configured limits, whether the duration is acceptable, and whether the proposed action conflicts with interlocks or scene-specific invariants.
+
+The shield can approve, reject, or normalize an action. It also records the reasoning behind each decision and can generate rollback plans or expiration timers. This layer allows the framework to study attack behavior while preserving operator-defined safety boundaries.
+
+\subsection{Defender Layer}
+
+The defender layer monitors the plant state during execution and emits alerts when anomalous or unsafe behavior is detected. CPSForge is designed to support multiple detector families:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item threshold-based detectors for simple baselines,
+    \item invariant-based detectors for rule-driven monitoring, and
+    \item learned sequence-based detectors for time-series anomaly detection.
+\end{itemize}
+
+This layered defense design is useful for evaluation because it allows the framework to compare simple and advanced detectors under the same attacker and process conditions.
+
+\subsection{Adaptation Layer}
+
+The adaptation layer turns detector failures into learning opportunities. When an attack succeeds without timely detection, or when the defender behaves weakly or inconsistently, the corresponding trace is stored as a hard case. Hard cases can then be replayed, analyzed, and incorporated into detector refinement.
+
+This mechanism is what makes CPSForge closed-loop rather than static. Instead of evaluating a detector on a fixed attack set, the framework measures how defender performance changes over rounds as new, difficult cases accumulate. This enables stronger claims about robustness and resilience under evolving attack pressure.
+
+\subsection{Design Principles}
+
+The system design follows four principles:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{No unrestricted direct actuation from the LLM.}
+    \item \textbf{All experiments are bounded by explicit safety rules.}
+    \item \textbf{Every run produces replayable and auditable artifacts.}
+    \item \textbf{The framework emphasizes iterative attacker-defender interaction rather than one-shot evaluation.}
+\end{itemize}

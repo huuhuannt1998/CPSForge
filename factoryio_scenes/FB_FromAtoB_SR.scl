@@ -1,0 +1,77 @@
+// MANTIS — Scene 2: From A to B (Set and Reset)
+// Transport a box from sensor A to sensor B using set/reset logic.
+// DB11: Instance DB for FB_FromAtoB_SR (non-optimized access)
+//
+// Factory I/O layout:
+//   - Emitter automatically creates boxes (not PLC-controlled)
+//   - Conveyor moves box LEFT → RIGHT  (%Q0.0)
+//   - Sensor A (diffuse) at left/entry detects box  (%I0.0)
+//   - Sensor B (diffuse) at right/exit detects box  (%I0.1)
+//   - Remover is automatic (not PLC-controlled)
+//
+// Driver mapping (from Factory I/O):
+//   Sensor A → %I0.0
+//   Sensor B → %I0.1
+//   Conveyor → %Q0.0
+//
+// DB11 byte layout (non-optimized):
+//   Byte 0   : SensorA  (BOOL)   — copied from %I0.0
+//   Byte 1   : padding
+//   Byte 2   : SensorB  (BOOL)   — copied from %I0.1
+//   Byte 3   : padding
+//   Byte 4   : Conveyor (BOOL)   — copied to  %Q0.0
+//   Byte 5   : padding
+//   Byte 6   : ConveyorRunning (BOOL) — internal latch (SET/RESET)
+//   Byte 7   : padding
+//   Byte 8   : Enable   (BOOL)   — system enable flag (default TRUE)
+//   Byte 9   : padding
+//   Total = 10 bytes
+//
+// Normal cycle:
+//   Idle: conveyor OFF, waiting for box at SensorA
+//   SensorA triggers → SET conveyor ON → box moves right
+//   SensorB triggers → RESET conveyor OFF → box at exit
+//   Remover clears box automatically → cycle repeats
+//
+// Vulnerability: Enable flag is read by logic but NEVER written.
+//   Setting Enable=FALSE stops the conveyor permanently.
+
+FUNCTION_BLOCK "FB_FromAtoB_SR"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.4
+
+VAR
+    // Mapped to DB11 — order determines byte offsets (non-optimized)
+    SensorA         : BOOL;         // byte 0.0 — Sensor A: box at entry
+    _pad0           : BYTE;         // byte 1   — padding
+    SensorB         : BOOL;         // byte 2.0 — Sensor B: box at exit
+    _pad1           : BYTE;         // byte 3   — padding
+    Conveyor        : BOOL;         // byte 4.0 — Actuator: conveyor motor
+    _pad2           : BYTE;         // byte 5   — padding
+    ConveyorRunning : BOOL := FALSE; // byte 6.0 — Internal: SET/RESET latch
+    _pad3           : BYTE;         // byte 7   — padding
+    Enable          : BOOL := TRUE; // byte 8.0 — System enable (default ON)
+    _pad4           : BYTE;         // byte 9   — padding
+END_VAR
+
+BEGIN
+    // ── Safety gate: if Enable is FALSE, shut everything down ──
+    IF NOT Enable THEN
+        Conveyor := FALSE;
+        ConveyorRunning := FALSE;
+        RETURN;
+    END_IF;
+
+    // ── Set/Reset logic ──
+    // SET: SensorA detects box and conveyor is idle → start moving
+    IF SensorA AND NOT ConveyorRunning THEN
+        ConveyorRunning := TRUE;
+    END_IF;
+
+    // RESET: SensorB detects box arrived at exit → stop
+    IF SensorB AND ConveyorRunning THEN
+        ConveyorRunning := FALSE;
+    END_IF;
+
+    Conveyor := ConveyorRunning;
+END_FUNCTION_BLOCK

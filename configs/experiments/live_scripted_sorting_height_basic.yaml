@@ -1,0 +1,34 @@
+# =============================================================================
+# CPSForge Live Eval — Scripted Attacks on Sorting Height Basic
+# =============================================================================
+# REAL PLC WRITES — ensure Factory I/O is in PLAY mode before running.
+#
+# Usage:
+#   cpsforge run attack --scene sorting_height_basic --experiment live_scripted_sorting_height_basic --no-dry-run --eval-run
+# =============================================================================
+
+name: live_scripted_sorting_height_basic
+description: >
+  Live eval run: scripted attacker vs threshold + invariant detectors on
+  the Sorting Height Basic scene. Real PLC writes enabled.
+
+scene_config: "scenes/sorting_height_basic.yaml"
+plc_config: "system/plc.yaml"
+
+attackers:
+  - scripted_sorting_height_basic
+
+defenders:
+  - threshold_sorting_height_basic
+  - invariant_sorting_height_basic
+
+live_writes_enabled: true
+dry_run: false
+eval_run: true
+
+max_steps: 150
+run_duration_s: 150.0
+
+save_trace: true
+save_metrics: true
+reset_after_run: true

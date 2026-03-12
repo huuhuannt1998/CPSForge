@@ -1,0 +1,22 @@
+\section{Related Work}
+\label{sec:related}
+
+\subsection{CPS and ICS Attack Detection}
+
+A large body of work studies anomaly detection in cyber-physical and industrial control systems. These approaches include threshold-based monitoring, invariant checking, statistical anomaly detection, and time-series learning models such as recurrent and convolutional architectures. Much of this literature has demonstrated the usefulness of process-aware monitoring, but many evaluations remain based on static datasets or a fixed set of attack scenarios. CPSForge differs by focusing on a live hardware-in-the-loop environment with repeated attacker-defender interaction.
+
+\subsection{LLMs in CPS and Industrial Security}
+
+Recent work has begun to investigate how LLMs can support CPS security tasks such as anomaly explanation, invariant extraction, and attack generation. These studies suggest that LLMs can help reason over process semantics, documentation, and telemetry. However, most prior efforts either operate offline or do not place the LLM inside a live, mediated execution loop. CPSForge extends this direction by embedding LLM-generated attack planning into a real PLC-based experimental workflow with explicit safety enforcement and closed-loop adaptation.
+
+\subsection{Hardware-in-the-Loop CPS Testbeds}
+
+Hardware-in-the-loop testbeds are widely used in industrial security research because they provide a balance between realism and experimental controllability. Platforms such as PLC-driven simulators and process emulators enable repeatable evaluation of attacks and defenses without requiring deployment on full industrial plants. CPSForge follows this tradition but emphasizes LLM-enabled red-team/blue-team experimentation and systematic data collection for adaptation.
+
+\subsection{Adaptive and Adversarial Defense}
+
+There is also extensive prior work on adversarial training, hard-example mining, and adaptive defense in machine learning and CPS security. These studies motivate the use of challenging cases to strengthen detectors. CPSForge adopts this principle in a process-grounded setting by collecting missed or weakly detected attack traces into a hard-case bank and using them to drive defender refinement across rounds.
+
+\subsection{Positioning of CPSForge}
+
+The key distinction of CPSForge is not any one individual component, but the combination of: (i) a real PLC-based hardware-in-the-loop environment, (ii) structured LLM attack planning, (iii) runtime safety mediation, and (iv) closed-loop defender adaptation. This combination aims to provide a stronger basis for studying LLM use in CPS security than either offline-only or one-shot frameworks.

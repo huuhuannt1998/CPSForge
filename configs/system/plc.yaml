@@ -1,0 +1,39 @@
+# =============================================================================
+# CPSForge PLC Connection Configuration
+# =============================================================================
+# This file configures the connection to the real Siemens S7 PLC.
+# The PLC must be reachable at the specified host before starting a run.
+#
+# SAFETY: live_writes_enabled is FALSE by default.
+# You must explicitly set it to true (or set CPSFORGE_LIVE_WRITES=true in .env)
+# before any PLC writes will be issued.
+# =============================================================================
+
+# IP address of the Siemens PLC.
+# Confirmed reachable at 192.168.0.1 (ping OK, S7 TCP connects at rack=0 slot=1)
+host: 192.168.0.1
+
+# PLC rack and slot numbers.
+# For S7-300 / S7-400: rack=0, slot=2
+# For S7-1200 / S7-1500: rack=0, slot=1
+rack: 0
+slot: 1
+
+# ISO-on-TCP port (standard: 102)
+port: 102
+
+# Connection timeout in seconds
+connect_timeout_s: 5.0
+
+# Default cyclic polling interval in milliseconds
+poll_interval_ms: 500
+
+# Reconnect behaviour on lost connection
+reconnect_attempts: 3
+reconnect_delay_s: 2.0
+
+# -----------------------------------------------------------------------
+# SAFETY FLAG — must be explicitly true for live PLC writes.
+# Override with env var: CPSFORGE_LIVE_WRITES=true
+# -----------------------------------------------------------------------
+live_writes_enabled: false

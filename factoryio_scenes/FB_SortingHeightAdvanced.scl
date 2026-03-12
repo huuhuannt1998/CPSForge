@@ -1,0 +1,261 @@
+// MANTIS — Scene 18: Sorting by Height (Advanced)  v0.4
+// Turntable-based 2-way sort: tall items → LEFT, short → RIGHT.
+// DB27, 76 bytes.  Enable flag at byte 74.
+//
+// I/O from Factory I/O driver (Siemens S7-1200/1500):
+//   Inputs  %I0.0–%I1.7  (16 BOOLs)
+//   Outputs %Q0.0–%Q1.4  (13 BOOLs) + %QD100 (DINT counter)
+//
+// Turntable notes:
+//   Turn activates CW rotation; turntable snaps to 90° detents on stop.
+//   AtFront = TRUE when turntable faces entry conveyor (0° position).
+//   RIGHT exit ≈ 90° CW from front  → single turn, easy.
+//   LEFT  exit ≈ 270° CW from front → timer-based (TURN_LEFT_TICKS).
+//   Return to FRONT: Turn ON until AtFront = TRUE (always reliable).
+
+FUNCTION_BLOCK "FB_SortingHeightAdvanced"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.4
+
+VAR
+    // ===== SENSORS (from Factory I/O) =====
+    AtEntry           : Bool;   // %I0.0  Item at entry conveyor
+    LowBox            : Bool;   // %I0.1  Low height sensor triggered
+    HighBox           : Bool;   // %I0.2  High height sensor triggered
+    AtTurntableEntry  : Bool;   // %I0.3  Item at turntable entry area
+    AtLoadPosition    : Bool;   // %I0.4  Item centred on turntable
+    AtUnloadPosition  : Bool;   // %I0.5  Item at turntable unload edge
+    AtFront           : Bool;   // %I0.6  Turntable facing front (entry)
+    AtRightEntry      : Bool;   // %I0.7  Item entering right conveyor
+    AtLeftEntry       : Bool;   // %I1.0  Item entering left conveyor
+    AtRightExit       : Bool;   // %I1.1  Item at right conveyor exit
+    AtLeftExit        : Bool;   // %I1.2  Item at left conveyor exit
+    BtnStart          : Bool;   // %I1.3  Start button
+    BtnReset          : Bool;   // %I1.4  Reset button
+    BtnStop           : Bool;   // %I1.5  Stop button
+    EmergencyStop     : Bool;   // %I1.6  Emergency stop
+    BtnAuto           : Bool;   // %I1.7  Auto mode
+
+    // ===== ACTUATORS (to Factory I/O) =====
+    FeederConveyor    : Bool;   // %Q0.0  Feeder conveyor
+    EntryConveyor     : Bool;   // %Q0.1  Entry conveyor
+    LoadAct           : Bool;   // %Q0.2  Turntable rollers inward (load)
+    UnloadAct         : Bool;   // %Q0.3  Turntable rollers outward (unload)
+    TurnAct           : Bool;   // %Q0.4  Turntable rotate CW
+    LeftConveyor      : Bool;   // %Q0.5  Left exit conveyor
+    RightConveyor     : Bool;   // %Q0.6  Right exit conveyor
+    GreenIndicator    : Bool;   // %Q0.7  Green indicator
+    YellowIndicator   : Bool;   // %Q1.0  Yellow indicator
+    RedIndicator      : Bool;   // %Q1.1  Red indicator
+    StartLight        : Bool;   // %Q1.2  Start button light
+    ResetLight        : Bool;   // %Q1.3  Reset button light
+    StopLight         : Bool;   // %Q1.4  Stop button light
+    CounterOut        : DInt;   // (DINT) %QD100  Item counter display
+
+    // ===== INTERNAL =====
+    iState            : Int;    // State machine
+    ItemCount         : Int;    // Internal item counter
+    IsTall            : Bool;   // TRUE = tall (HighBox), FALSE = short
+    TurnTimer         : Int;    // Timer for LEFT 270° CW rotation
+    DwellTimer        : Int;    // General-purpose delay timer
+    Running           : Bool;   // System running flag
+    Enable            : Bool := TRUE;  // ATTACK SURFACE — PLC never writes
+END_VAR
+
+BEGIN
+    // ===== PANEL LIGHTS =====
+    StartLight  := Running;
+    ResetLight  := NOT Running;
+    StopLight   := NOT Running;
+
+    // ===== INDICATORS =====
+    GreenIndicator  := Running AND (iState >= 10);
+    YellowIndicator := Running AND (iState >= 40) AND (iState <= 55);
+    RedIndicator    := NOT EmergencyStop OR NOT Enable;
+
+    // ===== COUNTER OUTPUT =====
+    CounterOut := INT_TO_DINT(ItemCount);
+
+    // ===== SAFETY / ENABLE CHECK =====
+    IF NOT EmergencyStop OR NOT Enable THEN
+        FeederConveyor := FALSE;
+        EntryConveyor  := FALSE;
+        LoadAct        := FALSE;
+        UnloadAct      := FALSE;
+        TurnAct        := FALSE;
+        LeftConveyor   := FALSE;
+        RightConveyor  := FALSE;
+        Running        := FALSE;
+        iState         := 0;
+        RETURN;
+    END_IF;
+
+    // ===== START / STOP / RESET =====
+    IF BtnStart AND NOT Running AND EmergencyStop THEN
+        Running := TRUE;
+        iState  := 10;
+    END_IF;
+
+    IF NOT BtnStop OR NOT EmergencyStop THEN
+        Running        := FALSE;
+        FeederConveyor := FALSE;
+        EntryConveyor  := FALSE;
+        LoadAct        := FALSE;
+        UnloadAct      := FALSE;
+        TurnAct        := FALSE;
+        LeftConveyor   := FALSE;
+        RightConveyor  := FALSE;
+        iState         := 0;
+    END_IF;
+
+    IF BtnReset THEN
+        ItemCount      := 0;
+        IsTall         := FALSE;
+        iState         := 0;
+        Running        := FALSE;
+        FeederConveyor := FALSE;
+        EntryConveyor  := FALSE;
+        LoadAct        := FALSE;
+        UnloadAct      := FALSE;
+        TurnAct        := FALSE;
+        LeftConveyor   := FALSE;
+        RightConveyor  := FALSE;
+    END_IF;
+
+    IF NOT Running THEN
+        FeederConveyor := FALSE;
+        EntryConveyor  := FALSE;
+        LoadAct        := FALSE;
+        UnloadAct      := FALSE;
+        TurnAct        := FALSE;
+        LeftConveyor   := FALSE;
+        RightConveyor  := FALSE;
+        RETURN;
+    END_IF;
+
+    // ===== EXIT CONVEYORS ALWAYS ON WHILE RUNNING =====
+    LeftConveyor  := TRUE;
+    RightConveyor := TRUE;
+
+    // ===== DEFAULT PROCESS OUTPUTS OFF (states set what they need) =====
+    FeederConveyor := FALSE;
+    EntryConveyor  := FALSE;
+    LoadAct        := FALSE;
+    UnloadAct      := FALSE;
+    TurnAct        := FALSE;
+
+    // ===== STATE MACHINE =====
+    CASE iState OF
+
+        0: // IDLE — waiting for start
+            ;
+
+        // ---------- FEED ----------
+        10: // Run feeder + entry conveyors, detect height
+            FeederConveyor := TRUE;
+            EntryConveyor  := TRUE;
+            // Latch height while item passes sensors
+            IF HighBox THEN
+                IsTall := TRUE;
+            ELSIF LowBox AND NOT HighBox THEN
+                IsTall := FALSE;
+            END_IF;
+            IF AtTurntableEntry THEN
+                iState := 20;
+            END_IF;
+
+        // ---------- LOAD ONTO TURNTABLE ----------
+        20: // Turntable rollers pull item in
+            EntryConveyor := TRUE;
+            LoadAct       := TRUE;
+            IF AtLoadPosition THEN
+                DwellTimer := 0;
+                IF IsTall THEN
+                    iState := 50;   // turn LEFT (270° CW)
+                ELSE
+                    iState := 40;   // turn RIGHT (90° CW)
+                END_IF;
+            END_IF;
+
+        // --------- TURN RIGHT  (90° CW from FRONT) ---------
+        40: // Turn CW while still at FRONT; stop once we leave
+            IF AtFront THEN
+                TurnAct := TRUE;
+            ELSE
+                DwellTimer := 0;
+                iState     := 45;
+            END_IF;
+
+        45: // Settle at RIGHT position
+            DwellTimer := DwellTimer + 1;
+            IF DwellTimer >= 10 THEN
+                DwellTimer := 0;
+                iState     := 60;
+            END_IF;
+
+        // --------- TURN LEFT  (270° CW from FRONT) ---------
+        // Timer-based: ~30 ticks after leaving FRONT covers ~270°.
+        // Calibrate if turntable speed differs from default.
+        50: // Start turning CW, wait to leave FRONT
+            TurnAct := TRUE;
+            IF NOT AtFront THEN
+                TurnTimer := 0;
+                iState    := 51;
+            END_IF;
+
+        51: // Keep turning CW past RIGHT and BACK toward LEFT
+            TurnAct   := TRUE;
+            TurnTimer := TurnTimer + 1;
+            IF TurnTimer >= 30 THEN
+                DwellTimer := 0;
+                iState     := 55;
+            END_IF;
+
+        55: // Settle at LEFT position
+            DwellTimer := DwellTimer + 1;
+            IF DwellTimer >= 10 THEN
+                DwellTimer := 0;
+                iState     := 60;
+            END_IF;
+
+        // --------- UNLOAD ---------
+        60: // Push item off turntable onto exit conveyor
+            UnloadAct  := TRUE;
+            DwellTimer := DwellTimer + 1;
+            IF (IsTall AND AtLeftEntry) OR (NOT IsTall AND AtRightEntry)
+               OR (DwellTimer >= 50) THEN
+                DwellTimer := 0;
+                iState     := 70;
+            END_IF;
+
+        // --------- EXIT CONVEYOR ---------
+        70: // Wait for item to reach exit sensor
+            DwellTimer := DwellTimer + 1;
+            IF (IsTall AND AtLeftExit) OR (NOT IsTall AND AtRightExit)
+               OR (DwellTimer >= 50) THEN
+                DwellTimer := 0;
+                iState     := 80;
+            END_IF;
+
+        // --------- RETURN TO FRONT ---------
+        80: // Turn CW until AtFront
+            TurnAct := TRUE;
+            IF AtFront THEN
+                DwellTimer := 0;
+                iState     := 85;
+            END_IF;
+
+        85: // Settle at FRONT
+            DwellTimer := DwellTimer + 1;
+            IF DwellTimer >= 10 THEN
+                iState := 90;
+            END_IF;
+
+        // --------- COUNT AND LOOP ---------
+        90: // Increment counter, reset flags, loop
+            ItemCount := ItemCount + 1;
+            IsTall    := FALSE;
+            iState    := 10;
+
+    END_CASE;
+END_FUNCTION_BLOCK

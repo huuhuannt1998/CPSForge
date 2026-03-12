@@ -1,0 +1,54 @@
+# =============================================================================
+# CPSForge Experiment Configuration — Phase 1 Baseline Eval Run
+# =============================================================================
+# This is the reference experiment for Phase 1 verification.
+# It runs scripted + random attacks against the tank_control scene,
+# evaluates threshold and invariant detectors, and saves all artifacts.
+#
+# SAFETY:
+#   - live_writes_enabled: false  (dry-run by default)
+#   - eval_run: false             (not an official paper result until confirmed live)
+#
+# To run live: set live_writes_enabled: true AND eval_run: true
+# =============================================================================
+
+name: phase1_baseline
+description: "Phase 1 baseline: scripted + random attacks, threshold + invariant detectors, dry-run"
+
+# Scene to use
+scene_config: "scenes/tank_control.yaml"
+
+# PLC connection config
+plc_config: "system/plc.yaml"
+
+# Attackers to run (filenames under configs/attacks/)
+attackers:
+  - scripted_tank_control
+  - random_tank_control
+
+# Defenders to evaluate (filenames under configs/defenders/)
+defenders:
+  - threshold_tank_control
+  - invariant_tank_control
+
+# -----------------------------------------------------------------------
+# SAFETY FLAGS
+# -----------------------------------------------------------------------
+# Set live_writes_enabled: true AND eval_run: true for a real eval run.
+live_writes_enabled: false
+dry_run: true
+eval_run: false
+
+# -----------------------------------------------------------------------
+# Run Control
+# -----------------------------------------------------------------------
+max_steps: 500
+run_duration_s: 300.0   # 5-minute cap
+adaptation_round: 0
+
+# -----------------------------------------------------------------------
+# Output
+# -----------------------------------------------------------------------
+save_trace: true
+save_metrics: true
+# output_dir: null  # defaults to data/raw/<experiment_name>/<run_id>/

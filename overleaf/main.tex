@@ -1,0 +1,57 @@
+\documentclass[conference]{IEEEtran}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{times}
+\usepackage{microtype}
+\usepackage{xspace}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{array}
+\usepackage{url}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{balance}
+\usepackage{hyperref}
+\usepackage[capitalise,nameinlink]{cleveref}
+
+\title{\textbf{CPSForge: A Closed-Loop LLM Red-Team/Blue-Team Testbed for Cyber-Physical Systems}}
+
+\author{
+\IEEEauthorblockN{Huan Bui, Chenglong Fu}
+\IEEEauthorblockA{
+University of North Carolina at Charlotte\\
+Charlotte, NC, USA\\
+\{hbui11, cfu6\}@charlotte.edu
+}
+}
+
+\begin{document}
+
+\maketitle
+
+\input{sections/abstract}
+
+\begin{IEEEkeywords}
+cyber-physical systems, industrial control systems, large language models, anomaly detection, runtime safety, red teaming, blue teaming
+\end{IEEEkeywords}
+
+\input{sections/introduction}
+\input{sections/background}
+\input{sections/threat_model}
+\input{sections/design}
+\input{sections/implementation}
+\input{sections/methodology}
+\input{sections/evaluation}
+\input{sections/discussion}
+\input{sections/related_work}
+\input{sections/conclusion}
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\balance
+\end{document}

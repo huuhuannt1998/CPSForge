@@ -1,0 +1,61 @@
+// MANTIS — Scene 4: Queue of Items (Counters)
+// Load and unload three boxes onto a conveyor using counters.
+// DB13: I/O mapping
+
+FUNCTION_BLOCK "FB_QueueItems"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+
+VAR
+    AtEntry   : BOOL;   // 0.0
+    _pad0     : BYTE;
+    AtExit    : BOOL;   // 2.0
+    _pad1     : BYTE;
+    Conveyor  : BOOL;   // 4.0
+    _pad2     : BYTE;
+    Emitter   : BOOL;   // 6.0
+    _pad3     : BYTE;
+    Remover   : BOOL;   // 8.0
+    _pad4     : BYTE;
+    BoxCounter: INT;    // 10
+    
+    iState        : INT := 0;
+    BoxCount      : INT := 0;
+    TARGET_COUNT  : INT := 3;
+    PrevAtEntry   : BOOL := FALSE;
+END_VAR
+
+BEGIN
+    CASE iState OF
+        0: // Loading phase — emit boxes until count reached
+            Conveyor := TRUE;
+            Remover := FALSE;
+            
+            IF BoxCount < TARGET_COUNT THEN
+                Emitter := TRUE;
+                // Count on rising edge of AtEntry
+                IF AtEntry AND NOT PrevAtEntry THEN
+                    BoxCount := BoxCount + 1;
+                END_IF;
+            ELSE
+                Emitter := FALSE;
+                iState := 1;
+            END_IF;
+            
+        1: // Unloading phase — remove all boxes
+            Conveyor := TRUE;
+            Remover := TRUE;
+            Emitter := FALSE;
+            
+            IF AtExit THEN
+                BoxCount := BoxCount - 1;
+                IF BoxCount <= 0 THEN
+                    BoxCount := 0;
+                    iState := 0;
+                END_IF;
+            END_IF;
+    END_CASE;
+    
+    PrevAtEntry := AtEntry;
+    BoxCounter := BoxCount;
+END_FUNCTION_BLOCK

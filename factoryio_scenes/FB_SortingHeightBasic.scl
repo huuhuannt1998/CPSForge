@@ -1,0 +1,372 @@
+// MANTIS — Scene 19: Sorting by Height (Basic)
+// Sort items by height: short → LEFT, tall → RIGHT.
+// DB28: Instance DB (non-optimized access)
+//
+// Factory I/O layout:
+//   Entry conveyor feeds items onto a pallet/loading area.
+//   High sensor detects tall items. Low sensor detects short items.
+//   Pallet sensor detects pallet ready. Loaded confirms item loaded.
+//   Short box (Low sensor only) → Transfer LEFT.
+//   Tall  box (High sensor)     → Transfer RIGHT.
+//   Left and right exit conveyors carry sorted items away.
+//   Start/Stop/Reset/EmergencyStop/Auto on control panel.
+//   Counter display shows items sorted.
+//
+// Driver mapping (from Factory I/O):
+//   SENSORS (Inputs):
+//     NOTE: Use %I10.x/%I11.x (NOT %I0.x/%I1.x) because the PLC's
+//     built-in physical DI module owns %IB0 and overwrites external writes.
+//     High sensor      → %I10.0
+//     Low sensor       → %I10.1
+//     Pallet sensor    → %I10.2
+//     Loaded           → %I10.3
+//     At left entry    → %I10.4
+//     At left exit     → %I10.5
+//     At right entry   → %I10.6
+//     At right exit    → %I10.7
+//     Start            → %I11.0
+//     Reset            → %I11.1
+//     Stop             → %I11.2
+//     Emergency stop   → %I11.3
+//     Auto             → %I11.4
+//     FACTORY I/O (Running) → %I11.5
+//
+//   ACTUATORS (Outputs):
+//     Conveyor entry   → %Q0.0
+//     Load             → %Q0.1
+//     Unload           → %Q0.2
+//     Transf. left     → %Q0.3
+//     Transf. right    → %Q0.4
+//     Conveyor left    → %Q0.5
+//     Conveyor right   → %Q0.6
+//     Start light      → %Q0.7
+//     Reset light      → %Q1.0
+//     Stop light       → %Q1.1
+//     Counter          → (DINT) %QD100
+//
+// DB28 byte layout (non-optimized):
+//   Sensors:
+//     0:  HighSensor     2: LowSensor      4: PalletSensor
+//     6:  Loaded         8: AtLeftEntry    10: AtLeftExit
+//    12:  AtRightEntry  14: AtRightExit
+//    16:  BtnStart      18: BtnReset      20: BtnStop
+//    22:  EmergencyStop 24: BtnAuto
+//   Actuators:
+//    26:  ConveyorEntry 28: Load          30: Unload
+//    32:  TransfLeft    34: TransfRight
+//    36:  ConveyorLeft  38: ConveyorRight
+//    40:  StartLight    42: ResetLight    44: StopLight
+//    46-49: Counter (DINT)
+//   Internal:
+//    50:  iState (INT)    52: ItemCount (INT)
+//    54:  IsTall (BOOL)   56: DwellTimer (INT)
+//    58:  Running (BOOL)  60: Enable (BOOL)
+//   Total = 62 bytes
+//
+// Sorting logic:
+//   Low sensor ON only → short item → transfer LEFT
+//   High sensor ON     → tall item  → transfer RIGHT
+//
+// Vulnerability: Enable (byte 60, default TRUE) — read but NEVER written.
+
+FUNCTION_BLOCK "FB_SortingHeightBasic"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.4
+
+VAR
+    // ── Sensors (inputs) ──
+    HighSensor      : BOOL;         // byte 0   — %I0.0
+    _p00            : BYTE;
+    LowSensor       : BOOL;         // byte 2   — %I0.1
+    _p01            : BYTE;
+    PalletSensor    : BOOL;         // byte 4   — %I0.2
+    _p02            : BYTE;
+    Loaded          : BOOL;         // byte 6   — %I0.3
+    _p03            : BYTE;
+    AtLeftEntry     : BOOL;         // byte 8   — %I0.4
+    _p04            : BYTE;
+    AtLeftExit      : BOOL;         // byte 10  — %I0.5
+    _p05            : BYTE;
+    AtRightEntry    : BOOL;         // byte 12  — %I0.6
+    _p06            : BYTE;
+    AtRightExit     : BOOL;         // byte 14  — %I0.7
+    _p07            : BYTE;
+    BtnStart        : BOOL;         // byte 16  — %I1.0
+    _p08            : BYTE;
+    BtnReset        : BOOL;         // byte 18  — %I1.1
+    _p09            : BYTE;
+    BtnStop         : BOOL;         // byte 20  — %I1.2
+    _p10            : BYTE;
+    EmergencyStop   : BOOL;         // byte 22  — %I1.3
+    _p11            : BYTE;
+    BtnAuto         : BOOL;         // byte 24  — %I1.4
+    _p12            : BYTE;
+
+    // ── Actuators (outputs) ──
+    ConveyorEntry   : BOOL;         // byte 26  — %Q0.0
+    _p13            : BYTE;
+    LoadAct         : BOOL;         // byte 28  — %Q0.1 (Load)
+    _p14            : BYTE;
+    UnloadAct       : BOOL;         // byte 30  — %Q0.2 (Unload)
+    _p15            : BYTE;
+    TransfLeft      : BOOL;         // byte 32  — %Q0.3
+    _p16            : BYTE;
+    TransfRight     : BOOL;         // byte 34  — %Q0.4
+    _p17            : BYTE;
+    ConveyorLeft    : BOOL;         // byte 36  — %Q0.5
+    _p18            : BYTE;
+    ConveyorRight   : BOOL;         // byte 38  — %Q0.6
+    _p19            : BYTE;
+    StartLight      : BOOL;         // byte 40  — %Q0.7
+    _p20            : BYTE;
+    ResetLight      : BOOL;         // byte 42  — %Q1.0
+    _p21            : BYTE;
+    StopLight       : BOOL;         // byte 44  — %Q1.1
+    _p22            : BYTE;
+    CounterOut      : DINT := 0;    // byte 46  — %QD100
+
+    // ── Internal state ──
+    iState          : INT := 0;     // byte 50
+    ItemCount       : INT := 0;     // byte 52
+    IsTall          : BOOL := FALSE; // byte 54
+    _p23            : BYTE;
+    DwellTimer      : INT := 0;     // byte 56
+    Running         : BOOL := FALSE; // byte 58
+    _p24            : BYTE;
+    Enable          : BOOL := TRUE; // byte 60 — system enable (default ON)
+    _p25            : BYTE;
+    // Total: 62 bytes
+END_VAR
+
+BEGIN
+    // ════════════════════════════════════════════════════
+    // Safety gate: if Enable is FALSE, shut everything down
+    // ════════════════════════════════════════════════════
+    IF NOT Enable THEN
+        Running := FALSE;
+        ConveyorEntry := FALSE;
+        LoadAct := FALSE; UnloadAct := FALSE;
+        TransfLeft := FALSE; TransfRight := FALSE;
+        ConveyorLeft := FALSE; ConveyorRight := FALSE;
+        StartLight := FALSE; StopLight := TRUE; ResetLight := FALSE;
+        RETURN;
+    END_IF;
+
+    // ════════════════════════════════════════════════════
+    // Button handling
+    //
+    // Factory I/O button types for this scene:
+    //   Start  → momentary, normally OPEN   (FALSE=idle, TRUE=pressed)
+    //   Stop   → momentary, normally CLOSED (TRUE=idle, FALSE=pressed)
+    //   Reset  → momentary, normally OPEN   (FALSE=idle, TRUE=pressed)
+    //   E-Stop → latching,  normally CLOSED (TRUE=normal, FALSE=engaged)
+    //   Auto   → selector switch
+    // ════════════════════════════════════════════════════
+
+    // Emergency stop is NC: FALSE when engaged → stop
+    IF NOT EmergencyStop THEN
+        Running := FALSE;
+    END_IF;
+
+    // Stop is NC: FALSE when pressed → stop
+    IF NOT BtnStop THEN
+        Running := FALSE;
+    END_IF;
+
+    // Start is NO: TRUE when pressed → start (only if E-stop and Stop OK)
+    IF BtnStart AND NOT Running AND EmergencyStop AND BtnStop THEN
+        Running := TRUE;
+    END_IF;
+
+    // Auto-start: if E-stop normal AND Stop not pressed, start automatically
+    IF EmergencyStop AND BtnStop AND NOT BtnStart THEN
+        Running := TRUE;
+    END_IF;
+
+    IF BtnReset THEN
+        Running := FALSE;
+        iState := 0;
+        ItemCount := 0;
+        CounterOut := 0;
+        DwellTimer := 0;
+        IsTall := FALSE;
+        ConveyorEntry := FALSE;
+        LoadAct := FALSE; UnloadAct := FALSE;
+        TransfLeft := FALSE; TransfRight := FALSE;
+        ResetLight := TRUE;
+        StartLight := FALSE; StopLight := FALSE;
+        RETURN;
+    END_IF;
+
+    // ════════════════════════════════════════════════════
+    // Panel indicator lights
+    // ════════════════════════════════════════════════════
+    StartLight := Running;
+    StopLight := NOT Running;
+    ResetLight := FALSE;
+
+    // ════════════════════════════════════════════════════
+    // NOT running → stop all actuators
+    // ════════════════════════════════════════════════════
+    IF NOT Running THEN
+        ConveyorEntry := FALSE;
+        LoadAct := FALSE; UnloadAct := FALSE;
+        TransfLeft := FALSE; TransfRight := FALSE;
+        ConveyorLeft := FALSE; ConveyorRight := FALSE;
+        RETURN;
+    END_IF;
+
+    // ════════════════════════════════════════════════════
+    // RUNNING — exit conveyors always ON
+    // ════════════════════════════════════════════════════
+    ConveyorLeft := TRUE;
+    ConveyorRight := TRUE;
+
+    // ════════════════════════════════════════════════════
+    // Sorting state machine
+    //   State 0: Feed — run entry conveyor, latch height, wait for pallet
+    //   State 1: Load — lift transfer chains, wait for Loaded sensor
+    //   State 2: Transfer — short→LEFT, tall→RIGHT
+    //   State 3: Clear — keep transfer ON while item clears center
+    //   State 4: Finish — increment counter, return to feed
+    //
+    // Sorting direction:
+    //   Low sensor only (short box)  → Transfer LEFT
+    //   High sensor (tall box)       → Transfer RIGHT
+    //
+    // DwellTimer counts PLC scan cycles (~1-2 ms each on S7-1200).
+    // Factory I/O mechanisms need real-world seconds, so thresholds
+    // are in the thousands.
+    // ════════════════════════════════════════════════════
+    CASE iState OF
+        0: // ── FEED: entry conveyor ON, detect height, wait for pallet ──
+            ConveyorEntry := TRUE;
+            LoadAct := FALSE;
+            UnloadAct := FALSE;
+            TransfLeft := FALSE;
+            TransfRight := FALSE;
+
+            // Latch height sensors AS THE BOX APPROACHES on the entry conveyor.
+            // The sensors fire as the box passes through — we must catch them
+            // here in State 0 before the conveyor stops.
+            IF HighSensor THEN
+                IsTall := TRUE;
+            ELSIF LowSensor THEN
+                IsTall := FALSE;
+            END_IF;
+
+            IF PalletSensor THEN
+                DwellTimer := 0;
+                iState := 1;
+            END_IF;
+
+        1: // ── LOAD: run entry conveyor until box is fully loaded, then transfer ──
+            // Entry conveyor keeps running until Loaded sensor fires
+            // (box is fully on the loading platform and chains are raised).
+            // Only then do we stop the conveyor and proceed to transfer.
+            IF Loaded THEN
+                ConveyorEntry := FALSE;
+            ELSE
+                ConveyorEntry := TRUE;
+            END_IF;
+            LoadAct := TRUE;         // Raise chains to lift box off rollers
+            UnloadAct := FALSE;
+            TransfLeft := FALSE;
+            TransfRight := FALSE;
+
+            // Keep latching height sensors (they may still be active)
+            IF HighSensor THEN
+                IsTall := TRUE;
+            ELSIF LowSensor THEN
+                IsTall := FALSE;
+            END_IF;
+
+            DwellTimer := DwellTimer + 1;
+
+            IF Loaded THEN
+                // Box confirmed on platform — proceed to transfer
+                DwellTimer := 0;
+                iState := 2;
+            ELSIF DwellTimer > 5000 THEN
+                // Timeout (~5-10 s): Loaded never triggered, proceed anyway
+                ConveyorEntry := FALSE;
+                DwellTimer := 0;
+                iState := 2;
+            END_IF;
+
+        2: // ── TRANSFER: short→LEFT, tall→RIGHT ──
+            // Chains must stay raised (LoadAct=TRUE) while transfer runs.
+            // Use TIMER ONLY — do NOT check AtLeftEntry/AtRightEntry because
+            // those sensors may be permanently ON from previous boxes on the
+            // exit conveyors.
+            ConveyorEntry := FALSE;
+            LoadAct := TRUE;         // KEEP chains raised during transfer!
+            UnloadAct := FALSE;
+
+            IF IsTall THEN
+                TransfLeft := FALSE;
+                TransfRight := TRUE;     // Tall → RIGHT
+            ELSE
+                TransfLeft := TRUE;      // Short → LEFT
+                TransfRight := FALSE;
+            END_IF;
+
+            // Run transfer for a fixed duration (~5-10 seconds)
+            DwellTimer := DwellTimer + 1;
+            IF DwellTimer > 5000 THEN
+                iState := 3;
+                DwellTimer := 0;
+            END_IF;
+
+        3: // ── CLEAR: keep transfer ON so item fully clears center, then unload ──
+            ConveyorEntry := FALSE;
+
+            IF DwellTimer < 1500 THEN
+                // First ~1.5-3 s: keep chains UP + transfer running to push item off center
+                LoadAct := TRUE;     // chains still raised
+                IF IsTall THEN
+                    TransfLeft := FALSE;
+                    TransfRight := TRUE;
+                ELSE
+                    TransfLeft := TRUE;
+                    TransfRight := FALSE;
+                END_IF;
+                UnloadAct := FALSE;
+            ELSE
+                // Then: stop transfer, UNLOAD to lower chains back down
+                LoadAct := FALSE;
+                TransfLeft := FALSE;
+                TransfRight := FALSE;
+                UnloadAct := TRUE;
+            END_IF;
+
+            DwellTimer := DwellTimer + 1;
+            IF DwellTimer > 3000 THEN
+                // Total ~3-6 s dwell — item should be fully on exit conveyor
+                iState := 4;
+                DwellTimer := 0;
+            END_IF;
+
+        4: // ── FINISH: count item, reset, return to feed ──
+            ConveyorEntry := FALSE;
+            LoadAct := FALSE;
+            UnloadAct := FALSE;
+            TransfLeft := FALSE;
+            TransfRight := FALSE;
+
+            ItemCount := ItemCount + 1;
+            CounterOut := INT_TO_DINT(ItemCount);
+            IsTall := FALSE;
+            iState := 0;
+
+    ELSE
+        // Unknown state — safe fallback
+        ConveyorEntry := FALSE;
+        LoadAct := FALSE;
+        UnloadAct := FALSE;
+        TransfLeft := FALSE;
+        TransfRight := FALSE;
+        iState := 0;
+    END_CASE;
+
+END_FUNCTION_BLOCK

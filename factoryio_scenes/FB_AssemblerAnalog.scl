@@ -1,0 +1,96 @@
+// MANTIS — Scene 6: Assembler (Analog)
+// Assemble with analog position control for X/Z axes.
+// DB15: I/O mapping
+
+FUNCTION_BLOCK "FB_AssemblerAnalog"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+
+VAR
+    PartAtPickup  : BOOL;  // 0.0
+    _pad0         : BYTE;
+    PartAtPlace   : BOOL;  // 2.0
+    _pad1         : BYTE;
+    LidAtPickup   : BOOL;  // 4.0
+    _pad2         : BYTE;
+    ClampSensor   : BOOL;  // 6.0
+    _pad3         : BYTE;
+    PosX          : REAL;  // 8
+    PosZ          : REAL;  // 12
+    ConveyorBase  : BOOL;  // 16.0
+    _pad4         : BYTE;
+    ConveyorLid   : BOOL;  // 18.0
+    _pad5         : BYTE;
+    ConveyorOut   : BOOL;  // 20.0
+    _pad6         : BYTE;
+    SetpointX     : REAL;  // 22
+    SetpointZ     : REAL;  // 26
+    Clamp         : BOOL;  // 30.0
+    _pad7         : BYTE;
+    Emitter       : BOOL;  // 32.0
+    _pad8         : BYTE;
+    
+    iState : INT := 0;
+    PICKUP_X  : REAL := 100.0;
+    PICKUP_Z  : REAL := 400.0;
+    PLACE_X   : REAL := 800.0;
+    PLACE_Z   : REAL := 400.0;
+    HOME_Z    : REAL := 50.0;
+    TOLERANCE : REAL := 10.0;
+END_VAR
+
+BEGIN
+    CASE iState OF
+        0: // Feed parts
+            ConveyorBase := TRUE;
+            ConveyorLid := TRUE;
+            Emitter := TRUE;
+            SetpointX := PICKUP_X;
+            SetpointZ := HOME_Z;
+            IF PartAtPickup THEN
+                ConveyorBase := FALSE;
+                iState := 1;
+            END_IF;
+            
+        1: // Move to pickup and lower
+            SetpointX := PICKUP_X;
+            SetpointZ := PICKUP_Z;
+            IF ABS(PosX - PICKUP_X) < TOLERANCE AND ABS(PosZ - PICKUP_Z) < TOLERANCE THEN
+                iState := 2;
+            END_IF;
+            
+        2: // Clamp
+            Clamp := TRUE;
+            IF ClampSensor THEN
+                SetpointZ := HOME_Z;
+                iState := 3;
+            END_IF;
+            
+        3: // Raise and move to place
+            IF ABS(PosZ - HOME_Z) < TOLERANCE THEN
+                SetpointX := PLACE_X;
+                iState := 4;
+            END_IF;
+            
+        4: // Lower to place
+            IF ABS(PosX - PLACE_X) < TOLERANCE THEN
+                SetpointZ := PLACE_Z;
+                iState := 5;
+            END_IF;
+            
+        5: // Release
+            IF ABS(PosZ - PLACE_Z) < TOLERANCE THEN
+                Clamp := FALSE;
+                SetpointZ := HOME_Z;
+                iState := 6;
+            END_IF;
+            
+        6: // Output
+            ConveyorOut := TRUE;
+            SetpointX := PICKUP_X;
+            IF NOT PartAtPlace THEN
+                ConveyorOut := FALSE;
+                iState := 0;
+            END_IF;
+    END_CASE;
+END_FUNCTION_BLOCK

@@ -1,0 +1,40 @@
+# CPSForge Attack Policy Config -- LLM Attacker for From A to B Scene
+# =====================================================================
+# Uses the local OpenAI-compatible provider (LM Studio) by default.
+#
+# Run a dry-run LLM attack with:
+#   cpsforge run attack --scene from_a_to_b --attacker llm_from_a_to_b
+#
+# For a live eval run (requires PLC connection and LM Studio running):
+#   cpsforge run attack \
+#     --scene from_a_to_b --attacker llm_from_a_to_b \
+#     --experiment configs/experiments/llm_eval_from_a_to_b.yaml
+
+name: llm_from_a_to_b
+attacker_type: llm
+scene_name: from_a_to_b
+
+# LLM provider settings
+llm_provider: local_openai_compatible
+llm_model: null                # null = use model from configs/llm/local.yaml
+llm_max_retries: 3
+
+multi_step: false
+max_actions: 2
+
+inter_attack_delay_ms: 2000
+
+attack_types:
+  - actuator_override
+  - sequence_perturbation
+
+parameters:
+  attacker_objective: >
+    Disrupt the discrete conveyor transport process. The conveyor moves items
+    from A to B. You can override the conveyor actuator or the enable flag.
+    Try to cause items to stall, the state machine to become inconsistent,
+    or the process to halt without triggering alarms.
+  prompt_notes: >
+    This is a simple discrete scene with only two writable actuators (conveyor,
+    enable). Focus on timing-based attacks: toggling the conveyor at the wrong
+    time or disabling enable during transport.

@@ -1,0 +1,34 @@
+# =============================================================================
+# CPSForge Live Eval — Random Attacks on From A to B
+# =============================================================================
+# REAL PLC WRITES — ensure Factory I/O is in PLAY mode before running.
+#
+# Usage:
+#   cpsforge run attack --scene from_a_to_b --experiment live_random_from_a_to_b --no-dry-run --eval-run
+# =============================================================================
+
+name: live_random_from_a_to_b
+description: >
+  Live eval run: random attacker vs threshold + invariant detectors on
+  the From A to B conveyor scene. Real PLC writes enabled.
+
+scene_config: "scenes/from_a_to_b.yaml"
+plc_config: "system/plc.yaml"
+
+attackers:
+  - random_from_a_to_b
+
+defenders:
+  - threshold_from_a_to_b
+  - invariant_from_a_to_b
+
+live_writes_enabled: true
+dry_run: false
+eval_run: true
+
+max_steps: 200
+run_duration_s: 180.0
+
+save_trace: true
+save_metrics: true
+reset_after_run: true

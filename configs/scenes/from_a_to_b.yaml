@@ -1,0 +1,121 @@
+# =============================================================================
+# CPSForge Scene Configuration — From A to B (Conveyor Transport)
+# =============================================================================
+# Factory I/O scene: From A to B
+# DB10: Instance DB for FB_FromAtoB (non-optimized, 8 bytes)
+#
+# Physical setup:
+#   - Siemens S7 PLC at 192.168.0.1, TIA Portal v17
+#   - Emitter creates a box automatically
+#   - Conveyor moves box LEFT → RIGHT
+#   - Diffuse sensor detects box at RIGHT end
+#   - Remover removes box automatically
+#
+# Attack surface: Enable flag (never written by PLC logic)
+# =============================================================================
+
+scene_name: from_a_to_b
+
+description: >
+  Simple conveyor transport scene. A box is emitted, conveyed from left to
+  right, detected by a sensor, and removed. The PLC runs a 2-state machine
+  (Transport → Arrived). The Enable flag is never written by PLC logic,
+  making it a persistent actuator_override target.
+
+sampling_interval_ms: 500
+
+# ---------------------------------------------------------------------------
+# Tag Definitions (DB10, 8 bytes total)
+# ---------------------------------------------------------------------------
+tags:
+
+  - name: sensor
+    address: "DB10,BOOL0.0"
+    data_type: bool
+    access: read
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Diffuse sensor at end of conveyor — TRUE when box present"
+    category: sensor
+    scene_name: from_a_to_b
+
+  - name: conveyor
+    address: "DB10,BOOL2.0"
+    data_type: bool
+    access: read_write
+    unit: null
+    min_value: null
+    max_value: null
+    description: "Conveyor motor — TRUE=running, FALSE=stopped"
+    category: actuator
+    scene_name: from_a_to_b
+
+  - name: state
+    address: "DB10,INT4"
+    data_type: int
+    access: read
+    unit: null
+    min_value: 0
+    max_value: 1
+    description: "State machine: 0=Transport, 1=Arrived"
+    category: internal
+    scene_name: from_a_to_b
+
+  - name: enable
+    address: "DB10,BOOL6.0"
+    data_type: bool
+    access: read_write
+    unit: null
+    min_value: null
+    max_value: null
+    description: "System enable flag — never written by PLC logic (attack target)"
+    category: mode_bit
+    scene_name: from_a_to_b
+
+# ---------------------------------------------------------------------------
+# Writable Tags
+# ---------------------------------------------------------------------------
+writable_tags:
+  - conveyor
+  - enable
+
+# ---------------------------------------------------------------------------
+# Attack Surface
+# ---------------------------------------------------------------------------
+attack_surface:
+  - conveyor
+  - enable
+
+# ---------------------------------------------------------------------------
+# Safety Rules
+# ---------------------------------------------------------------------------
+safety_rules:
+
+  - rule_id: FAB-SR-001
+    description: "Enable must not be held FALSE for more than 30 seconds"
+    rule_type: duration
+    tags: [enable]
+    parameters:
+      max_duration_ms: 30000
+      forbidden_value: false
+    enabled: true
+    priority: 100
+
+  - rule_id: FAB-SR-002
+    description: "Conveyor override duration capped at 20 seconds"
+    rule_type: duration
+    tags: [conveyor]
+    parameters:
+      max_duration_ms: 20000
+    enabled: true
+    priority: 50
+
+# ---------------------------------------------------------------------------
+# Reset Procedure
+# ---------------------------------------------------------------------------
+reset_procedure:
+  - tag: enable
+    value: true
+  - tag: conveyor
+    value: false

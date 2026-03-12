@@ -1,0 +1,188 @@
+// MANTIS — Scene 12: Level Control
+// Control the liquid level of a tank using fill/discharge valves.
+// DB21: Instance DB for FB_LevelControl (non-optimized access)
+//
+// Factory I/O layout:
+//   - Tank with level meter, flow meter, fill valve, discharge valve
+//   - Start/Stop/Reset buttons on control panel
+//   - Start/Reset/Stop lights on panel
+//   - SP and PV displays on panel
+//
+// Driver mapping (from Factory I/O):
+//   SENSORS (Inputs):
+//     NOTE: Use %I10.x (NOT %I0.x) because the PLC's
+//     built-in physical DI module owns %IB0 and overwrites external writes.
+//     Start        → %I10.0  (BOOL)
+//     Reset        → %I10.1  (BOOL)
+//     Stop         → %I10.2  (BOOL)
+//     FACTORY I/O (Running) → %I10.3  (BOOL)
+//     Level meter  → %ID100  (REAL)  — tank level 0-10V
+//     Flow meter   → %ID104  (REAL)  — flow rate 0-10V
+//     Setpoint     → %ID108  (REAL)  — panel setpoint knob 0-10V
+//       NOTE: Knob value is copied to SetpointIn ONLY while system is stopped.
+//       Once Running=TRUE, SetpointIn freezes (OB_Main stops copying).
+//       The PLC NEVER writes SetpointIn internally — it becomes a write-once
+//       attack target. Use the knob to set the desired initial level before starting.
+//
+//   ACTUATORS (Outputs):
+//     Start light      → %Q0.0   (BOOL)
+//     Reset light      → %Q0.1   (BOOL)
+//     Stop light       → %Q0.2   (BOOL)
+//     Fill valve       → %QD100  (REAL) — 0-10V
+//     Discharge valve  → %QD104  (REAL) — 0-10V
+//     SP display       → %QD108  (DINT) — setpoint display
+//     PV display       → %QD112  (DINT) — process value display
+//
+// DB21 byte layout (non-optimized):
+//   Byte 0    : Start        (BOOL)   — %I10.0
+//   Byte 1    : padding
+//   Byte 2    : Reset        (BOOL)   — %I10.1
+//   Byte 3    : padding
+//   Byte 4    : Stop         (BOOL)   — %I10.2
+//   Byte 5    : padding
+//   Byte 6    : StartLight   (BOOL)   — %Q0.0
+//   Byte 7    : padding
+//   Byte 8    : ResetLight   (BOOL)   — %Q0.1
+//   Byte 9    : padding
+//   Byte 10   : StopLight    (BOOL)   — %Q0.2
+//   Byte 11   : padding
+//   Byte 12-15: LevelMeter   (REAL)   — %ID100
+//   Byte 16-19: FlowMeter    (REAL)   — %ID104
+//   Byte 20-23: SetpointIn   (REAL)   — from knob while stopped, frozen when running
+//   Byte 24-27: FillValve    (REAL)   — %QD100
+//   Byte 28-31: DischargeValve (REAL) — %QD104
+//   Byte 32-35: SP_Display   (DINT)   — %QD108
+//   Byte 36-39: PV_Display   (DINT)   — %QD112
+//   Byte 40   : Running      (BOOL)   — internal: process running
+//   Byte 41   : padding
+//   Byte 42   : Enable       (BOOL)   — system enable (default TRUE)
+//   Byte 43   : padding
+//   Total = 44 bytes
+//
+// Normal operation:
+//   Press Start → Fill valve opens proportionally to error (simple P control)
+//   Level meter reads → PV display shows level
+//   Setpoint knob → SP display shows target
+//   Fill valve adjusts to maintain level at setpoint
+//   Press Stop → Fill valve closes, discharge opens to drain
+//
+// Vulnerability 1: SetpointIn is used by controller but NEVER written by PLC logic.
+//   OB_Main copies the Factory I/O knob to SetpointIn ONLY while Running=FALSE.
+//   Once Running=TRUE, the copy stops and SetpointIn freezes at the knob value.
+//   Attack: write any value to DB21 byte 20 while running.
+//   SetpointIn=0.0 → full drain. SetpointIn=5.0 → 50% level.
+// Vulnerability 2: Enable flag is read by logic but NEVER written.
+//   Setting Enable=FALSE stops fill valve and opens discharge.
+
+FUNCTION_BLOCK "FB_LevelControl"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.4
+
+VAR
+    // Mapped to DB21 — order determines byte offsets (non-optimized)
+    Start           : BOOL;         // byte 0   — %I10.0 Start button
+    _pad0           : BYTE;         // byte 1
+    Reset           : BOOL;         // byte 2   — %I10.1 Reset button
+    _pad1           : BYTE;         // byte 3
+    Stop            : BOOL;         // byte 4   — %I10.2 Stop button
+    _pad2           : BYTE;         // byte 5
+    StartLight      : BOOL;         // byte 6   — Start indicator
+    _pad3           : BYTE;         // byte 7
+    ResetLight      : BOOL;         // byte 8   — Reset indicator
+    _pad4           : BYTE;         // byte 9
+    StopLight       : BOOL;         // byte 10  — Stop indicator
+    _pad5           : BYTE;         // byte 11
+    LevelMeter      : REAL;         // byte 12  — Tank level (0-10V)
+    FlowMeter       : REAL;         // byte 16  — Flow rate (0-10V)
+    SetpointIn      : REAL := 10.0; // byte 20  — From knob (stopped) / frozen (running). WRITE-ONCE target.
+    FillValve       : REAL;         // byte 24  — Fill valve opening (0-10V)
+    DischargeValve  : REAL;         // byte 28  — Discharge valve opening (0-10V)
+    SP_Display      : DINT;         // byte 32  — SP display value
+    PV_Display      : DINT;         // byte 36  — PV display value
+    Running         : BOOL := FALSE; // byte 40  — Internal: process running
+    _pad6           : BYTE;         // byte 41
+    Enable          : BOOL := TRUE; // byte 42  — System enable (default ON)
+    _pad7           : BYTE;         // byte 43
+END_VAR
+
+VAR_TEMP
+    error : REAL;
+    output : REAL;
+END_VAR
+
+BEGIN
+    // ── Safety gate: if Enable is FALSE, shut everything down ──
+    IF NOT Enable THEN
+        FillValve := 0.0;
+        DischargeValve := 10.0;     // Fully open discharge (0-10V range)
+        StartLight := FALSE;
+        StopLight := TRUE;
+        ResetLight := FALSE;
+        Running := FALSE;
+        SP_Display := 0;
+        PV_Display := REAL_TO_DINT(LevelMeter);
+        RETURN;
+    END_IF;
+
+    // ── Update displays (scale 0-10V → 0-100 for display) ──
+    SP_Display := REAL_TO_DINT(SetpointIn * 10.0);
+    PV_Display := REAL_TO_DINT(LevelMeter * 10.0);
+
+    // ── Button logic (matching Factory I/O convention) ──
+    // Start: momentary — TRUE = pressed, FALSE = idle
+    // Stop:  NC alternate — TRUE = not pressed (safe), FALSE = stop requested
+    // Reset: momentary — TRUE = pressed, FALSE = idle
+    IF Start AND NOT Running THEN
+        Running := TRUE;
+    END_IF;
+
+    IF NOT Stop THEN
+        Running := FALSE;
+    END_IF;
+
+    // Auto-start: if Stop not pressed and Start not pressed, start automatically
+    IF Stop AND NOT Start THEN
+        Running := TRUE;
+    END_IF;
+
+    IF Reset THEN
+        Running := FALSE;
+        FillValve := 0.0;
+        DischargeValve := 0.0;
+        ResetLight := TRUE;
+    ELSE
+        ResetLight := FALSE;
+    END_IF;
+
+    // ── Indicator lights ──
+    StartLight := Running;
+    StopLight := NOT Running;
+
+    // ── Process control ──
+    // Factory I/O tank valves use 0-10V range (NOT 0-100%)
+    //   0V = fully closed, 10V = fully open
+    IF Running THEN
+        // Simple proportional control
+        error := SetpointIn - LevelMeter;   // Both in 0-10V range
+
+        IF error > 0.0 THEN
+            // Level below setpoint → fill
+            output := error * 1.0;          // P gain = 1.0 (0-10V range)
+            IF output > 10.0 THEN output := 10.0; END_IF;
+            IF output < 0.0 THEN output := 0.0; END_IF;
+            FillValve := output;
+            DischargeValve := 0.0;
+        ELSE
+            // Level at or above setpoint → stop filling, discharge excess
+            FillValve := 0.0;
+            output := -error * 1.0;
+            IF output > 10.0 THEN output := 10.0; END_IF;
+            IF output < 0.0 THEN output := 0.0; END_IF;
+            DischargeValve := output;
+        END_IF;
+    ELSE
+        // Not running → close everything
+        FillValve := 0.0;
+        DischargeValve := 0.0;
+    END_IF;
+END_FUNCTION_BLOCK

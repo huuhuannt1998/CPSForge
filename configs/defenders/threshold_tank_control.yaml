@@ -1,0 +1,45 @@
+# =============================================================================
+# CPSForge Defender — Threshold Detector (Tank Control)
+# =============================================================================
+name: threshold_tank_control
+detector_type: threshold
+scene_name: tank_control
+enabled: true
+
+# Threshold rules: each entry defines a tag, a comparison operator, a threshold
+# value, and a severity label.
+thresholds:
+  - tag: tank_level
+    operator: ">"
+    value: 88.0
+    severity: high
+    label: "high_level"
+    description: "Tank level exceeds 88% — potential overflow"
+
+  - tag: tank_level
+    operator: "<"
+    value: 12.0
+    severity: high
+    label: "low_level"
+    description: "Tank level below 12% — risk of pump cavitation"
+
+  - tag: pump_speed
+    operator: ">"
+    value: 95.0
+    severity: medium
+    label: "pump_overrun"
+    description: "Pump commanded above 95% — unusual for normal operation"
+
+  - tag: level_setpoint
+    operator: ">"
+    value: 85.0
+    severity: medium
+    label: "high_setpoint"
+    description: "Setpoint above 85% — may indicate setpoint shift attack"
+
+  - tag: level_setpoint
+    operator: "<"
+    value: 15.0
+    severity: medium
+    label: "low_setpoint"
+    description: "Setpoint below 15% — may indicate setpoint shift attack"

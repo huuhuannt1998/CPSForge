@@ -1,0 +1,72 @@
+# ============================================================
+# CPSForge Phase 3 -- Official Eval Run
+# ============================================================
+# Purpose:
+#   Run both scripted and random attackers against the tank-control
+#   scene with both detectors active.  All paper-reported metrics are
+#   collected from runs using this config (or a derivative of it).
+#
+# IMPORTANT -- live hardware deployment:
+#   To enable real PLC writes, set:
+#     live_writes_enabled: true   # in this file, OR
+#     CPSFORGE_LIVE_WRITES=true   # in the environment (.env)
+#   Both the environment variable AND this flag must be True.
+#   The dry_run field is automatically forced to True when
+#   live_writes_enabled is False (validator enforces this).
+#
+# Usage (dry-run validation, no hardware needed):
+#   cpsforge run attack \
+#     --scene tank_control \
+#     --attacker scripted \
+#     --experiment-config configs/experiments/phase3_eval_run.yaml
+#
+# Usage (live eval on real PLC + Factory I/O):
+#   CPSFORGE_LIVE_WRITES=true \
+#   cpsforge run attack \
+#     --scene tank_control \
+#     --attacker scripted \
+#     --experiment-config configs/experiments/phase3_eval_run.yaml
+# ============================================================
+
+name: phase3_eval_run
+description: >
+  Phase 3 official eval run: scripted + random attackers, threshold + invariant
+  detectors, all metrics collected and saved as evaluation artifacts.
+  Set live_writes_enabled: true for real PLC deployment.
+
+scene_config: "scenes/tank_control.yaml"
+plc_config:   "system/plc.yaml"
+
+# -- Attackers -------------------------------------------------------
+attackers:
+  - scripted_tank_control
+  - random_tank_control
+
+# -- Defenders -------------------------------------------------------
+defenders:
+  - threshold_tank_control
+  - invariant_tank_control
+
+# -- Safety ------------------------------------------------------------
+# Set live_writes_enabled: true below AND CPSFORGE_LIVE_WRITES=true in .env
+# to enable real PLC writes during an official eval run on hardware.
+live_writes_enabled: false
+dry_run: true        # auto-enforced True when live_writes_enabled=false
+
+# -- Experiment flags --------------------------------------------------
+# eval_run: true  →  this run IS counted in paper-reported metrics.
+# All metrics computed in eval runs are saved in metrics.json and
+# rolled up by 'cpsforge report summarize'.
+eval_run: true
+reset_after_run: false
+
+# -- Run length --------------------------------------------------------
+max_steps: 400      # ~200 seconds at 500 ms/step
+run_duration_s: 210.0
+
+# -- Adaptation --------------------------------------------------------
+adaptation_round: 0   # increment when re-running after defender retraining
+
+# -- Artifacts ---------------------------------------------------------
+save_trace: true
+save_metrics: true

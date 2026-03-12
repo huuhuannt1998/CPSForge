@@ -1,0 +1,219 @@
+// =============================================================================
+// MANTIS — Instance Data Blocks for all 21 Factory I/O Scene FBs
+//
+// After importing this file in TIA Portal, you MUST set the DB numbers:
+//   Right-click each DB → Properties → General → Number
+//   Assign the DB numbers according to the table below.
+//
+// DB Number Assignments:
+//   DB10 = FB_FromAtoB_DB
+//   DB11 = FB_FromAtoB_SR_DB
+//   DB12 = FB_FillingTank_DB
+//   DB13 = FB_QueueItems_DB
+//   DB14 = FB_Assembler_DB
+//   DB15 = FB_AssemblerAnalog_DB
+//   DB16 = FB_Warehouse_DB
+//   DB17 = FB_BufferStation_DB
+//   DB18 = FB_ConvergeStation_DB
+//   DB19 = FB_ElevatorAdvanced_DB
+//   DB20 = FB_ElevatorBasic_DB
+//   DB21 = FB_LevelControl_DB
+//   DB22 = FB_Palletizer_DB
+//   DB23 = FB_PickPlaceBasic_DB
+//   DB24 = FB_PickPlaceXYZ_DB
+//   DB25 = FB_ProductionLine_DB
+//   DB26 = FB_SeparatingStation_DB
+//   DB27 = FB_SortingHeightAdv_DB
+//   DB28 = FB_SortingHeightBasic_DB
+//   DB29 = FB_SortingWeight_DB
+//   DB30 = FB_SortingStation_DB
+// =============================================================================
+
+// Scene 1: From A to B → DB10
+DATA_BLOCK "FB_FromAtoB_DB"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+NON_RETAIN
+"FB_FromAtoB"
+BEGIN
+END_DATA_BLOCK
+
+// Scene 2: From A to B (Set/Reset) → DB11
+DATA_BLOCK "FB_FromAtoB_SR_DB"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+NON_RETAIN
+"FB_FromAtoB_SR"
+BEGIN
+END_DATA_BLOCK
+
+// Scene 3: Filling Tank → DB12
+DATA_BLOCK "FB_FillingTank_DB"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+NON_RETAIN
+"FB_FillingTank"
+BEGIN
+END_DATA_BLOCK
+
+// Scene 4: Queue of Items → DB13
+DATA_BLOCK "FB_QueueItems_DB"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+NON_RETAIN
+"FB_QueueItems"
+BEGIN
+END_DATA_BLOCK
+
+// Scene 5: Assembler → DB14
+DATA_BLOCK "FB_Assembler_DB"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+NON_RETAIN
+"FB_Assembler"
+BEGIN
+END_DATA_BLOCK
+
+// Scene 6: Assembler (Analog) → DB15
+DATA_BLOCK "FB_AssemblerAnalog_DB"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+NON_RETAIN
+"FB_AssemblerAnalog"
+BEGIN
+END_DATA_BLOCK
+
+// Scene 7: Automated Warehouse → DB16
+DATA_BLOCK "FB_Warehouse_DB"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+NON_RETAIN
+"FB_Warehouse"
+BEGIN
+END_DATA_BLOCK
+
+// Scene 8: Buffer Station → DB17
+DATA_BLOCK "FB_BufferStation_DB"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+NON_RETAIN
+"FB_BufferStation"
+BEGIN
+END_DATA_BLOCK
+
+// Scene 9: Converge Station → DB18
+DATA_BLOCK "FB_ConvergeStation_DB"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+NON_RETAIN
+"FB_ConvergeStation"
+BEGIN
+END_DATA_BLOCK
+
+// Scene 10: Elevator (Advanced) → DB19
+DATA_BLOCK "FB_ElevatorAdvanced_DB"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+NON_RETAIN
+"FB_ElevatorAdvanced"
+BEGIN
+END_DATA_BLOCK
+
+// Scene 11: Elevator (Basic) → DB20
+DATA_BLOCK "FB_ElevatorBasic_DB"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+NON_RETAIN
+"FB_ElevatorBasic"
+BEGIN
+END_DATA_BLOCK
+
+// Scene 12: Level Control → DB21
+DATA_BLOCK "FB_LevelControl_DB"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+NON_RETAIN
+"FB_LevelControl"
+BEGIN
+END_DATA_BLOCK
+
+// Scene 13: Palletizer → DB22
+DATA_BLOCK "FB_Palletizer_DB"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+NON_RETAIN
+"FB_Palletizer"
+BEGIN
+END_DATA_BLOCK
+
+// Scene 14: Pick & Place (Basic) → DB23
+DATA_BLOCK "FB_PickPlaceBasic_DB"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+NON_RETAIN
+"FB_PickPlaceBasic"
+BEGIN
+END_DATA_BLOCK
+
+// Scene 15: Pick & Place XYZ → DB24
+DATA_BLOCK "FB_PickPlaceXYZ_DB"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+NON_RETAIN
+"FB_PickPlaceXYZ"
+BEGIN
+END_DATA_BLOCK
+
+// Scene 16: Production Line → DB25
+DATA_BLOCK "FB_ProductionLine_DB"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+NON_RETAIN
+"FB_ProductionLine"
+BEGIN
+END_DATA_BLOCK
+
+// Scene 17: Separating Station → DB26
+DATA_BLOCK "FB_SeparatingStation_DB"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+NON_RETAIN
+"FB_SeparatingStation"
+BEGIN
+END_DATA_BLOCK
+
+// Scene 18: Sorting by Height (Advanced) → DB27
+DATA_BLOCK "FB_SortingHeightAdv_DB"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+NON_RETAIN
+"FB_SortingHeightAdvanced"
+BEGIN
+END_DATA_BLOCK
+
+// Scene 19: Sorting by Height (Basic) → DB28
+DATA_BLOCK "FB_SortingHeightBasic_DB"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+NON_RETAIN
+"FB_SortingHeightBasic"
+BEGIN
+END_DATA_BLOCK
+
+// Scene 20: Sorting by Weight → DB29
+DATA_BLOCK "FB_SortingWeight_DB"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+NON_RETAIN
+"FB_SortingWeight"
+BEGIN
+END_DATA_BLOCK
+
+// Scene 21: Sorting Station → DB30
+DATA_BLOCK "FB_SortingStation_DB"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+NON_RETAIN
+"FB_SortingStation"
+BEGIN
+END_DATA_BLOCK

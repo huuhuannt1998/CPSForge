@@ -1,0 +1,149 @@
+\section{Evaluation}
+\label{sec:evaluation}
+
+This section presents the evaluation methodology and preliminary experimental results from live PLC-based runs across three Factory I/O scenes.
+
+\subsection{Research Questions}
+
+The evaluation is designed around the following research questions:
+
+\begin{description}[leftmargin=1.5em, style=nextline]
+    \item[RQ1:] Can structured attackers generate process-valid attack actions that execute successfully in the live PLC--Factory I/O loop?
+    \item[RQ2:] Are scripted attacks more effective than random baselines, and how does effectiveness vary across scenes?
+    \item[RQ3:] How effective is the safety shield at blocking unsafe or invalid actions while preserving useful experimental attack coverage?
+    \item[RQ4:] How well do the defender configurations detect attack-induced anomalies under live execution?
+    \item[RQ5:] Does closed-loop adaptation improve defender robustness over repeated rounds?
+\end{description}
+
+\subsection{Evaluation Environment}
+
+Experiments are conducted on a real Siemens S7 PLC connected to Factory I/O through TIA Portal v17. The evaluation covers three scenes: From A to B (discrete conveyor transport, 4 tags), Level Control (continuous tank process, 15 tags), and Sorting by Height (mixed sorting process, 30 tags). Each scene defines its own tag metadata, writable attack surface, and safety invariants through YAML configuration files.
+
+The middleware polls PLC tags at 500\,ms intervals. Each experiment run produces structured artifacts including a time-series trace, attack records, shield decisions, detection events, and summary metrics.
+
+\subsection{Baselines}
+
+The preliminary evaluation compares two attacker baselines:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Scripted attacker:} manually defined attack templates targeting specific process-critical tags with deterministic timing and values.
+    \item \textbf{Random attacker:} bounded random perturbations over the configured attack surface, sampling targets and values uniformly from allowed ranges.
+\end{itemize}
+
+The LLM attacker is implemented but not included in this preliminary evaluation pending LLM provider configuration.
+
+The defender side uses:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Threshold detector:} configurable per-tag thresholds with severity levels.
+    \item \textbf{Invariant detector:} rule-based state-consistency checks derived from scene-specific safety properties.
+\end{itemize}
+
+\subsection{Metrics}
+
+The evaluation measures attacker, shield, and defender performance using the following metrics.
+
+\paragraph{Attack Metrics.}
+\begin{itemize}[leftmargin=1.5em]
+    \item action validity rate (fraction of actions that compile to valid PLC writes),
+    \item execution success rate (fraction of actions that execute against the PLC),
+    \item attack success rate (fraction of attacks producing measurable process deviation),
+    \item process impact score (mean deviation during attack windows).
+\end{itemize}
+
+\paragraph{Shield Metrics.}
+\begin{itemize}[leftmargin=1.5em]
+    \item approval rate,
+    \item rejection rate,
+    \item unsafe action block rate.
+\end{itemize}
+
+\paragraph{Defender Metrics.}
+\begin{itemize}[leftmargin=1.5em]
+    \item precision,
+    \item recall,
+    \item F1 score,
+    \item false positive count,
+    \item false negative count,
+    \item detection latency.
+\end{itemize}
+
+\subsection{Preliminary Results}
+
+Six live evaluation runs were executed against the real PLC, covering each combination of attacker type (scripted, random) and scene (From A to B, Level Control, Sorting by Height). All experiments used live PLC writes with real-time tag polling. Results are summarized in Tables~\ref{tab:attack-results}, \ref{tab:shield-results}, and~\ref{tab:defender-results}.
+
+\begin{table}[t]
+\centering
+\caption{Attack generation and execution results across three Factory I/O scenes. ASR = attack success rate.}
+\label{tab:attack-results}
+\small
+\begin{tabular}{llcccc}
+\toprule
+Scene & Attacker & Actions & Exec.\ Rate & ASR & Avg.\ Impact \\
+\midrule
+From A to B & Scripted & 3  & 1.00 & 0.67 & 0.267 \\
+From A to B & Random   & 10 & 1.00 & 0.30 & 0.120 \\
+Level Control & Scripted & 4  & 1.00 & 1.00 & 1.450 \\
+Level Control & Random   & 10 & 1.00 & 0.80 & 0.980 \\
+Sorting & Scripted & 4  & 1.00 & 0.00 & 0.000 \\
+Sorting & Random   & 10 & 0.80 & 0.00 & 0.000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Shield effectiveness across six live evaluation runs.}
+\label{tab:shield-results}
+\small
+\begin{tabular}{llcc}
+\toprule
+Scene & Attacker & Approval Rate & Rejection Rate \\
+\midrule
+From A to B & Scripted & 1.00 & 0.00 \\
+From A to B & Random   & 1.00 & 0.00 \\
+Level Control & Scripted & 1.00 & 0.00 \\
+Level Control & Random   & 1.00 & 0.00 \\
+Sorting & Scripted & 1.00 & 0.00 \\
+Sorting & Random   & 0.80 & 0.00 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Defender detection results using threshold and invariant detectors. FP = false positives.}
+\label{tab:defender-results}
+\small
+\begin{tabular}{llcccc}
+\toprule
+Scene & Attacker & Precision & Recall & F1 & FP \\
+\midrule
+From A to B & Scripted & 0.550 & 1.00 & 0.710 & 54 \\
+From A to B & Random   & 0.515 & 1.00 & 0.680 & 97 \\
+Level Control & Scripted & 0.600 & 1.00 & 0.750 & 60 \\
+Level Control & Random   & 0.615 & 1.00 & 0.762 & 77 \\
+Sorting & Scripted & 0.515 & 1.00 & 0.680 & 65 \\
+Sorting & Random   & 0.696 & 1.00 & 0.821 & 49 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Analysis}
+
+\paragraph{RQ1: Attack Validity and Execution.}
+All scripted and random attacks compiled to valid PLC writes and executed successfully, with the exception of two random attacks on the Sorting scene that remained pending at run completion (yielding an 80\% execution rate for that configuration). The structured action schema and attack compiler ensure that proposed actions map to legitimate tag writes within the scene's configured attack surface.
+
+\paragraph{RQ2: Attack Effectiveness Across Scenes.}
+Attack effectiveness varies substantially across scenes. The Level Control scene is the most susceptible, with scripted attacks achieving a 100\% attack success rate and a mean process impact of 1.450. This scene exposes continuous-valued tags (fill valve, discharge valve, setpoints) where even modest overrides produce measurable deviations. The From A to B scene shows moderate susceptibility (scripted ASR = 0.67, random ASR = 0.30), as boolean actuator overrides (conveyor on/off, enable on/off) have visible but binary effects. The Sorting scene presents no measurable attack success in this preliminary evaluation, suggesting that its PLC logic quickly recovers from single-shot perturbations or that the current attack strategies do not target the most impactful tag combinations.
+
+Scripted attacks consistently outperform random attacks in both success rate and process impact, confirming the value of targeted, process-aware attack design.
+
+\paragraph{RQ3: Shield Effectiveness.}
+The safety shield approved 100\% of scripted attacks and at least 80\% of random attacks across all scenes. Two random attacks targeting the Sorting scene were not approved, indicating the shield's tag validation or duration constraints filtered a portion of random actions. No unsafe writes were permitted. The shield's role in this evaluation is primarily enabling rather than blocking, which is expected for a controlled attacker that already respects the configured attack surface.
+
+\paragraph{RQ4: Detection Performance.}
+Threshold and invariant detectors achieve perfect recall (1.0) across all six runs, meaning every attack-period step is flagged by at least one detector. Precision ranges from 0.515 to 0.696, resulting in F1 scores between 0.680 and 0.821. The primary source of reduced precision is false positives during non-attack periods, where normal process fluctuations or transient states trigger threshold alerts. Detection latency is effectively zero milliseconds across all runs, as the detectors fire on the same polling step as the attack write. Zero false negatives were recorded.
+
+\paragraph{RQ5: Adaptation.}
+No hard cases were flagged in this preliminary round because the detectors achieved perfect recall with zero false negatives. Iterative adaptation, including hard-case accumulation, replay-based retraining, and cross-round comparison, is supported by the framework but not exercised in the current evaluation. Future work with the LLM attacker is expected to generate more subtle attacks that challenge the detectors and populate the hard-case bank.

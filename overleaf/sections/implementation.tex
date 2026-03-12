@@ -1,0 +1,83 @@
+\section{Implementation}
+\label{sec:implementation}
+
+This section describes the implementation of CPSForge. The system is built around a real Siemens PLC connected to Factory I/O, with logic engineered in TIA Portal v17. Unlike purely simulation-based frameworks, CPSForge is grounded in a live hardware-in-the-loop setting.
+
+\subsection{Hardware and Process Setup}
+
+The controller layer consists of a Siemens S7 PLC deployed with logic created in TIA Portal v17. The PLC communicates over Ethernet at a fixed IP address. Factory I/O serves as the process emulator, providing realistic industrial scenes with sensors, actuators, and stateful physical interaction. The PLC interacts with Factory I/O through the normal control loop, while CPSForge observes and mediates selected control-relevant variables through an external middleware bridge implemented using the python-snap7 library.
+
+The current deployment supports three Factory I/O scenes:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{From A to B:} a conveyor transport scene with 4 tags (conveyor, enable, state, item\_detected), exposing actuator override and sequence perturbation attack surfaces.
+    \item \textbf{Level Control:} a tank filling and draining scene with 15 tags (fill valve, discharge valve, liquid level, setpoints, enable), exposing setpoint shift and actuator override attack surfaces.
+    \item \textbf{Sorting by Height:} a sorting conveyor scene with 30 tags (entry conveyor, transfer left/right, load/unload actuators, height sensors, enable), exposing a broader combinatorial attack surface.
+\end{itemize}
+
+\subsection{Middleware Bridge}
+
+A Python-based middleware layer communicates with the PLC via python-snap7, providing cyclic telemetry collection, action compilation, and structured logging. The middleware reads relevant tags at a configurable polling interval (default 500\,ms), constructs structured plant snapshots using Pydantic data models, and forwards context to the attacker and defender modules. Approved attack actions are translated into bounded PLC writes through the safety shield.
+
+Each polling interval records:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item timestamp,
+    \item scene identifier,
+    \item sensor values,
+    \item actuator states,
+    \item controller mode bits,
+    \item alarm status,
+    \item setpoints or internal control variables,
+    \item active attack context,
+    \item shield decisions, and
+    \item detector outputs.
+\end{itemize}
+
+These records form the basis for both online monitoring and offline replay.
+
+\subsection{Scene Profiles}
+
+Each Factory I/O scene is represented as a configurable YAML profile that defines:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item tag metadata,
+    \item process descriptions,
+    \item writable variables exposed to the attacker,
+    \item allowed attack types,
+    \item safety invariants,
+    \item reset behavior, and
+    \item sampling interval.
+\end{itemize}
+
+This scene abstraction allows the core framework to remain independent of any one process while still capturing scene-specific semantics.
+
+\subsection{Attack Representation}
+
+CPSForge does not permit attack modules to manipulate raw memory areas directly. Instead, the attacker outputs structured actions with fields such as target, mode, value, duration, rationale, and expected effect. For example, an attack action may request a temporary sensor offset, an actuator override for a bounded duration, or a setpoint shift under specific preconditions.
+
+This representation is important for three reasons. First, it constrains the action space to meaningful process operations. Second, it enables validation by the shield. Third, it makes experiments easier to replay and analyze.
+
+\subsection{Safety Shield Implementation}
+
+The shield is implemented as a policy enforcement layer with scene-specific rule support. Before a candidate action is executed, the shield checks whether the target is on the writable whitelist, whether the value falls within allowed bounds, whether the duration exceeds policy, and whether the action violates interlocks or state-based constraints.
+
+The shield emits a structured decision that records approval status, reasons, normalized values if applicable, violated rules, expiration times, and rollback procedures. This ensures that every live action is auditable.
+
+\subsection{Defender Stack}
+
+The initial defender stack consists of:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item a threshold-based detector for simple process deviations,
+    \item an invariant-based detector derived from scene rules, and
+    \item a sequence-based detector that analyzes temporal behavior over a sliding window.
+\end{itemize}
+
+The threshold and invariant detectors provide interpretable baselines, while the sequence detector provides a more flexible learned baseline. Additional LLM-based explanation or synthesis components may later be incorporated, but the present design keeps the LLM outside the trusted online detection path.
+
+\subsection{Closed-Loop Data Management}
+
+Every experiment run produces structured artifacts for replay and analysis. A run folder contains the time-series trace, metadata, attack records, shield decisions, and detection outputs. Runs that lead to missed or delayed detections are marked as hard cases and placed into a replay bank for future defender refinement.
+
+At the current stage of the project, the core pipeline is fully operational. Six live evaluation runs have been executed against the real PLC across three Factory I/O scenes using scripted and random attackers. Results are presented in Section~\ref{sec:evaluation}. The LLM attacker module is implemented and ready for integration once LLM provider access is configured.

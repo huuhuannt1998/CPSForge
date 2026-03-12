@@ -10,7 +10,7 @@ Build a modular, hardware-in-the-loop CPS security framework that connects to my
 
 Core vision:
 - A real PLC running logic engineered in TIA Portal v17 controls a Factory I/O plant.
-- The PLC IP is 192.168.1.10.
+- The PLC IP is 192.168.0.1.
 - A Python middleware layer reads and writes PLC tags.
 - An LLM attacker proposes structured CPS-aware attacks.
 - A safety shield validates and constrains all write operations before they reach the PLC.
@@ -28,7 +28,7 @@ You must produce production-quality code, not a toy demo.
 Build a complete Python project with the following capabilities:
 
 1. Connect to the real Siemens PLC through python-snap7.
-2. Use the PLC IP 192.168.1.10 as the default connection target in configuration examples.
+2. Use the PLC IP 192.168.0.1 as the default connection target in configuration examples.
 3. Read plant/controller tags cyclically.
 4. Log all execution traces in a structured dataset format.
 5. Represent each Factory I/O scene as a configurable environment profile.
@@ -52,7 +52,7 @@ This system is designed specifically for a real PLC + Factory I/O deployment. Do
 The first target deployment is:
 
 - Real Siemens S7 PLC
-- PLC IP address: 192.168.1.10
+- PLC IP address: 192.168.0.1
 - TIA Portal v17 project already deployed to hardware
 - Factory I/O scene running as the plant
 - A Python service on a bridge machine
@@ -352,7 +352,7 @@ Implement a PLC client wrapper with:
 - explicit support for Siemens S7 communication via python-snap7
 
 The default PLC configuration example must use:
-- IP: 192.168.1.10
+- IP: 192.168.0.1
 
 Important:
 - all direct writes must be internal-only
@@ -638,7 +638,7 @@ Need configs for:
 Provide sane default examples.
 
 The default PLC system config example should include:
-- host: 192.168.1.10
+- host: 192.168.0.1
 
 The experiment config should explicitly distinguish:
 - dry-run validation
@@ -789,7 +789,7 @@ Do the following in order:
 2. Create pyproject.toml and dependency files.
 3. Implement the core schemas/models.
 4. Implement the config loader.
-5. Implement the real PLC client interface and default PLC config for 192.168.1.10.
+5. Implement the real PLC client interface and default PLC config for 192.168.0.1.
 6. Implement the scene abstraction and one reference scene.
 7. Implement logging and run artifact storage.
 8. Implement CLI skeleton.

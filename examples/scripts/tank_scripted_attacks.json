@@ -1,0 +1,52 @@
+[
+  {
+    "attack_type": "actuator_override",
+    "target": "pump_speed",
+    "mode": "override",
+    "value": 0.0,
+    "duration_ms": 8000,
+    "rationale": "Stop pump to cause level drop below setpoint",
+    "expected_effect": "Tank level decreases; PID controller attempts recovery",
+    "confidence": 0.9
+  },
+  {
+    "attack_type": "setpoint_shift",
+    "target": "level_setpoint",
+    "mode": "override",
+    "value": 85.0,
+    "duration_ms": 10000,
+    "rationale": "Shift setpoint high to drive excessive filling",
+    "expected_effect": "PID commands pump to full speed; level rises toward overflow",
+    "confidence": 0.85
+  },
+  {
+    "attack_type": "actuator_override",
+    "target": "drain_valve_position",
+    "mode": "override",
+    "value": 100.0,
+    "duration_ms": 6000,
+    "rationale": "Fully open drain to rapidly empty tank",
+    "expected_effect": "Outflow exceeds inflow; level drops sharply",
+    "confidence": 0.9
+  },
+  {
+    "attack_type": "setpoint_shift",
+    "target": "level_setpoint",
+    "mode": "override",
+    "value": 15.0,
+    "duration_ms": 8000,
+    "rationale": "Shift setpoint extremely low to cause pump cavitation risk",
+    "expected_effect": "PID reduces pump speed; level falls toward low alarm",
+    "confidence": 0.8
+  },
+  {
+    "attack_type": "actuator_override",
+    "target": "pump_speed",
+    "mode": "override",
+    "value": 100.0,
+    "duration_ms": 7000,
+    "rationale": "Force pump to maximum speed to cause rapid overfilling",
+    "expected_effect": "Tank level rises rapidly; high-level alarm may trigger",
+    "confidence": 0.85
+  }
+]

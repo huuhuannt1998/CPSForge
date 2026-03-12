@@ -1,0 +1,18 @@
+// MANTIS — DB_Config: Global configuration block
+// ActiveScene selects which Factory I/O scene is running
+
+DATA_BLOCK "DB_Config"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+
+STRUCT
+    ActiveScene : INT := 19;     // Default: Sorting Height Basic
+    ScanRate_ms : INT := 1000;   // Control loop period
+    Running     : BOOL := TRUE;  // System running flag
+END_STRUCT;
+
+BEGIN
+    ActiveScene := 19;
+    ScanRate_ms := 1000;
+    Running := TRUE;
+END_DATA_BLOCK

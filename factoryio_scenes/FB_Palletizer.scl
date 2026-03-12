@@ -1,0 +1,110 @@
+// MANTIS — Scene 13: Palletizer
+// Palletize cases in several layers.
+// DB22: I/O mapping
+
+FUNCTION_BLOCK "FB_Palletizer"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+
+VAR
+    BoxAtEntry    : BOOL;  // 0.0
+    _pad0         : BYTE;
+    BoxAtPickup   : BOOL;  // 2.0
+    _pad1         : BYTE;
+    PalletReady   : BOOL;  // 4.0
+    _pad2         : BYTE;
+    LayerComplete : BOOL;  // 6.0
+    _pad3         : BYTE;
+    ClampSensor   : BOOL;  // 8.0
+    _pad4         : BYTE;
+    PosX          : REAL;  // 10
+    PosZ          : REAL;  // 14
+    ConveyorIn    : BOOL;  // 18.0
+    _pad5         : BYTE;
+    Clamp         : BOOL;  // 20.0
+    _pad6         : BYTE;
+    MoveX         : REAL;  // 22
+    MoveZ         : REAL;  // 26
+    ConveyorOut   : BOOL;  // 30.0
+    _pad7         : BYTE;
+    Emitter       : BOOL;  // 32.0
+    _pad8         : BYTE;
+    
+    iState     : INT := 0;
+    BoxIndex  : INT := 0;
+    LayerIdx  : INT := 0;
+    BOXES_PER_LAYER : INT := 4;
+    MAX_LAYERS : INT := 3;
+    TOLERANCE  : REAL := 10.0;
+    
+    // Placement positions (simplified grid)
+    PlaceX : REAL := 0.0;
+    PlaceZ : REAL := 0.0;
+END_VAR
+
+BEGIN
+    CASE iState OF
+        0: // Feed box
+            ConveyorIn := TRUE;
+            Emitter := TRUE;
+            IF BoxAtPickup THEN
+                ConveyorIn := FALSE;
+                Emitter := FALSE;
+                // Calculate placement position
+                PlaceX := 200.0 + INT_TO_REAL(BoxIndex MOD 2) * 200.0;
+                PlaceZ := 100.0 + INT_TO_REAL(LayerIdx) * 150.0;
+                iState := 1;
+            END_IF;
+            
+        1: // Move to pickup
+            MoveX := 0.0;  // Pickup X position
+            MoveZ := 0.0;  // Pickup Z (low)
+            IF ABS(PosX) < TOLERANCE AND ABS(PosZ) < TOLERANCE THEN
+                iState := 2;
+            END_IF;
+            
+        2: // Clamp box
+            Clamp := TRUE;
+            IF ClampSensor THEN
+                MoveZ := 200.0;  // Lift
+                iState := 3;
+            END_IF;
+            
+        3: // Move to place position
+            IF ABS(PosZ - 200.0) < TOLERANCE THEN
+                MoveX := PlaceX;
+                iState := 4;
+            END_IF;
+            
+        4: // Lower to place
+            IF ABS(PosX - PlaceX) < TOLERANCE THEN
+                MoveZ := PlaceZ;
+                iState := 5;
+            END_IF;
+            
+        5: // Release
+            IF ABS(PosZ - PlaceZ) < TOLERANCE THEN
+                Clamp := FALSE;
+                BoxIndex := BoxIndex + 1;
+                IF BoxIndex >= BOXES_PER_LAYER THEN
+                    BoxIndex := 0;
+                    LayerIdx := LayerIdx + 1;
+                    IF LayerIdx >= MAX_LAYERS THEN
+                        LayerIdx := 0;
+                        iState := 6;  // Pallet complete
+                    ELSE
+                        iState := 0;
+                    END_IF;
+                ELSE
+                    iState := 0;
+                END_IF;
+            END_IF;
+            
+        6: // Output complete pallet
+            ConveyorOut := TRUE;
+            IF NOT PalletReady THEN
+                ConveyorOut := FALSE;
+                iState := 0;
+            END_IF;
+    END_CASE;
+END_FUNCTION_BLOCK

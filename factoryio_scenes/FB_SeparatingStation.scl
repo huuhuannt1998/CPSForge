@@ -1,0 +1,58 @@
+// MANTIS — Scene 17: Separating Station
+// Separate blue and green parts into two conveyors.
+// DB26: I/O mapping
+
+FUNCTION_BLOCK "FB_SeparatingStation"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+
+VAR
+    PartAtEntry   : BOOL;  // 0.0
+    _pad0         : BYTE;
+    VisionSensor  : INT;   // 2     (0=none, 1=green, 2=blue)
+    AtDiverter    : BOOL;  // 4.0
+    _pad1         : BYTE;
+    AtExitLeft    : BOOL;  // 6.0
+    _pad2         : BYTE;
+    AtExitRight   : BOOL;  // 8.0
+    _pad3         : BYTE;
+    ConveyorIn    : BOOL;  // 10.0
+    _pad4         : BYTE;
+    ConveyorLeft  : BOOL;  // 12.0
+    _pad5         : BYTE;
+    ConveyorRight : BOOL;  // 14.0
+    _pad6         : BYTE;
+    Diverter      : BOOL;  // 16.0  (FALSE=left/green, TRUE=right/blue)
+    _pad7         : BYTE;
+    Emitter       : BOOL;  // 18.0
+    _pad8         : BYTE;
+    RemoverLeft   : BOOL;  // 20.0
+    _pad9         : BYTE;
+    RemoverRight  : BOOL;  // 22.0
+    _pad10        : BYTE;
+    
+    DetectedColor : INT := 0;
+END_VAR
+
+BEGIN
+    Emitter := TRUE;
+    ConveyorIn := TRUE;
+    ConveyorLeft := TRUE;
+    ConveyorRight := TRUE;
+    RemoverLeft := TRUE;
+    RemoverRight := TRUE;
+    
+    // Detect color when part enters
+    IF PartAtEntry AND VisionSensor > 0 THEN
+        DetectedColor := VisionSensor;
+    END_IF;
+    
+    // Set diverter based on detected color
+    IF AtDiverter THEN
+        IF DetectedColor = 1 THEN
+            Diverter := FALSE;  // Green -> left
+        ELSIF DetectedColor = 2 THEN
+            Diverter := TRUE;   // Blue -> right
+        END_IF;
+    END_IF;
+END_FUNCTION_BLOCK

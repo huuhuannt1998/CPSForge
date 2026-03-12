@@ -1,0 +1,56 @@
+# =============================================================================
+# CPSForge Experiment Configuration — Phase 2 Dry-Run Validation
+# =============================================================================
+# Purpose:
+#   Validate the full Phase 2 pipeline (PLC wrapper, polling loop, scripted and
+#   random attackers, shield engine, threshold + invariant detectors) against
+#   the tank_control scene WITHOUT issuing real PLC writes.
+#
+# Usage:
+#   cpsforge run attack --scene tank_control --experiment phase2_dry_run
+#
+# Safe to run any time — no hardware changes.
+# =============================================================================
+
+name: phase2_dry_run
+description: >
+  Phase 2 dry-run validation: scripted + random attacks, threshold + invariant
+  detectors, no live PLC writes. Use this config to verify the full pipeline
+  before enabling live hardware.
+
+# Scene
+scene_config: "scenes/tank_control.yaml"
+plc_config:   "system/plc.yaml"
+
+# Attackers
+# Both scripted (deterministic) and random (seeded) attackers run in sequence.
+attackers:
+  - scripted_tank_control
+  - random_tank_control
+
+# Defenders
+defenders:
+  - threshold_tank_control
+  - invariant_tank_control
+
+# -----------------------------------------------------------------------
+# SAFETY FLAGS  (defaults are always safe; do not change for dry-run)
+# -----------------------------------------------------------------------
+live_writes_enabled: false  # No PLC writes — dry-run only
+dry_run: true
+eval_run: false             # Set true only on confirmed live hardware runs
+reset_after_run: false      # No PLC to reset in dry-run
+
+# -----------------------------------------------------------------------
+# Run Control
+# -----------------------------------------------------------------------
+# 300 polling steps at 500 ms/step ≈ 2.5 minutes
+max_steps: 300
+run_duration_s: 200.0       # Hard wall-clock cap
+adaptation_round: 0
+
+# -----------------------------------------------------------------------
+# Output Artifacts
+# -----------------------------------------------------------------------
+save_trace: true            # Writes trace.parquet
+save_metrics: true          # Writes metrics.json

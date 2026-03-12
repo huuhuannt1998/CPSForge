@@ -1,0 +1,53 @@
+\section{Threat Model and Assumptions}
+\label{sec:threat}
+
+This section defines the threat model, the role of the LLM attacker, the defender assumptions, and the safety boundaries enforced by CPSForge.
+
+\subsection{Adversary Goals}
+
+The adversary aims to manipulate the cyber-physical process in a way that causes measurable impact while remaining process-valid and, when possible, difficult to detect. Depending on the scene, impact may include unsafe state transitions, degraded performance, incorrect sequencing, product handling failures, or violations of expected operational behavior. The adversary may also seek to delay or evade detection by maintaining plausible sensor and actuator patterns.
+
+\subsection{Adversary Capabilities}
+
+The attacker in CPSForge is not modeled as an unrestricted network intruder with arbitrary firmware-level access. Instead, the framework focuses on a bounded but meaningful attack surface appropriate for controlled experimentation. The attacker can propose structured actions within a configured set of capabilities, such as:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item sensor spoofing,
+    \item actuator overrides,
+    \item setpoint shifts,
+    \item timing delays, and
+    \item sequence perturbations.
+\end{itemize}
+
+These actions are expressed at the level of process semantics rather than raw memory addresses. The attacker is given scene context, plant state, tag metadata, and an attack objective, then proposes actions that may influence writable tags or exposed control variables. The exact attack surface is scene-specific and explicitly configured.
+
+\subsection{LLM Role}
+
+The LLM serves as an attack planner, not as a trusted controller. It receives structured context and returns a structured action proposal in a constrained schema. The LLM does not directly access PLC memory areas, bypass process interlocks, or issue unrestricted writes. All LLM outputs are treated as untrusted until validated by the shield.
+
+This distinction is essential. The paper does not assume that LLM outputs are correct or safe; rather, it evaluates how useful such outputs are when embedded in a constrained and auditable execution pipeline.
+
+\subsection{Defender Model}
+
+The defender has access to the observed plant state, controller state, alarms, and experiment telemetry collected from the PLC-process loop. Depending on the detector configuration, the defender may use static thresholds, process invariants, or learned sequence models. The defender does not assume oracle knowledge of the attacker’s true intent, though logged attacks can later be used for offline analysis and adaptation.
+
+The defender is evaluated on its ability to detect process deviations, unsafe states, suspicious sequences, or other operational anomalies caused by the attacker.
+
+\subsection{Safety Boundary and Trusted Components}
+
+CPSForge assumes that the safety shield is part of the trusted computing base for experimentation. The shield is responsible for validating every candidate action before it reaches the PLC. The shield enforces:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item writable-tag whitelists,
+    \item legal value ranges,
+    \item maximum override durations,
+    \item cooldown periods,
+    \item forbidden simultaneous actions, and
+    \item scene-specific safety invariants.
+\end{itemize}
+
+The real PLC, deployed logic, and scene configuration are also assumed to be correctly installed and maintained by the operator. Human supervision remains in scope, and the framework assumes that emergency-stop and reset procedures are available during live experiments.
+
+\subsection{Out of Scope}
+
+The present work does not model arbitrary firmware compromise, PLC root access, or unrestricted malicious code deployment. It also does not claim to represent all possible industrial attacker behaviors. Instead, the goal is to study whether LLMs can produce process-grounded attack strategies within a controlled action space and whether defenders can improve under such pressure. This bounded scope is appropriate for safe, repeatable, and auditable CPS experimentation.

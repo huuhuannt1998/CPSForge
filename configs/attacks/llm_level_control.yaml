@@ -1,0 +1,44 @@
+# CPSForge Attack Policy Config -- LLM Attacker for Level Control Scene
+# =====================================================================
+# Uses the local OpenAI-compatible provider (LM Studio) by default.
+#
+# Run a dry-run LLM attack with:
+#   cpsforge run attack --scene level_control --attacker llm_level_control
+#
+# For a live eval run (requires PLC connection and LM Studio running):
+#   cpsforge run attack \
+#     --scene level_control --attacker llm_level_control \
+#     --experiment configs/experiments/llm_eval_level_control.yaml
+
+name: llm_level_control
+attacker_type: llm
+scene_name: level_control
+
+# LLM provider settings
+llm_provider: local_openai_compatible
+llm_model: null                # null = use model from configs/llm/local.yaml
+llm_max_retries: 3
+
+multi_step: false
+max_actions: 3
+
+inter_attack_delay_ms: 3000
+
+attack_types:
+  - actuator_override
+  - setpoint_shift
+  - sensor_spoof
+  - timing_delay
+
+parameters:
+  attacker_objective: >
+    Destabilise the level control loop. The process uses fill and discharge
+    valves to maintain water level at a setpoint. Try to cause overflow
+    (level > 9.5), drain (level < 0.5), or oscillation without triggering
+    immediate alarms. Gradual setpoint shifts combined with valve overrides
+    are effective. The defender uses threshold and invariant checks.
+  prompt_notes: >
+    The attack surface includes setpoint_in, fill_valve, discharge_valve,
+    and enable. The fill and discharge valves accept REAL values in [0, 10].
+    The setpoint accepts REAL in [0, 10]. Mutual exclusion rule forbids
+    both valves fully open simultaneously.

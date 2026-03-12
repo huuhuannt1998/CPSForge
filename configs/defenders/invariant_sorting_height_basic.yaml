@@ -1,0 +1,29 @@
+# =============================================================================
+# CPSForge Defender — Invariant Detector (Sorting Height Basic)
+# =============================================================================
+name: invariant_sorting_height_basic
+detector_type: invariant
+scene_name: sorting_height_basic
+enabled: true
+
+invariant_rules:
+  - rule_id: SH-INV-001
+    description: "Transfer left and transfer right should not be active simultaneously"
+    condition: "NOT (transf_left == True AND transf_right == True)"
+    tags: [transf_left, transf_right]
+    severity: critical
+    label: "transfer_conflict"
+
+  - rule_id: SH-INV-002
+    description: "Load and unload should not be active simultaneously"
+    condition: "NOT (load_act == True AND unload_act == True)"
+    tags: [load_act, unload_act]
+    severity: high
+    label: "load_unload_conflict"
+
+  - rule_id: SH-INV-003
+    description: "Conveyor entry should not run during emergency stop"
+    condition: "NOT (emergency_stop == True AND conveyor_entry == True)"
+    tags: [emergency_stop, conveyor_entry]
+    severity: critical
+    label: "conveyor_during_estop"
