@@ -31,6 +31,7 @@ from uuid import uuid4
 import pandas as pd
 
 from cpsforge.core.models import (
+    AgentEvalMetrics,
     AttackAction,
     DetectionEvent,
     EvalMetrics,
@@ -538,3 +539,133 @@ def write_experiment_summary(
         json.dump(summary, fh, indent=2)
 
     logger.info("Experiment summary written to %s", out_dir)
+
+
+# ---------------------------------------------------------------------------
+# Agent-mode artifact writer
+# ---------------------------------------------------------------------------
+
+
+class AgentRunArtifactWriter:
+    """
+    Writes all artifacts for an agent-mode run.
+
+    Agent runs produce:
+      - trace.parquet          -- coordinator ground-truth snapshots
+      - agent_events.json      -- all AgentEvent objects
+      - agent_metrics.json     -- AgentEvalMetrics
+      - metadata.json          -- run configuration
+    """
+
+    def __init__(self, run_dir: Path) -> None:
+        self._run_dir = run_dir
+
+    def _write_json(self, filename: str, data: Any) -> Path:
+        self._run_dir.mkdir(parents=True, exist_ok=True)
+        path = self._run_dir / filename
+        with path.open("w", encoding="utf-8") as fh:
+            json.dump(data, fh, indent=2, default=str)
+        logger.debug("Agent artifact written: %s", path)
+        return path
+
+    def write_events(self, events: list) -> Path:
+        """Write agent events (list of AgentEvent-like dicts or Pydantic models)."""
+        rows = []
+        for ev in events:
+            if hasattr(ev, "model_dump"):
+                rows.append(ev.model_dump(mode="json"))
+            elif isinstance(ev, dict):
+                rows.append(ev)
+            else:
+                rows.append(str(ev))
+        return self._write_json("agent_events.json", rows)
+
+    def write_agent_metrics(self, metrics: AgentEvalMetrics) -> Path:
+        return self._write_json("agent_metrics.json", metrics.model_dump(mode="json"))
+
+    def write_metadata(self, metadata: Dict[str, Any]) -> Path:
+        return self._write_json("metadata.json", metadata)
+
+    def write_trace(self, snapshots: "List[PlantSnapshot]") -> Path:
+        """Write coordinator snapshots as trace.parquet via a TraceRecorder."""
+        recorder = TraceRecorder(self._run_dir)
+        for snap in snapshots:
+            recorder.record(snap)
+        return recorder.flush()
+
+
+def compute_agent_metrics(
+    run_id: str,
+    scene_name: str,
+    events: list,
+    total_steps: int,
+    duration_s: float,
+    eval_run: bool = False,
+    dry_run: bool = True,
+) -> AgentEvalMetrics:
+    """
+    Compute :class:`AgentEvalMetrics` from a list of agent events.
+
+    Tallies event types emitted during a live agent run.
+    """
+    from cpsforge.agents.messages import AgentEventType
+
+    counters: Dict[str, int] = {}
+    for ev in events:
+        et = ev.event_type if hasattr(ev, "event_type") else ev.get("event_type", "")
+        key = et.value if hasattr(et, "value") else str(et)
+        counters[key] = counters.get(key, 0) + 1
+
+    attacks_sub = counters.get("attack_submitted", 0)
+    attacks_app = counters.get("attack_approved", 0)
+    attacks_rej = counters.get("attack_rejected", 0)
+    attacks_exe = counters.get("attack_executed", 0)
+    det_emitted = counters.get("detection_emitted", 0)
+    corr_sub = counters.get("corrective_submitted", 0)
+    corr_app = counters.get("corrective_approved", 0)
+    corr_rej = counters.get("corrective_rejected", 0)
+    corr_exe = counters.get("corrective_executed", 0)
+
+    # Count attacker/defender errors separately
+    attacker_errors = 0
+    defender_errors = 0
+    for ev in events:
+        et = ev.event_type if hasattr(ev, "event_type") else ev.get("event_type", "")
+        key = et.value if hasattr(et, "value") else str(et)
+        if key == "agent_error":
+            agent = (ev.agent_name if hasattr(ev, "agent_name") else ev.get("agent_name", ""))
+            if "attacker" in str(agent):
+                attacker_errors += 1
+            else:
+                defender_errors += 1
+
+    # Estimate agent cycles from start/stop and submission events
+    attacker_cycles = attacks_sub + attacker_errors
+    defender_cycles = det_emitted + defender_errors
+
+    approval_rate = attacks_app / attacks_sub if attacks_sub > 0 else 0.0
+    corr_rate = corr_exe / corr_sub if corr_sub > 0 else 0.0
+
+    return AgentEvalMetrics(
+        run_id=run_id,
+        scene_name=scene_name,
+        total_steps=total_steps,
+        attacker_cycles=attacker_cycles,
+        defender_cycles=defender_cycles,
+        attacks_submitted=attacks_sub,
+        attacks_approved=attacks_app,
+        attacks_rejected=attacks_rej,
+        attacks_executed=attacks_exe,
+        attack_approval_rate=round(approval_rate, 4),
+        detections_emitted=det_emitted,
+        correctives_submitted=corr_sub,
+        correctives_approved=corr_app,
+        correctives_rejected=corr_rej,
+        correctives_executed=corr_exe,
+        corrective_success_rate=round(corr_rate, 4),
+        attacker_errors=attacker_errors,
+        defender_errors=defender_errors,
+        total_duration_s=round(duration_s, 2),
+        eval_run=eval_run,
+        dry_run=dry_run,
+    )

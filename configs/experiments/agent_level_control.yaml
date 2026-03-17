@@ -1,0 +1,21 @@
+name: agent_level_control
+description: Live attacker and defender agents running independently with coordinator-mediated shield writes.
+mode: agent
+scene_config: scenes/level_control.yaml
+plc_config: system/plc.yaml
+attackers: []
+defenders:
+  - threshold_level_control
+  - invariant_level_control
+attacker_agent: attacker_agent
+defender_agent: defender_agent
+eval_run: true
+live_writes_enabled: true
+dry_run: false
+max_steps: 200
+run_duration_s: null
+adaptation_round: 0
+output_dir: null
+save_trace: true
+save_metrics: true
+reset_after_run: false

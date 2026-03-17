@@ -3,12 +3,14 @@ CPSForge CLI -- Run Commands
 ==============================
 ``cpsforge run baseline``     -- run polling without attacks (establish baseline)
 ``cpsforge run attack``       -- run attack experiment (scripted or random)
+``cpsforge run agent``        -- run live attacker/defender independent agents
 ``cpsforge run closed-loop``  -- run full red-team/blue-team loop
 """
 
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -18,6 +20,9 @@ from rich.console import Console
 app = typer.Typer(help="Execute CPSForge experiments against the real PLC.\n\nAll commands default to --dry-run (no live PLC writes).")
 console = Console()
 logger = logging.getLogger(__name__)
+
+
+_utcnow = lambda: datetime.now(timezone.utc)  # noqa: E731
 
 
 def _resolve_experiment(
@@ -135,6 +140,76 @@ def run_attack(
     console.print(f"\n[bold green]Attack run complete. Run ID: {run_id}[/bold green]")
     if eval_run:
         console.print("[bold cyan]Eval run metrics saved.[/bold cyan]")
+
+
+@app.command("agent")
+def run_agent(
+    scene: str = typer.Option("level_control", "--scene", "-s"),
+    experiment: Optional[str] = typer.Option(None, "--experiment", "-e"),
+    dry_run: bool = typer.Option(True, "--dry-run/--no-dry-run"),
+    max_steps: int = typer.Option(200, "--max-steps"),
+    eval_run: bool = typer.Option(False, "--eval-run/--no-eval-run"),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip live-write confirmation prompt"),
+) -> None:
+    """Run live independent attacker/defender agents with coordinator mediation."""
+    from cpsforge.agents.runtime import AgentRuntime
+    from cpsforge.core.config import ConfigLoader, ExperimentConfig
+    from cpsforge.logging.logger import setup_logging
+
+    setup_logging()
+    loader = ConfigLoader()
+
+    exp_cfg_name = experiment or f"agent_{scene}"
+    try:
+        exp_cfg = loader.load_experiment(exp_cfg_name)
+    except FileNotFoundError:
+        exp_cfg = ExperimentConfig(
+            name=exp_cfg_name,
+            mode="agent",
+            scene_config=f"scenes/{scene}.yaml",
+            defenders=[f"threshold_{scene}", f"invariant_{scene}"],
+            attacker_agent="attacker_agent",
+            defender_agent="defender_agent",
+            dry_run=dry_run,
+            live_writes_enabled=not dry_run,
+            eval_run=eval_run,
+            max_steps=max_steps,
+        )
+
+    exp_cfg.mode = "agent"
+    exp_cfg.dry_run = dry_run
+    exp_cfg.live_writes_enabled = not dry_run
+    exp_cfg.eval_run = eval_run
+    exp_cfg.max_steps = max_steps
+
+    if not dry_run and not yes:
+        confirm = typer.confirm("[!] live agent mode will issue REAL PLC writes. Continue?")
+        if not confirm:
+            raise typer.Abort()
+
+    attacker_cfg_name = exp_cfg.attacker_agent or "attacker_agent"
+    defender_cfg_name = exp_cfg.defender_agent or "defender_agent"
+    attacker_cfg = loader.load_agent(attacker_cfg_name)
+    defender_cfg = loader.load_agent(defender_cfg_name)
+    attacker_cfg.scene_name = scene
+    defender_cfg.scene_name = scene
+
+    run_id = f"agent-{scene}-{_utcnow().strftime('%Y%m%d-%H%M%S')}"
+    runtime = AgentRuntime(
+        run_id=run_id,
+        loader=loader,
+        exp_config=exp_cfg,
+        attacker_cfg=attacker_cfg,
+        defender_cfg=defender_cfg,
+    )
+    result = runtime.run()
+
+    console.print(
+        f"\n[bold green]Agent run complete. Run ID: {result.run_id}[/bold green]\n"
+        f"Snapshots: {len(result.snapshots)}\n"
+        f"Events: {len(result.events)}\n"
+        f"Write requests processed: {result.processed_requests}"
+    )
 
 
 @app.command("closed-loop")

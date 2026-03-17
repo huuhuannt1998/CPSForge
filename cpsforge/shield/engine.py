@@ -147,6 +147,82 @@ class ShieldEngine:
 
         return decision
 
+    def evaluate_corrective(
+        self,
+        action: AttackAction,
+        snapshot: Optional[PlantSnapshot] = None,
+    ) -> ShieldDecision:
+        """
+        Evaluate a *corrective* write proposed by the defender agent.
+
+        Corrective actions use the same safety checks as attack actions
+        (range, duration, invariant, interlock) but skip the cooldown rule
+        to allow rapid recovery. The target must still be in the writable
+        whitelist.
+        """
+        reasons: List[str] = []
+        violated: List[str] = []
+        approved = True
+        normalised_value: Optional[float] = action.value
+
+        # --- 1. Whitelist check (same as attack) ---
+        if action.target not in self._attack_surface:
+            reasons.append(
+                f"Corrective tag '{action.target}' not in writable surface."
+            )
+            violated.append("whitelist")
+            approved = False
+
+        # --- 2. Rule engine (skip cooldown for corrective) ---
+        if approved:
+            for rule in self._rules:
+                if rule.rule_type == "cooldown":
+                    continue  # skip cooldown for corrective writes
+                ok, reason, norm = self._evaluate_rule(rule, action, snapshot)
+                if not ok:
+                    violated.append(rule.rule_id)
+                    reasons.append(f"[{rule.rule_id}] {reason}")
+                    approved = False
+                    break
+                if norm is not None:
+                    normalised_value = norm
+                if reason:
+                    reasons.append(f"[{rule.rule_id}] {reason}")
+
+        rollback: Optional[Dict[str, Any]] = None
+        if approved and snapshot is not None:
+            rollback = self._build_rollback(action, snapshot)
+
+        expiration: Optional[datetime] = None
+        if approved and action.duration_ms > 0:
+            expiration = datetime.now(timezone.utc) + timedelta(
+                milliseconds=action.duration_ms
+            )
+
+        decision = ShieldDecision(
+            action_id=action.action_id,
+            approved=approved,
+            reasons=reasons,
+            violated_rules=violated,
+            normalized_value=normalised_value,
+            expiration_time=expiration,
+            rollback_plan=rollback,
+        )
+
+        if approved:
+            self._last_write[action.target] = datetime.now(timezone.utc)
+            logger.debug(
+                "Shield APPROVED corrective: %s -> %s=%s",
+                action.attack_type.value, action.target, normalised_value,
+            )
+        else:
+            logger.info(
+                "Shield REJECTED corrective: %s -> %s. Violated: %s",
+                action.attack_type.value, action.target, violated,
+            )
+
+        return decision
+
     # ------------------------------------------------------------------
     # Rule evaluators
     # ------------------------------------------------------------------

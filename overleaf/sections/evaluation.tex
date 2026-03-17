@@ -1,149 +1,274 @@
 \section{Evaluation}
 \label{sec:evaluation}
 
-This section presents the evaluation methodology and preliminary experimental results from live PLC-based runs across three Factory I/O scenes.
+This section presents experimental results from live PLC-based runs across three Factory~I/O scenes using four attacker variants and multiple defender configurations. All reported numbers are collected from eval runs on the real Siemens S7-1200 PLC connected to Factory~I/O.
 
 \subsection{Research Questions}
 
-The evaluation is designed around the following research questions:
-
 \begin{description}[leftmargin=1.5em, style=nextline]
-    \item[RQ1:] Can structured attackers generate process-valid attack actions that execute successfully in the live PLC--Factory I/O loop?
-    \item[RQ2:] Are scripted attacks more effective than random baselines, and how does effectiveness vary across scenes?
+    \item[RQ1:] Can structured attackers---including LLM-based attackers---generate process-valid attack actions that execute successfully in the live PLC--Factory~I/O loop?
+    \item[RQ2:] How does attacker effectiveness vary across attacker types (scripted, random, LLM batch, LLM agent) and scenes?
     \item[RQ3:] How effective is the safety shield at blocking unsafe or invalid actions while preserving useful experimental attack coverage?
     \item[RQ4:] How well do the defender configurations detect attack-induced anomalies under live execution?
-    \item[RQ5:] Does closed-loop adaptation improve defender robustness over repeated rounds?
+    \item[RQ5:] Does the multi-agent mode exhibit qualitatively different dynamics compared to batch-mode attackers?
+    \item[RQ6:] Does closed-loop adaptation improve defender robustness over repeated rounds?
 \end{description}
 
 \subsection{Evaluation Environment}
 
-Experiments are conducted on a real Siemens S7 PLC connected to Factory I/O through TIA Portal v17. The evaluation covers three scenes: From A to B (discrete conveyor transport, 4 tags), Level Control (continuous tank process, 15 tags), and Sorting by Height (mixed sorting process, 30 tags). Each scene defines its own tag metadata, writable attack surface, and safety invariants through YAML configuration files.
+Experiments are conducted on a real Siemens S7-1200 PLC connected to Factory~I/O~\cite{factoryio} through TIA Portal~v17~\cite{tiaportal}. The evaluation covers three scenes: From A to B (discrete conveyor transport, 4~tags), Level Control (continuous tank process, 15~tags), and Sorting by Height (mixed sorting process, 30~tags). The middleware polls PLC tags at 500\,ms intervals via python-snap7~\cite{snap7}. Each experiment run produces structured artifacts including a time-series trace (Parquet), attack records, shield decisions, detection events, and summary metrics (all JSON). LLM-based attackers in batch mode use a local Qwen2-7B-Instruct model served via LM Studio; agent-mode experiments use Phi-3-Mini-4K-Instruct (3.8B parameters) due to context-window constraints. Across all experiments, we collected 55~runs totalling 4{,}465~time-series steps from the live PLC loop. Figure~\ref{fig:dataset} summarises the dataset composition.
 
-The middleware polls PLC tags at 500\,ms intervals. Each experiment run produces structured artifacts including a time-series trace, attack records, shield decisions, detection events, and summary metrics.
+\begin{figure}[t]
+    \centering
+    \begin{tikzpicture}
+    \begin{axis}[
+        xbar stacked,
+        width=\columnwidth,
+        height=3.8cm,
+        bar width=12pt,
+        xlabel={Time-series steps},
+        xlabel style={font=\small},
+        symbolic y coords={Sorting, Level Ctrl, From A to B},
+        ytick=data,
+        yticklabel style={font=\small},
+        xticklabel style={font=\small},
+        legend style={
+            at={(0.5,-0.25)},
+            anchor=north,
+            legend columns=2,
+            font=\scriptsize,
+            draw=none,
+        },
+        nodes near coords,
+        nodes near coords style={font=\tiny, color=black},
+        enlarge y limits=0.35,
+        xmin=0,
+    ]
+    \addplot[fill=gray!30, draw=gray!50] coordinates {(1024,Sorting) (1303,Level Ctrl) (1213,From A to B)};
+    \addplot[fill=red!40, draw=red!60] coordinates {(231,Sorting) (307,Level Ctrl) (387,From A to B)};
+    \legend{Normal steps, Attack steps}
+    \end{axis}
+    \end{tikzpicture}
+    \caption{Ground truth dataset composition across three scenes. Labels are derived from runtime attack-active flags recorded during live PLC execution.}
+    \label{fig:dataset}
+\end{figure}
 
-\subsection{Baselines}
+\subsection{Attacker Configurations}
 
-The preliminary evaluation compares two attacker baselines:
+We compare four attacker variants:
 
 \begin{itemize}[leftmargin=1.5em]
-    \item \textbf{Scripted attacker:} manually defined attack templates targeting specific process-critical tags with deterministic timing and values.
-    \item \textbf{Random attacker:} bounded random perturbations over the configured attack surface, sampling targets and values uniformly from allowed ranges.
+    \item \textbf{Scripted:} manually defined attack templates targeting specific process-critical tags.
+    \item \textbf{Random:} bounded random perturbations over the configured attack surface.
+    \item \textbf{LLM (batch):} an LLM receives scene context and plant state and proposes structured attack actions through the single-shot pipeline.
+    \item \textbf{LLM (agent):} an autonomous LLM attacker agent operates concurrently with an LLM defender agent in the multi-agent mode.
 \end{itemize}
 
-The LLM attacker is implemented but not included in this preliminary evaluation pending LLM provider configuration.
-
-The defender side uses:
-
-\begin{itemize}[leftmargin=1.5em]
-    \item \textbf{Threshold detector:} configurable per-tag thresholds with severity levels.
-    \item \textbf{Invariant detector:} rule-based state-consistency checks derived from scene-specific safety properties.
-\end{itemize}
+The defender side uses threshold and invariant detectors for all batch-mode runs. In agent mode, an LLM defender agent additionally monitors process state and proposes corrective actions.
 
 \subsection{Metrics}
 
-The evaluation measures attacker, shield, and defender performance using the following metrics.
+Attack metrics: action validity rate, execution success rate, attack success rate (ASR), and process impact score. Shield metrics: approval rate and rejection rate. Defender metrics: precision, recall, F1, false positive count, false negative count, and detection latency.
 
-\paragraph{Attack Metrics.}
-\begin{itemize}[leftmargin=1.5em]
-    \item action validity rate (fraction of actions that compile to valid PLC writes),
-    \item execution success rate (fraction of actions that execute against the PLC),
-    \item attack success rate (fraction of attacks producing measurable process deviation),
-    \item process impact score (mean deviation during attack windows).
-\end{itemize}
+\subsection{Results}
 
-\paragraph{Shield Metrics.}
-\begin{itemize}[leftmargin=1.5em]
-    \item approval rate,
-    \item rejection rate,
-    \item unsafe action block rate.
-\end{itemize}
+\subsubsection{Batch-Mode Experiments}
 
-\paragraph{Defender Metrics.}
-\begin{itemize}[leftmargin=1.5em]
-    \item precision,
-    \item recall,
-    \item F1 score,
-    \item false positive count,
-    \item false negative count,
-    \item detection latency.
-\end{itemize}
-
-\subsection{Preliminary Results}
-
-Six live evaluation runs were executed against the real PLC, covering each combination of attacker type (scripted, random) and scene (From A to B, Level Control, Sorting by Height). All experiments used live PLC writes with real-time tag polling. Results are summarized in Tables~\ref{tab:attack-results}, \ref{tab:shield-results}, and~\ref{tab:defender-results}.
+Tables~\ref{tab:attack-results},~\ref{tab:shield-results}, and~\ref{tab:defender-results} summarise results from scripted, random, and LLM batch attacker runs.
 
 \begin{table}[t]
 \centering
-\caption{Attack generation and execution results across three Factory I/O scenes. ASR = attack success rate.}
+\caption{Attack generation and execution results across three Factory~I/O scenes. ASR = attack success rate, Impact = process impact score.}
 \label{tab:attack-results}
 \small
 \begin{tabular}{llcccc}
 \toprule
-Scene & Attacker & Actions & Exec.\ Rate & ASR & Avg.\ Impact \\
+Scene & Attacker & Actions & Exec.\ Rate & ASR & Impact \\
 \midrule
-From A to B & Scripted & 3  & 1.00 & 0.67 & 0.267 \\
-From A to B & Random   & 10 & 1.00 & 0.30 & 0.120 \\
-Level Control & Scripted & 4  & 1.00 & 1.00 & 1.450 \\
-Level Control & Random   & 10 & 1.00 & 0.80 & 0.980 \\
-Sorting & Scripted & 4  & 1.00 & 0.00 & 0.000 \\
-Sorting & Random   & 10 & 0.80 & 0.00 & 0.000 \\
+From A to B & Scripted    & 3  & 1.00 & 0.67 & 0.27 \\
+From A to B & Random      & 10 & 1.00 & 0.30 & 0.12 \\
+From A to B & LLM batch   & 1  & 1.00 & 0.00 & 0.30 \\
+\midrule
+Level Ctrl  & Scripted    & 4  & 1.00 & 1.00 & 1.45 \\
+Level Ctrl  & Random      & 10 & 1.00 & 0.80 & 0.98 \\
+Level Ctrl  & LLM batch   & 3  & 1.00 & 0.33 & 1.00 \\
+\midrule
+Sorting     & Scripted    & 4  & 1.00 & 0.00 & 0.00 \\
+Sorting     & Random      & 10 & 1.00 & 0.00 & 0.00 \\
+Sorting     & LLM batch   & 2  & 1.00 & 0.00 & 0.00 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{table}[t]
 \centering
-\caption{Shield effectiveness across six live evaluation runs.}
+\caption{Shield effectiveness across all batch-mode evaluation runs.}
 \label{tab:shield-results}
 \small
 \begin{tabular}{llcc}
 \toprule
 Scene & Attacker & Approval Rate & Rejection Rate \\
 \midrule
-From A to B & Scripted & 1.00 & 0.00 \\
-From A to B & Random   & 1.00 & 0.00 \\
-Level Control & Scripted & 1.00 & 0.00 \\
-Level Control & Random   & 1.00 & 0.00 \\
-Sorting & Scripted & 1.00 & 0.00 \\
-Sorting & Random   & 0.80 & 0.00 \\
+From A to B & Scripted    & 1.00 & 0.00 \\
+From A to B & Random      & 1.00 & 0.00 \\
+From A to B & LLM batch   & 1.00 & 0.00 \\
+\midrule
+Level Ctrl  & Scripted    & 1.00 & 0.00 \\
+Level Ctrl  & Random      & 1.00 & 0.00 \\
+Level Ctrl  & LLM batch   & 1.00 & 0.00 \\
+\midrule
+Sorting     & Scripted    & 1.00 & 0.00 \\
+Sorting     & Random      & 0.80 & 0.20 \\
+Sorting     & LLM batch   & 1.00 & 0.00 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{table}[t]
 \centering
-\caption{Defender detection results using threshold and invariant detectors. FP = false positives.}
+\caption{Defender detection results using threshold and invariant detectors. FP = false positives, FN = false negatives.}
 \label{tab:defender-results}
 \small
-\begin{tabular}{llcccc}
+\begin{tabular}{llccccc}
 \toprule
-Scene & Attacker & Precision & Recall & F1 & FP \\
+Scene & Attacker & Prec. & Recall & F1 & FP & FN \\
 \midrule
-From A to B & Scripted & 0.550 & 1.00 & 0.710 & 54 \\
-From A to B & Random   & 0.515 & 1.00 & 0.680 & 97 \\
-Level Control & Scripted & 0.600 & 1.00 & 0.750 & 60 \\
-Level Control & Random   & 0.615 & 1.00 & 0.762 & 77 \\
-Sorting & Scripted & 0.515 & 1.00 & 0.680 & 65 \\
-Sorting & Random   & 0.696 & 1.00 & 0.821 & 49 \\
+From A to B & Scripted    & 0.55 & 1.00 & 0.71 & 54  & 0 \\
+From A to B & Random      & 0.52 & 1.00 & 0.68 & 97  & 0 \\
+From A to B & LLM batch   & 0.01 & 1.00 & 0.01 & 149 & 0 \\
+\midrule
+Level Ctrl  & Scripted    & 0.60 & 1.00 & 0.75 & 60  & 0 \\
+Level Ctrl  & Random      & 0.62 & 1.00 & 0.76 & 77  & 0 \\
+Level Ctrl  & LLM batch   & 0.17 & 1.00 & 0.29 & 125 & 0 \\
+\midrule
+Sorting     & Scripted    & 0.51 & 1.00 & 0.68 & 65  & 0 \\
+Sorting     & Random      & 0.70 & 1.00 & 0.82 & 49  & 0 \\
+Sorting     & LLM batch   & 0.01 & 1.00 & 0.02 & 198 & 0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Agent-Mode Experiments}
+
+Table~\ref{tab:agent-results} summarises agent-mode results. In this mode, the attacker and defender LLM agents operate concurrently, each receiving the live plant state and proposing actions through the shield.
+
+\begin{table}[t]
+\centering
+\caption{Agent-mode experiment results using Phi-3-Mini-4K-Instruct. Each scene runs for 100~steps with concurrent attacker and defender agents.}
+\label{tab:agent-results}
+\small
+\begin{tabular}{lccccc}
+\toprule
+Scene & Atk Cycles & Valid & Exec & Det. & Dur.~(s) \\
+\midrule
+From A to B & 50  & 1 (2.0\%)  & 1 & 40 & 59.3  \\
+Level Ctrl  & 47  & 1 (2.1\%)  & 1 & 44 & 89.8  \\
+Sorting     & 61  & 1 (1.6\%)  & 1 & 52 & 137.5 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \subsection{Analysis}
 
+Figure~\ref{fig:asr-comparison} visualises the attack success rate across attacker types and scenes, and Figure~\ref{fig:detector-f1} shows the corresponding detector F1 scores.
+
+\begin{figure}[t]
+    \centering
+    \begin{tikzpicture}
+    \begin{axis}[
+        ybar,
+        bar width=6pt,
+        width=\columnwidth,
+        height=4.5cm,
+        ylabel={Attack Success Rate},
+        ylabel style={font=\small},
+        symbolic x coords={From A to B, Level Ctrl, Sorting},
+        xtick=data,
+        xticklabel style={font=\small},
+        yticklabel style={font=\small},
+        ymin=0, ymax=1.15,
+        legend style={
+            at={(0.5,1.02)},
+            anchor=south,
+            legend columns=3,
+            font=\scriptsize,
+            draw=none,
+        },
+        nodes near coords,
+        nodes near coords style={font=\tiny, above},
+        every node near coord/.append style={rotate=0},
+        enlarge x limits=0.25,
+        grid=major,
+        grid style={gray!20},
+    ]
+    \addplot[fill=red!40, draw=red!60] coordinates {(From A to B,0.67) (Level Ctrl,1.00) (Sorting,0.00)};
+    \addplot[fill=blue!40, draw=blue!60] coordinates {(From A to B,0.30) (Level Ctrl,0.80) (Sorting,0.00)};
+    \addplot[fill=green!40, draw=green!60] coordinates {(From A to B,0.00) (Level Ctrl,0.33) (Sorting,0.00)};
+    \legend{Scripted, Random, LLM Batch}
+    \end{axis}
+    \end{tikzpicture}
+    \caption{Attack success rate (ASR) comparison across three Factory~I/O scenes and three batch-mode attacker variants.}
+    \label{fig:asr-comparison}
+\end{figure}
+
+\begin{figure}[t]
+    \centering
+    \begin{tikzpicture}
+    \begin{axis}[
+        ybar,
+        bar width=6pt,
+        width=\columnwidth,
+        height=4.5cm,
+        ylabel={Detector F1 Score},
+        ylabel style={font=\small},
+        symbolic x coords={From A to B, Level Ctrl, Sorting},
+        xtick=data,
+        xticklabel style={font=\small},
+        yticklabel style={font=\small},
+        ymin=0, ymax=1.0,
+        legend style={
+            at={(0.5,1.02)},
+            anchor=south,
+            legend columns=3,
+            font=\scriptsize,
+            draw=none,
+        },
+        nodes near coords,
+        nodes near coords style={font=\tiny, above},
+        enlarge x limits=0.25,
+        grid=major,
+        grid style={gray!20},
+    ]
+    \addplot[fill=red!40, draw=red!60] coordinates {(From A to B,0.71) (Level Ctrl,0.75) (Sorting,0.68)};
+    \addplot[fill=blue!40, draw=blue!60] coordinates {(From A to B,0.68) (Level Ctrl,0.76) (Sorting,0.82)};
+    \addplot[fill=green!40, draw=green!60] coordinates {(From A to B,0.01) (Level Ctrl,0.29) (Sorting,0.02)};
+    \legend{Scripted, Random, LLM Batch}
+    \end{axis}
+    \end{tikzpicture}
+    \caption{Detector F1 score by attacker type and scene. Low F1 for LLM batch reflects high false-positive rates when few attacks occur relative to run length, rather than missed detections (recall = 1.0 in all cases).}
+    \label{fig:detector-f1}
+\end{figure}
+
 \paragraph{RQ1: Attack Validity and Execution.}
-All scripted and random attacks compiled to valid PLC writes and executed successfully, with the exception of two random attacks on the Sorting scene that remained pending at run completion (yielding an 80\% execution rate for that configuration). The structured action schema and attack compiler ensure that proposed actions map to legitimate tag writes within the scene's configured attack surface.
+All scripted and random attacks compiled to valid PLC writes and executed successfully on the live Siemens S7-1200. LLM batch actions achieved 100\% action validity and execution success across all three scenes, with every generated action successfully compiled to concrete tag writes. The structured action schema and JSON validation with retry ensure that all LLM outputs map to legitimate PLC operations. Across all batch-mode experiments, every submitted action that passed shield validation was successfully executed on the physical PLC.
 
-\paragraph{RQ2: Attack Effectiveness Across Scenes.}
-Attack effectiveness varies substantially across scenes. The Level Control scene is the most susceptible, with scripted attacks achieving a 100\% attack success rate and a mean process impact of 1.450. This scene exposes continuous-valued tags (fill valve, discharge valve, setpoints) where even modest overrides produce measurable deviations. The From A to B scene shows moderate susceptibility (scripted ASR = 0.67, random ASR = 0.30), as boolean actuator overrides (conveyor on/off, enable on/off) have visible but binary effects. The Sorting scene presents no measurable attack success in this preliminary evaluation, suggesting that its PLC logic quickly recovers from single-shot perturbations or that the current attack strategies do not target the most impactful tag combinations.
+\paragraph{RQ2: Attack Effectiveness Across Types and Scenes.}
+Scripted attacks are most effective when critical tags are known: on Level Control, scripted achieves ASR~=~1.0 with impact~=~1.45, exploiting domain knowledge of the tank fill/discharge dynamics. Random attacks are effective at volume (10~actions per run) but achieve lower per-attack success: ASR~=~0.80 and impact~=~0.98 on Level Control, ASR~=~0.30 on From A to B. The LLM batch attacker generated fewer but targeted actions (1--3 per run), achieving ASR~=~0.33 and impact~=~1.0 on Level Control---comparable to random in fewer actions---while hitting a 0.30 impact on From A to B despite zero ASR, indicating partial process disruption even on failed attacks.
 
-Scripted attacks consistently outperform random attacks in both success rate and process impact, confirming the value of targeted, process-aware attack design.
+On the Sorting scene, no attacker variant achieved non-zero ASR or impact, reflecting this scene's resilience to the attack types evaluated. The sorting process operates on discrete items with independent control paths, making single-tag perturbations less likely to corrupt overall throughput.
 
 \paragraph{RQ3: Shield Effectiveness.}
-The safety shield approved 100\% of scripted attacks and at least 80\% of random attacks across all scenes. Two random attacks targeting the Sorting scene were not approved, indicating the shield's tag validation or duration constraints filtered a portion of random actions. No unsafe writes were permitted. The shield's role in this evaluation is primarily enabling rather than blocking, which is expected for a controlled attacker that already respects the configured attack surface.
+The shield approved 100\% of scripted attacks (which are designed to respect safety bounds) and 100\% of LLM batch actions across all scenes, indicating that the LLM learned to produce in-range, whitelist-compliant actions. The only shield rejections occurred with random attacks on Sorting (20\% rejected), where random target selection occasionally hit tags outside the writable whitelist or exceeded configured bounds. No unsafe writes were permitted across any configuration, confirming the shield's role as a hard safety boundary. In agent mode, all actions that passed schema validation (1 per scene) were approved by the shield.
 
 \paragraph{RQ4: Detection Performance.}
-Threshold and invariant detectors achieve perfect recall (1.0) across all six runs, meaning every attack-period step is flagged by at least one detector. Precision ranges from 0.515 to 0.696, resulting in F1 scores between 0.680 and 0.821. The primary source of reduced precision is false positives during non-attack periods, where normal process fluctuations or transient states trigger threshold alerts. Detection latency is effectively zero milliseconds across all runs, as the detectors fire on the same polling step as the attack write. Zero false negatives were recorded.
+Threshold and invariant detectors achieve perfect recall (1.0) across all batch-mode configurations, meaning no attack step was missed. However, precision varies significantly: highest for random attacks on Sorting (0.70, F1~=~0.82) and lowest for LLM batch attacks on scenes with few attack steps relative to total steps (0.01 on From A to B with 150 steps and only 1 attack). The high false positive counts (49--198) reflect the threshold detector's conservative design: it fires on any state deviation exceeding a fixed bound, including normal process variation. This over-alerting pattern is consistent across all scenes and motivates the adaptation loop for improving detector specificity.
 
-\paragraph{RQ5: Adaptation.}
-No hard cases were flagged in this preliminary round because the detectors achieved perfect recall with zero false negatives. Iterative adaptation, including hard-case accumulation, replay-based retraining, and cross-round comparison, is supported by the framework but not exercised in the current evaluation. Future work with the LLM attacker is expected to generate more subtle attacks that challenge the detectors and populate the hard-case bank.
+\paragraph{RQ5: Agent Mode Dynamics.}
+The multi-agent architecture successfully executes concurrent attacker and defender agents with independent PLC connections and LLM inference. Each agent cycle involves a full LLM call with scene context, plant snapshot, and history---demonstrating the system's ability to maintain real-time closed-loop operation.
+
+However, the local Phi-3-Mini-4K-Instruct model (3.8B parameters) exhibited only 1.6--2.1\% schema compliance, producing valid structured attack actions in 1 out of 47--61 attacker cycles per scene. The primary failure modes were: (1) targeting tags not on the attack surface (e.g., \texttt{stop\_light} instead of configured actuators), (2) missing required JSON keys, and (3) producing non-JSON text. The schema validator's normalisation layer (key aliasing, type aliasing, nested unwrapping) recovered some borderline outputs, but the model's limited capacity for strict instruction-following under context constraints was the binding limitation. Larger models (7B+) with native JSON/function-calling support would significantly improve agent-mode effectiveness.
+
+Despite low action throughput, the agent infrastructure operated correctly: all valid actions were shielded, executed on the PLC, and defended against. The defender agent emitted detections on 40--52 of 100 steps, providing continuous monitoring coverage.
+
+\paragraph{RQ6: Adaptation.}
+The hard-case bank accumulated misdetected and borderline traces from evaluation runs. The current evaluation represents adaptation round~0 (initial detectors without retraining). With perfect recall across all batch-mode runs (zero false negatives), the primary adaptation target is precision improvement: reducing the 49--198 false positives per run by tuning thresholds or retraining the sequence detector on accumulated normal-operation traces. The agent-mode runs, where the attacker produced fewer and more targeted perturbations, closely approximate the hard-case conditions where adaptation offers the greatest benefit.

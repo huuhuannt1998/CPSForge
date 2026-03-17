@@ -19,6 +19,7 @@ the default is always safe (dry-run, no live writes).
 from __future__ import annotations
 
 import os
+from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -203,6 +204,7 @@ class ExperimentConfig(BaseModel):
 
     name: str
     description: str = ""
+    mode: str = Field("batch", description="Execution mode: 'batch' or 'agent'")
     scene_config: str = Field(..., description="Relative path to scene YAML under configs/scenes/")
     plc_config: str = Field("system/plc.yaml", description="Relative path to PLC config YAML")
     attackers: List[str] = Field(
@@ -212,6 +214,14 @@ class ExperimentConfig(BaseModel):
     defenders: List[str] = Field(
         default_factory=list,
         description="List of defender config filenames under configs/defenders/",
+    )
+    attacker_agent: Optional[str] = Field(
+        None,
+        description="Agent config filename under configs/agents/ for attacker role.",
+    )
+    defender_agent: Optional[str] = Field(
+        None,
+        description="Agent config filename under configs/agents/ for defender role.",
     )
     # Safety flags
     eval_run: bool = Field(
@@ -313,6 +323,35 @@ class LLMConfig(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Agent Runtime Config
+# ---------------------------------------------------------------------------
+
+
+class AgentRole(str, Enum):
+    """Supported live-agent roles in adversarial runtime mode."""
+
+    ATTACKER = "attacker"
+    DEFENDER = "defender"
+
+
+class AgentConfig(BaseModel):
+    """Configuration for a live runtime agent process."""
+
+    name: str
+    role: AgentRole
+    scene_name: str
+    llm_provider: str = Field("local", description="LLM provider config filename (without .yaml)")
+    llm_model: Optional[str] = None
+    max_history: int = Field(100, ge=1, description="Max history items retained in memory")
+    write_timeout_s: float = Field(10.0, gt=0.0, description="Timeout waiting for coordinator write result")
+    enabled: bool = True
+    parameters: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Freeform role-specific options for prompting and runtime logic.",
+    )
+
+
+# ---------------------------------------------------------------------------
 # Config Loader
 # ---------------------------------------------------------------------------
 
@@ -370,6 +409,11 @@ class ConfigLoader:
     def load_llm(self, provider: str = "local") -> LLMConfig:
         data = self._load("llm", f"{provider}.yaml")
         return LLMConfig(**data)
+
+    def load_agent(self, name: str) -> AgentConfig:
+        """Load and validate a runtime agent config from configs/agents/."""
+        data = self._load("agents", f"{name}.yaml")
+        return AgentConfig(**data)
 
 
 # ---------------------------------------------------------------------------

@@ -1,75 +1,261 @@
 \section{System Design}
 \label{sec:design}
 
-CPSForge is organized as a closed-loop CPS security framework built around six interacting layers: physical execution, observation and logging, attack generation, safety enforcement, defense, and adaptation. Figure~\ref{fig:architecture} should illustrate the complete pipeline once the implementation figure is finalized.
+CPSForge is organised as a closed-loop CPS security framework built around six interacting layers---physical execution, observation and logging, attack generation, safety enforcement, defence, and adaptation---plus a seventh \emph{agent mode} layer that enables autonomous multi-agent operation. Figure~\ref{fig:architecture} illustrates the complete pipeline.
 
-\begin{figure}[t]
+\begin{figure*}[t]
     \centering
-    \fbox{
-        \parbox{0.95\linewidth}{
-            \vspace{0.5em}
-            \centering
-            \textbf{Placeholder for CPSForge architecture figure}
-            
-            Real PLC + Factory I/O $\rightarrow$ Telemetry/Logger $\rightarrow$ LLM Attacker $\rightarrow$ Safety Shield $\rightarrow$ Live Execution $\rightarrow$ Defender $\rightarrow$ Hard-Case Bank / Adaptation
-            \vspace{0.5em}
-        }
-    }
-    \caption{High-level CPSForge architecture.}
+    \begin{tikzpicture}[
+        >=Stealth,
+        node distance=0.6cm and 0.5cm,
+        every node/.style={font=\small},
+        layer/.style={draw, rounded corners=3pt, minimum width=2.2cm, minimum height=0.7cm, align=center, thick},
+        plcbox/.style={layer, fill=orange!15, minimum width=3cm},
+        atkbox/.style={layer, fill=red!12},
+        shieldbox/.style={layer, fill=yellow!20},
+        defbox/.style={layer, fill=blue!12},
+        adaptbox/.style={layer, fill=green!12},
+        logbox/.style={layer, fill=gray!12},
+        agentbox/.style={layer, fill=purple!12},
+        groupbox/.style={draw, dashed, rounded corners=5pt, inner sep=6pt, thick},
+        arr/.style={->, thick, >=Stealth},
+        darr/.style={<->, thick, >=Stealth},
+    ]
+
+    %% ===== Physical Execution Layer =====
+    \node[plcbox] (plc) {Siemens S7\\PLC};
+    \node[plcbox, right=0.8cm of plc] (fio) {Factory I/O\\Plant};
+    \draw[darr] (plc) -- (fio);
+
+    %% ===== Middleware / Observation =====
+    \node[logbox, below=0.8cm of $(plc)!0.5!(fio)$, minimum width=4.5cm] (mw) {Middleware Bridge\\(python-snap7, 500\,ms polling)};
+    \draw[arr] (plc) -- (mw);
+    \draw[arr] (fio) -- (mw);
+
+    %% ===== Scene Profile =====
+    \node[logbox, left=0.6cm of mw] (scene) {Scene\\Profile};
+    \draw[arr] (scene) -- (mw);
+
+    %% ===== Trace Logger =====
+    \node[logbox, below=0.6cm of mw, minimum width=4.5cm] (logger) {Trace Logger / Snapshot Recorder};
+    \draw[arr] (mw) -- (logger);
+
+    %% ===== Branch: Batch Mode (left) =====
+    \node[atkbox, below left=1.0cm and 1.0cm of logger] (scripted) {Scripted\\Attacker};
+    \node[atkbox, below=0.3cm of scripted] (random) {Random\\Attacker};
+    \node[atkbox, below=0.3cm of random] (llmbatch) {LLM\\Attacker};
+
+    %% ===== Branch: Agent Mode (right) =====
+    \node[agentbox, below right=1.0cm and 1.0cm of logger] (atk_agent) {LLM Attacker\\Agent};
+    \node[agentbox, below=0.3cm of atk_agent] (def_agent) {LLM Defender\\Agent};
+    \node[agentbox, below=0.3cm of def_agent, fill=purple!8] (coord) {Coordinator};
+
+    %% ===== Safety Shield (center) =====
+    \node[shieldbox, below=3.6cm of logger, minimum width=3.5cm, minimum height=0.8cm] (shield) {\textbf{Safety Shield}\\(whitelist, range, interlock)};
+
+    %% Arrows from attackers to shield
+    \draw[arr, red!60] (scripted.south) -- ++(0,-0.2) -| (shield.north west);
+    \draw[arr, red!60] (random.south) -- ++(0,-0.15) -| ([xshift=-0.5cm]shield.north);
+    \draw[arr, red!60] (llmbatch.south) -- ++(0,-0.1) -| ([xshift=-0.2cm]shield.north);
+
+    %% Arrows from agents to shield
+    \draw[arr, purple!60] (atk_agent.south) -- ++(0,-0.1) -| ([xshift=0.2cm]shield.north);
+    \draw[arr, purple!60] (def_agent.south) -- ++(0,-0.05) -| ([xshift=0.5cm]shield.north);
+    \draw[arr, purple!60] (coord) -- (shield.north east);
+
+    %% ===== PLC Write =====
+    \node[plcbox, below=0.6cm of shield, minimum width=3.5cm] (write) {PLC Write};
+    \draw[arr] (shield) -- node[right, font=\scriptsize]{approved} (write);
+    \draw[arr] (write.north west) -- ++(-0.4,0.4) node[left, font=\scriptsize, text=red!60]{rejected};
+
+    %% Arrow back to PLC
+    \draw[arr, thick, orange!60] (write.west) -- ++(-2.0,0) |- (plc.south west);
+
+    %% ===== Defenders =====
+    \node[defbox, right=3.5cm of shield] (thresh) {Threshold\\Detector};
+    \node[defbox, below=0.3cm of thresh] (invar) {Invariant\\Detector};
+    \node[defbox, below=0.3cm of invar] (seqdet) {Sequence\\Detector};
+
+    \draw[arr, blue!50] (logger.east) -| (thresh.north);
+
+    %% ===== Adaptation =====
+    \node[adaptbox, below=0.6cm of seqdet] (hcbank) {Hard-Case\\Bank};
+    \node[adaptbox, below=0.3cm of hcbank] (adapt) {Adaptation\\Loop};
+    \draw[arr, blue!50] (seqdet) -- (hcbank);
+    \draw[arr, green!50!black] (hcbank) -- (adapt);
+    \draw[arr, green!50!black, dashed] (adapt.west) -| ([xshift=0.3cm]seqdet.south east);
+
+    %% ===== Artifacts =====
+    \node[logbox, below=0.6cm of write, minimum width=3.5cm] (artifacts) {Run Artifacts\\(Parquet, JSON)};
+    \draw[arr, gray] (logger) -| (artifacts);
+    \draw[arr, gray] (shield.south east) -- ++(0.3,0) |- (artifacts.east);
+
+    %% ===== Group boxes =====
+    \begin{scope}[on background layer]
+        \node[groupbox, fill=orange!5, fit=(plc)(fio), label={[font=\scriptsize\bfseries]above:Physical Execution Layer}] {};
+        \node[groupbox, fill=red!5, fit=(scripted)(random)(llmbatch), label={[font=\scriptsize\bfseries]above:Batch Attackers}] {};
+        \node[groupbox, fill=purple!5, fit=(atk_agent)(def_agent)(coord), label={[font=\scriptsize\bfseries]above:Agent Mode}] {};
+        \node[groupbox, fill=blue!5, fit=(thresh)(invar)(seqdet), label={[font=\scriptsize\bfseries]above:Defender Stack}] {};
+        \node[groupbox, fill=green!5, fit=(hcbank)(adapt), label={[font=\scriptsize\bfseries]above:Adaptation}] {};
+    \end{scope}
+
+    \end{tikzpicture}
+    \caption{CPSForge system architecture. The physical PLC--Factory~I/O loop (top) feeds observations to both batch-mode attackers (left) and agent-mode LLM agents (right). All proposed writes---offensive and corrective---pass through the safety shield before reaching the PLC. The defender stack monitors process state and feeds hard cases to the adaptation loop (right).}
     \label{fig:architecture}
-\end{figure}
+\end{figure*}
 
 \subsection{Physical Execution Layer}
 
-At the foundation of CPSForge is a live hardware-in-the-loop environment. A Siemens PLC executes control logic deployed from TIA Portal v17, while Factory I/O emulates the physical process. This design provides realistic controller behavior, including actual scan timing, state transitions, and control-loop interactions that are difficult to reproduce through offline logs alone.
+At the foundation of CPSForge is a live hardware-in-the-loop environment. A Siemens S7 PLC executes control logic deployed from TIA Portal~v17, while Factory~I/O emulates the physical process. This design provides realistic controller behaviour, including actual scan timing, state transitions, and control-loop interactions that are difficult to reproduce through offline logs alone.
 
-Each process scene is represented as a scene profile containing tag metadata, process descriptions, attack surface definitions, safety rules, and reset procedures. The architecture is intended to support both continuous-process scenes and discrete event-driven scenes.
+Each process scene is represented as a scene profile containing tag metadata, process descriptions, attack surface definitions, safety rules, and reset procedures. The architecture supports both continuous-process scenes (e.g., tank level control) and discrete event-driven scenes (e.g., conveyor sorting).
 
 \subsection{Observation and Logging Layer}
 
 A middleware bridge continuously reads the PLC state and records structured plant snapshots. A snapshot includes sensor values, actuator states, controller mode bits, alarms, setpoints, timestamps, and experiment context. Logging is designed to be replay-ready and audit-friendly.
 
-This layer serves several purposes. First, it provides current context for the attacker and defender. Second, it enables post hoc analysis of attack success, physical impact, and detection behavior. Third, it supports replay-based evaluation and adaptation.
+This layer serves several purposes. First, it provides current context for the attacker and defender. Second, it enables post~hoc analysis of attack success, physical impact, and detection behaviour. Third, it supports replay-based evaluation and adaptation.
 
 \subsection{Attack Layer}
 
-The attack layer supports multiple attacker types, including scripted baselines, bounded random perturbation, and an LLM-based attacker. The most important design decision is that attack actions are expressed in a structured semantic schema rather than as raw PLC memory writes.
+The attack layer supports multiple attacker types: scripted baselines, bounded random perturbation, and an LLM-based attacker. The key design decision is that attack actions are expressed in a structured semantic schema rather than as raw PLC memory writes.
 
 Example attack categories include sensor spoofing, actuator overrides, setpoint shifts, timing delays, and sequence perturbations. An LLM attacker receives scene context, current plant state, allowed capabilities, and attacker objectives, then returns one or more structured actions. These actions are interpreted as candidate plans, not automatically executed commands.
-
-This structured design improves reproducibility, simplifies validation, and makes the action space easier to reason about experimentally.
 
 \subsection{Safety Shield}
 
 The safety shield is the central enforcement mechanism in CPSForge. Every attack action, regardless of source, must pass through the shield before being translated into live writes. The shield evaluates whether the target is writable, whether the value is within configured limits, whether the duration is acceptable, and whether the proposed action conflicts with interlocks or scene-specific invariants.
 
-The shield can approve, reject, or normalize an action. It also records the reasoning behind each decision and can generate rollback plans or expiration timers. This layer allows the framework to study attack behavior while preserving operator-defined safety boundaries.
+The shield can approve, reject, or normalise an action. It also records the reasoning behind each decision and can generate rollback plans or expiration timers. This layer allows the framework to study attack behaviour while preserving operator-defined safety boundaries. In agent mode, the shield additionally evaluates \emph{corrective} writes proposed by the defender agent, applying the same safety constraints to defensive actions.
 
 \subsection{Defender Layer}
 
-The defender layer monitors the plant state during execution and emits alerts when anomalous or unsafe behavior is detected. CPSForge is designed to support multiple detector families:
+The defender layer monitors the plant state during execution and emits alerts when anomalous or unsafe behaviour is detected. CPSForge supports multiple detector families:
 
 \begin{itemize}[leftmargin=1.5em]
     \item threshold-based detectors for simple baselines,
-    \item invariant-based detectors for rule-driven monitoring, and
-    \item learned sequence-based detectors for time-series anomaly detection.
+    \item invariant-based detectors for rule-driven monitoring,
+    \item learned sequence-based detectors for time-series anomaly detection, and
+    \item an LLM defender agent (agent mode) that reasons over process telemetry and proposes corrective interventions.
 \end{itemize}
-
-This layered defense design is useful for evaluation because it allows the framework to compare simple and advanced detectors under the same attacker and process conditions.
 
 \subsection{Adaptation Layer}
 
-The adaptation layer turns detector failures into learning opportunities. When an attack succeeds without timely detection, or when the defender behaves weakly or inconsistently, the corresponding trace is stored as a hard case. Hard cases can then be replayed, analyzed, and incorporated into detector refinement.
+The adaptation layer turns detector failures into learning opportunities. When an attack succeeds without timely detection, or when the defender behaves weakly or inconsistently, the corresponding trace is stored as a hard case. Hard cases can then be replayed, analysed, and incorporated into detector refinement. Figure~\ref{fig:adaptation-loop} illustrates this cycle.
 
-This mechanism is what makes CPSForge closed-loop rather than static. Instead of evaluating a detector on a fixed attack set, the framework measures how defender performance changes over rounds as new, difficult cases accumulate. This enables stronger claims about robustness and resilience under evolving attack pressure.
+This mechanism is what makes CPSForge closed-loop rather than static. Instead of evaluating a detector on a fixed attack set, the framework measures how defender performance changes over rounds as new, difficult cases accumulate.
+
+\begin{figure}[t]
+    \centering
+    \begin{tikzpicture}[
+        >=Stealth,
+        node distance=0.5cm,
+        every node/.style={font=\scriptsize},
+        step/.style={draw, rounded corners=3pt, minimum width=2.0cm, minimum height=0.55cm, align=center, thick},
+        arr/.style={->, very thick, >=Stealth},
+    ]
+    %% Cycle nodes arranged in a circle
+    \node[step, fill=red!10] (eval) {Evaluation\\Run};
+    \node[step, fill=blue!10, right=1.2cm of eval] (detect) {Defender\\Detection};
+    \node[step, fill=orange!10, below=0.8cm of detect] (hard) {Hard-Case\\Extraction};
+    \node[step, fill=green!10, below=0.8cm of eval] (retrain) {Detector\\Retraining};
+
+    \draw[arr, red!60] (eval) -- (detect);
+    \draw[arr, blue!60] (detect) -- node[right, font=\tiny, align=left]{missed attacks /\\late detections} (hard);
+    \draw[arr, orange!60] (hard) -- (retrain);
+    \draw[arr, green!60] (retrain) -- node[left, font=\tiny, align=right]{updated\\model} (eval);
+
+    %% Round label
+    \node[font=\tiny\itshape, gray] at ($(eval)!0.5!(hard) + (0.15,0)$) {Round $n$};
+
+    \end{tikzpicture}
+    \caption{Closed-loop adaptation cycle. Missed or weakly detected attacks accumulate as hard cases, which are used to retrain the defender before the next evaluation round.}
+    \label{fig:adaptation-loop}
+\end{figure}
+
+\subsection{Agent Mode Architecture}
+\label{sec:design:agent}
+
+In addition to the batch orchestration pipeline, CPSForge provides a \emph{live agent mode} that models adversarial CPS interaction as a concurrent multi-agent system. Agent mode is motivated by the observation that real attackers and defenders operate simultaneously and asynchronously, rather than taking turns in a synchronised pipeline. Figure~\ref{fig:agent-mode} illustrates the agent-mode interaction flow.
+
+\paragraph{Process Isolation.}
+Each agent---attacker and defender---runs as an independent operating-system process, communicating through typed message queues. This design provides temporal independence (agents observe and act at their own cadence), fault isolation (a hung or crashed agent does not block the other), and reproducibility (message logs capture the complete interaction trace).
+
+\paragraph{Coordinator.}
+A central coordinator process owns the PLC connection, polls plant state at the configured interval, and broadcasts snapshots to both agents via an event bus. When an agent submits a proposed action (an attack or a corrective write), the coordinator validates it through the safety shield before dispatching the write to the PLC. The coordinator is the \emph{only} component with write access to the PLC, enforcing the invariant that no agent can bypass safety mediation.
+
+\paragraph{LLM Attacker Agent.}
+The attacker agent receives plant snapshots and scene context, invokes an LLM to reason about process vulnerabilities and prior action outcomes, and proposes structured attack actions. It maintains a local history of prior actions and their observed effects, enabling multi-step attack campaigns with feedback.
+
+\paragraph{LLM Defender Agent.}
+The defender agent receives the same plant snapshots, invokes an LLM to analyse process behaviour and identify anomalies, and can propose \emph{corrective actions}---such as resetting a manipulated setpoint or disabling an overridden actuator---that are also validated by the shield before execution. This creates a genuine adversarial dynamic: the attacker tries to perturb the process while the defender tries to restore it.
+
+\paragraph{Safety Guarantees.}
+All writes---both offensive and corrective---pass through the same shield engine. The coordinator enforces cooldown windows, mutual-exclusion rules, and duration caps for both agents. If either agent exceeds a configurable timeout or produces an irrecoverable error, the coordinator initiates a graceful shutdown with optional rollback.
+
+\begin{figure}[t]
+    \centering
+    \begin{tikzpicture}[
+        >=Stealth,
+        node distance=0.4cm,
+        every node/.style={font=\scriptsize},
+        proc/.style={draw, rounded corners=2pt, minimum width=1.5cm, minimum height=0.5cm, align=center, thick},
+        arr/.style={->, thick, >=Stealth},
+    ]
+
+    %% Participants
+    \node[proc, fill=orange!15] (plc) {PLC};
+    \node[proc, fill=purple!10, right=1.0cm of plc] (coord) {Coordinator};
+    \node[proc, fill=red!10, right=0.7cm of coord] (atk) {Attacker\\Agent};
+    \node[proc, fill=blue!10, right=0.7cm of atk] (def) {Defender\\Agent};
+
+    %% Timeline
+    \foreach \n in {plc, coord, atk, def} {
+        \draw[thick, gray!50] (\n.south) -- ++(0,-5.5);
+    }
+
+    %% Step 1: Coordinator polls PLC
+    \draw[arr] ([yshift=-0.6cm]coord.south) -- node[above, font=\tiny]{poll} ([yshift=-0.6cm]plc.south);
+    \draw[arr, dashed] ([yshift=-0.9cm]plc.south) -- node[above, font=\tiny]{snapshot} ([yshift=-0.9cm]coord.south);
+
+    %% Step 2: Broadcast to agents
+    \draw[arr, purple!60] ([yshift=-1.3cm]coord.south) -- node[above, font=\tiny]{snapshot} ([yshift=-1.3cm]atk.south);
+    \draw[arr, purple!60] ([yshift=-1.5cm]coord.south) -- node[below, font=\tiny]{snapshot} ([yshift=-1.5cm]def.south);
+
+    %% Step 3: Attacker proposes attack
+    \node[right=0.05cm, font=\tiny\itshape, text=red!60] at ([yshift=-2.0cm]atk.south) {LLM};
+    \draw[arr, red!60] ([yshift=-2.4cm]atk.south) -- node[above, font=\tiny]{attack action} ([yshift=-2.4cm]coord.south);
+
+    %% Step 4: Shield check
+    \node[draw, fill=yellow!20, rounded corners=1pt, font=\tiny, inner sep=2pt] (sh) at ([yshift=-2.9cm, xshift=0cm]coord.south) {Shield};
+
+    %% Step 5: Write to PLC
+    \draw[arr, orange!60] ([yshift=-3.3cm]coord.south) -- node[above, font=\tiny]{write} ([yshift=-3.3cm]plc.south);
+
+    %% Step 6: Defender detects
+    \node[right=0.05cm, font=\tiny\itshape, text=blue!60] at ([yshift=-3.8cm]def.south) {LLM};
+    \draw[arr, blue!60] ([yshift=-4.2cm]def.south) -- node[above, font=\tiny]{detection / corrective} ([yshift=-4.2cm]coord.south);
+
+    %% Step 7: Shield + write corrective
+    \node[draw, fill=yellow!20, rounded corners=1pt, font=\tiny, inner sep=2pt] at ([yshift=-4.6cm]coord.south) {Shield};
+    \draw[arr, orange!60] ([yshift=-5.0cm]coord.south) -- node[above, font=\tiny]{corrective write} ([yshift=-5.0cm]plc.south);
+
+    %% Time arrow
+    \draw[arr, gray, thick] (-1.0, -0.3) -- (-1.0, -5.8) node[midway, left, font=\tiny, rotate=90]{time};
+
+    \end{tikzpicture}
+    \caption{Agent-mode interaction sequence. The coordinator mediates between the PLC, attacker agent, and defender agent. Both offensive and corrective writes pass through the safety shield.}
+    \label{fig:agent-mode}
+\end{figure}
 
 \subsection{Design Principles}
 
-The system design follows four principles:
+The system design follows five principles:
 
 \begin{itemize}[leftmargin=1.5em]
-    \item \textbf{No unrestricted direct actuation from the LLM.}
+    \item \textbf{No unrestricted direct actuation from any LLM.} All writes are mediated by the safety shield.
     \item \textbf{All experiments are bounded by explicit safety rules.}
     \item \textbf{Every run produces replayable and auditable artifacts.}
-    \item \textbf{The framework emphasizes iterative attacker-defender interaction rather than one-shot evaluation.}
+    \item \textbf{The framework emphasises iterative attacker-defender interaction rather than one-shot evaluation.}
+    \item \textbf{Agents are process-isolated and coordinator-mediated}, preventing any single component from monopolising PLC access.
 \end{itemize}

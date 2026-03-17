@@ -440,3 +440,48 @@ class SceneProfile(BaseModel):
         """Return only TagDefinitions whose names are in the writable_tags list."""
         ws = set(self.writable_tags)
         return [t for t in self.tags if t.name in ws]
+
+
+# ---------------------------------------------------------------------------
+# Agent Eval Metrics
+# ---------------------------------------------------------------------------
+
+
+class AgentEvalMetrics(BaseModel):
+    """
+    Evaluation metrics for an agent-mode experiment run.
+
+    Extends the standard EvalMetrics with agent-specific telemetry:
+    attacker/defender cycle counts, LLM call latencies, corrective
+    action statistics, and adversarial adaptation scores.
+    """
+
+    run_id: str
+    scene_name: str
+    mode: str = Field("agent", description="Always 'agent' for agent-mode runs")
+    # Agent cycle counts
+    total_steps: int = Field(0, ge=0, description="Coordinator polling steps")
+    attacker_cycles: int = Field(0, ge=0, description="Attacker observe-reason-act cycles completed")
+    defender_cycles: int = Field(0, ge=0, description="Defender observe-reason-act cycles completed")
+    # Attack pipeline
+    attacks_submitted: int = Field(0, ge=0)
+    attacks_approved: int = Field(0, ge=0)
+    attacks_rejected: int = Field(0, ge=0)
+    attacks_executed: int = Field(0, ge=0)
+    attack_approval_rate: float = Field(0.0, ge=0.0, le=1.0)
+    # Defender pipeline
+    detections_emitted: int = Field(0, ge=0)
+    correctives_submitted: int = Field(0, ge=0)
+    correctives_approved: int = Field(0, ge=0)
+    correctives_rejected: int = Field(0, ge=0)
+    correctives_executed: int = Field(0, ge=0)
+    corrective_success_rate: float = Field(0.0, ge=0.0, le=1.0)
+    # Error counts
+    attacker_errors: int = Field(0, ge=0)
+    defender_errors: int = Field(0, ge=0)
+    # Timing
+    total_duration_s: float = Field(0.0, ge=0.0)
+    # Flags
+    eval_run: bool = False
+    dry_run: bool = True
+    created_at: datetime = Field(default_factory=_utcnow)

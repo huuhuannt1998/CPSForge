@@ -1,0 +1,12 @@
+name: defender_agent_default
+role: defender
+scene_name: level_control
+llm_provider: local
+llm_model: phi-3-mini-4k-instruct
+max_history: 100
+write_timeout_s: 10.0
+enabled: true
+parameters:
+  explain_detections: true
+  corrective_writes_enabled: true
+  prefer_safe_recovery: true

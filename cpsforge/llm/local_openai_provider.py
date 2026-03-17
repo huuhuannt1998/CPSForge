@@ -87,13 +87,30 @@ class LocalOpenAICompatibleProvider(BaseLLMProvider):
         ProviderError
             On network errors, non-200 HTTP responses, or malformed JSON.
         """
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+        result = self._call(messages)
+
+        # If the model rejects system role, retry with system content folded into user
+        if result is None:
+            merged = f"{system_prompt}\n\n---\n\n{user_prompt}"
+            messages = [{"role": "user", "content": merged}]
+            result = self._call(messages)
+            if result is None:
+                raise ProviderError(
+                    "Local model server rejected both system-role and merged prompts."
+                )
+
+        return result
+
+    def _call(self, messages: list) -> Optional[CompletionResult]:
+        """Low-level call; returns None if the server rejects the role format."""
         endpoint = f"{self._base_url}/chat/completions"
         payload: Dict[str, Any] = {
             "model": self._config.model,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
+            "messages": messages,
             "temperature": self._config.temperature,
             "max_tokens": self._config.max_tokens,
             "stream": False,
@@ -118,9 +135,13 @@ class LocalOpenAICompatibleProvider(BaseLLMProvider):
         latency_ms = (time.monotonic() - t0) * 1000.0
 
         if resp.status_code != 200:
+            body = resp.text[:300]
+            # If server rejects the message role format, return None to allow retry
+            if resp.status_code == 400 and "role" in body.lower():
+                logger.debug("Model rejected role format: %s", body)
+                return None
             raise ProviderError(
-                f"Local model server returned HTTP {resp.status_code}: "
-                f"{resp.text[:300]}"
+                f"Local model server returned HTTP {resp.status_code}: {body}"
             )
 
         try:

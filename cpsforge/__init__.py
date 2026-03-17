@@ -14,9 +14,11 @@ from cpsforge.core.models import (
     ShieldDecision,
     DetectionEvent,
     EvalMetrics,
+    AgentEvalMetrics,
     SceneProfile,
 )
 from cpsforge.core.config import ConfigLoader, get_config_loader
+from cpsforge.core.config import AgentConfig, AgentRole
 from cpsforge.logging.logger import setup_logging
 
 __all__ = [
@@ -27,8 +29,11 @@ __all__ = [
     "ShieldDecision",
     "DetectionEvent",
     "EvalMetrics",
+    "AgentEvalMetrics",
     "SceneProfile",
     "ConfigLoader",
+    "AgentConfig",
+    "AgentRole",
     "get_config_loader",
     "setup_logging",
 ]

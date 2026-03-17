@@ -60,6 +60,78 @@ _VALID_MODES = {"override", "offset", "freeze", "replay", "noise"}
 # Hard cap on single-action duration; values exceeding this are clamped, not rejected
 _MAX_DURATION_MS = 120_000  # 2 minutes
 
+# --- Key and value normalization for smaller LLMs ---
+# Maps common alternative key names to our canonical keys
+_KEY_ALIASES: Dict[str, str] = {
+    "target_sensor": "target",
+    "target_tag": "target",
+    "sensor": "target",
+    "actuator": "target",
+    "tag": "target",
+    "tag_name": "target",
+    "new_value": "value",
+    "set_value": "value",
+    "override_value": "value",
+    "reasoning": "rationale",
+    "reason": "rationale",
+    "explanation": "rationale",
+    "expected_outcome": "expected_effect",
+    "impact": "expected_effect",
+    "duration": "duration_ms",
+    "timeout_ms": "duration_ms",
+}
+
+# Maps common alternative attack_type names to valid AttackType enum values
+_ATTACK_TYPE_ALIASES: Dict[str, str] = {
+    "alter_sensor_reading": "sensor_spoof",
+    "sensor_override": "sensor_spoof",
+    "spoof_sensor": "sensor_spoof",
+    "spoof": "sensor_spoof",
+    "override_actuator": "actuator_override",
+    "actuator_control": "actuator_override",
+    "override": "actuator_override",
+    "shift_setpoint": "setpoint_shift",
+    "modify_setpoint": "setpoint_shift",
+    "change_setpoint": "setpoint_shift",
+    "delay": "timing_delay",
+    "add_delay": "timing_delay",
+    "perturb_sequence": "sequence_perturbation",
+    "sequence_attack": "sequence_perturbation",
+}
+
+
+def _normalize_keys(item: Dict[str, Any]) -> Dict[str, Any]:
+    """Map alternative key names to canonical keys expected by the schema.
+
+    Also handles nested structures like ``{"attack_action": {"sensor": {"water_level": 95}}}``
+    which some smaller LLMs produce.
+    """
+    # Unwrap common nested wrappers
+    for wrapper_key in ("attack_action", "action", "attack"):
+        if wrapper_key in item and isinstance(item[wrapper_key], dict):
+            inner = item.pop(wrapper_key)
+            # Merge inner keys into outer (outer takes precedence)
+            for k, v in inner.items():
+                if k not in item:
+                    item[k] = v
+
+    out: Dict[str, Any] = {}
+    for k, v in item.items():
+        canonical = _KEY_ALIASES.get(k, k)
+        # Don't overwrite an existing canonical key
+        if canonical not in out:
+            out[canonical] = v
+    # Normalize attack_type value aliases
+    if "attack_type" in out:
+        raw = str(out["attack_type"]).lower().strip()
+        out["attack_type"] = _ATTACK_TYPE_ALIASES.get(raw, raw)
+
+    # Infer attack_type from context if missing but target is present
+    if "attack_type" not in out and "target" in out:
+        out["attack_type"] = "sensor_spoof"  # safe default
+
+    return out
+
 
 class ValidationError(ValueError):
     """
@@ -142,6 +214,18 @@ def _repair_trailing_commas(text: str) -> str:
     return re.sub(r",\s*([}\]])", r"\1", text)
 
 
+def _repair_truncated_values(text: str) -> str:
+    """Fix common LLM output errors: truncated numbers, garbage after values.
+
+    Examples fixed:
+    - ``"confidence":0ayer`` → ``"confidence":0``
+    - ``"confidence":0.9}extra text`` → ``"confidence":0.9}``
+    """
+    # Fix numbers followed by non-JSON chars: digits then letters before , or }
+    text = re.sub(r':\s*(\d+(?:\.\d+)?)\s*[a-zA-Z_][a-zA-Z0-9_ ]*([,}])', r': \1\2', text)
+    return text
+
+
 def _find_outermost(text: str, open_ch: str, close_ch: str) -> Optional[str]:
     """
     Find the outermost delimited substring using depth counting.
@@ -165,7 +249,7 @@ def _find_outermost(text: str, open_ch: str, close_ch: str) -> Optional[str]:
 
 def _try_loads(text: str) -> Optional[Any]:
     """
-    Try ``json.loads`` on *text*, then again after trailing-comma repair.
+    Try ``json.loads`` on *text*, then with increasing repair.
 
     Returns the parsed object on success, or None without raising.
     """
@@ -175,6 +259,10 @@ def _try_loads(text: str) -> Optional[Any]:
         pass
     try:
         return json.loads(_repair_trailing_commas(text))
+    except json.JSONDecodeError:
+        pass
+    try:
+        return json.loads(_repair_truncated_values(_repair_trailing_commas(text)))
     except json.JSONDecodeError:
         return None
 
@@ -354,6 +442,9 @@ class ActionSchemaValidator:
                 raw_text=raw_text,
                 partial_index=index,
             )
+
+        # --- Normalise common alternative keys from smaller LLMs ---
+        item = _normalize_keys(item)
 
         # Check required keys
         missing = _REQUIRED_KEYS - item.keys()

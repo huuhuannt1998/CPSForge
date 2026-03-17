@@ -138,6 +138,7 @@ class ExperimentOrchestrator:
             logger.info("Dry-run mode: PLC connection skipped.")
 
         # --- Run main loop ---
+        interrupted = False
         try:
             self._main_loop(
                 plc_client=plc_client,
@@ -151,13 +152,28 @@ class ExperimentOrchestrator:
                 from cpsforge.plc.reset import SceneResetter
                 SceneResetter().reset(plc_client, scene, shield, dry_run=False)
                 logger.info("Scene reset after run complete.")
+        except KeyboardInterrupt:
+            interrupted = True
+            logger.warning("Run interrupted by user (SIGINT). Saving partial artifacts.")
+        except Exception as exc:
+            interrupted = True
+            logger.error("Run failed with exception: %s", exc)
         finally:
             if not self._config.dry_run:
                 plc_client.disconnect()
 
-        # --- Write artifacts ---
-        self._write_artifacts(scene)
-        logger.info("Run complete: %s", self._run_id)
+        # --- Write artifacts (always, even on interrupt/error) ---
+        try:
+            self._write_artifacts(scene)
+            logger.info(
+                "Run %s: %s (steps=%d)",
+                "interrupted" if interrupted else "complete",
+                self._run_id,
+                len(self._snapshots),
+            )
+        except Exception as exc:
+            logger.error("Failed to write artifacts: %s", exc)
+
         return self._run_id
 
     # ------------------------------------------------------------------
@@ -273,8 +289,8 @@ class ExperimentOrchestrator:
                     self._attack_start_steps[action.action_id] = step
 
                     if not self._config.dry_run:
-                        self._execute_action(action, scene, plc_client, snapshot=snapshot)
-                        action.execution_status = ExecutionStatus.EXECUTED
+                        success = self._execute_action(action, scene, plc_client, snapshot=snapshot)
+                        action.execution_status = ExecutionStatus.EXECUTED if success else ExecutionStatus.REJECTED
                     else:
                         action.execution_status = ExecutionStatus.DRY_RUN
                         logger.debug(
@@ -374,14 +390,22 @@ class ExperimentOrchestrator:
                 ),
             )
 
-    def _execute_action(self, action: AttackAction, scene: Any, plc_client: Any, snapshot: Any = None) -> None:
-        """Translate an approved AttackAction into PLC writes via the action compiler."""
+    def _execute_action(self, action: AttackAction, scene: Any, plc_client: Any, snapshot: Any = None) -> bool:
+        """Translate an approved AttackAction into PLC writes via the action compiler.
+
+        Returns True on success, False if writes failed.
+        """
         from cpsforge.attacks.compiler import compile_action
-        writes = compile_action(action, scene, current_snapshot=snapshot)
-        for tag_name, value in writes.items():
-            tag = scene.get_tag(tag_name)
-            if tag:
-                plc_client.write_tag(tag, value)
+        try:
+            writes = compile_action(action, scene, current_snapshot=snapshot)
+            for tag_name, value in writes.items():
+                tag = scene.get_tag(tag_name)
+                if tag:
+                    plc_client.write_tag(tag, value)
+            return True
+        except Exception as exc:
+            logger.error("Action execution failed for %s: %s", action.action_id[:8], exc)
+            return False
 
     def _load_scene(self) -> Any:
         from cpsforge.scenes.factory import load_scene

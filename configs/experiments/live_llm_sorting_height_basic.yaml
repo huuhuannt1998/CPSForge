@@ -1,0 +1,34 @@
+# =============================================================================
+# CPSForge Live Eval — LLM Batch Attacks on Sorting by Height
+# =============================================================================
+# REAL PLC WRITES — ensure Factory I/O is in PLAY mode before running.
+#
+# Usage:
+#   cpsforge run attack --scene sorting_height_basic --attacker llm --experiment live_llm_sorting_height_basic --no-dry-run --eval-run
+# =============================================================================
+
+name: live_llm_sorting_height_basic
+description: >
+  Live eval run: LLM batch attacker vs threshold + invariant detectors on
+  the Sorting by Height scene. Real PLC writes enabled.
+
+scene_config: "scenes/sorting_height_basic.yaml"
+plc_config: "system/plc.yaml"
+
+attackers:
+  - llm_sorting_height_basic
+
+defenders:
+  - threshold_sorting_height_basic
+  - invariant_sorting_height_basic
+
+live_writes_enabled: true
+dry_run: false
+eval_run: true
+
+max_steps: 200
+run_duration_s: 200.0
+
+save_trace: true
+save_metrics: true
+reset_after_run: true

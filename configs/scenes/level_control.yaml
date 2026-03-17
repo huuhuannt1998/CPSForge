@@ -222,6 +222,9 @@ attack_surface:
   - fill_valve
   - discharge_valve
   - enable
+  - water_level
+  - flow_in
+  - flow_out
 
 # ---------------------------------------------------------------------------
 # Safety Rules

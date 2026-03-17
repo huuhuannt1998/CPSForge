@@ -114,6 +114,11 @@ class PromptBuilder:
         self._root = prompts_root or _PROMPTS_ROOT
         self._system_template: Optional[str] = None
         self._user_template: Optional[str] = None
+        # Agent-mode templates (loaded lazily)
+        self._attacker_agent_system: Optional[str] = None
+        self._attacker_agent_user: Optional[str] = None
+        self._defender_agent_system: Optional[str] = None
+        self._defender_agent_user: Optional[str] = None
         self._load_templates()
 
     # ------------------------------------------------------------------
@@ -148,6 +153,20 @@ class PromptBuilder:
                 "User prompt template not found at %s -- using built-in fallback.", usr_path
             )
             self._user_template = _FALLBACK_USER
+
+        # Agent-mode templates (optional; fall back to batch templates)
+        for attr, filename, fallback_attr in [
+            ("_attacker_agent_system", "attacker_agent_system.md", "_system_template"),
+            ("_attacker_agent_user", "attacker_agent_user.md", "_user_template"),
+            ("_defender_agent_system", "defender_agent_system.md", "_system_template"),
+            ("_defender_agent_user", "defender_agent_user.md", "_user_template"),
+        ]:
+            path = version_dir / filename
+            if path.exists():
+                setattr(self, attr, path.read_text(encoding="utf-8"))
+                logger.debug("Loaded agent template from %s", path)
+            else:
+                setattr(self, attr, getattr(self, fallback_attr))
 
     def reload(self, version: Optional[str] = None) -> None:
         """
@@ -309,15 +328,18 @@ class PromptBuilder:
         """Serialise a PlantSnapshot to a compact JSON string for the prompt."""
         if snapshot is None:
             return "{}"
-        data = {
-            "step": snapshot.step_id,
-            "sensors": snapshot.sensors,
-            "actuators": snapshot.actuators,
-            "setpoints": snapshot.setpoints,
-            "alarms": snapshot.alarms,
-            "derived": snapshot.derived_features,
-        }
-        return json.dumps(data, indent=2, default=str)
+        data: Dict[str, Any] = {"step": snapshot.step_id}
+        # Only include non-empty sections to minimise prompt token usage
+        if snapshot.sensors:
+            data["sensors"] = snapshot.sensors
+        if snapshot.actuators:
+            data["actuators"] = snapshot.actuators
+        if snapshot.setpoints:
+            data["setpoints"] = snapshot.setpoints
+        if snapshot.alarms:
+            data["alarms"] = {k: v for k, v in snapshot.alarms.items() if v}
+        # Omit derived_features to save tokens (rarely needed for LLM reasoning)
+        return json.dumps(data, separators=(",", ":"), default=str)
 
     @staticmethod
     def _prior_actions_to_str(actions: Optional[List[AttackAction]]) -> str:
@@ -380,3 +402,72 @@ class PromptBuilder:
             else []
         )
         return validation_error.correction_prompt(attack_surface=attack_surface)
+
+    # ------------------------------------------------------------------
+    # Agent-mode prompt assembly
+    # ------------------------------------------------------------------
+
+    def build_attacker_agent_system_prompt(
+        self,
+        scene: object,
+    ) -> str:
+        """Render the system prompt for the live attacker agent."""
+        profile: Optional[SceneProfile] = getattr(scene, "profile", None)
+        context = self._build_scene_context(profile, max_actions=1)
+        return self._render(self._attacker_agent_system, context)
+
+    def build_attacker_agent_user_prompt(
+        self,
+        snapshot: Optional[PlantSnapshot],
+        prior_actions: Optional[List[Dict[str, Any]]] = None,
+        attacker_objective: str = "",
+        notes: str = "",
+    ) -> str:
+        """Render the per-cycle user prompt for the live attacker agent."""
+        step_id = snapshot.step_id if snapshot else 0
+        scene_state = self._snapshot_to_str(snapshot)
+        prior_str = json.dumps(prior_actions or [], indent=2, default=str)
+
+        parts = []
+        if attacker_objective:
+            parts.append(f"Attacker objective: {attacker_objective}")
+        if notes:
+            parts.append(notes)
+
+        context: Dict[str, Any] = {
+            "step_id": step_id,
+            "scene_state": scene_state,
+            "prior_actions": prior_str,
+            "attacker_objective": attacker_objective,
+            "notes": "\n".join(parts),
+        }
+        return self._render(self._attacker_agent_user, context)
+
+    def build_defender_agent_system_prompt(
+        self,
+        scene: object,
+    ) -> str:
+        """Render the system prompt for the live defender agent."""
+        profile: Optional[SceneProfile] = getattr(scene, "profile", None)
+        context = self._build_scene_context(profile, max_actions=1)
+        return self._render(self._defender_agent_system, context)
+
+    def build_defender_agent_user_prompt(
+        self,
+        snapshot: Optional[PlantSnapshot],
+        detector_alerts: Optional[List[str]] = None,
+        prior_detections: Optional[List[Dict[str, Any]]] = None,
+        notes: str = "",
+    ) -> str:
+        """Render the per-cycle user prompt for the live defender agent."""
+        step_id = snapshot.step_id if snapshot else 0
+        scene_state = self._snapshot_to_str(snapshot)
+
+        context: Dict[str, Any] = {
+            "step_id": step_id,
+            "scene_state": scene_state,
+            "detector_alerts": json.dumps(detector_alerts or [], indent=2),
+            "prior_detections": json.dumps(prior_detections or [], indent=2, default=str),
+            "notes": notes,
+        }
+        return self._render(self._defender_agent_user, context)

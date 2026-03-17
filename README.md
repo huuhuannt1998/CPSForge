@@ -14,6 +14,7 @@ A modular, hardware-in-the-loop CPS security framework that connects to a **real
 |-------|-----------|
 | **PLC Interface** | Siemens S7 via `python-snap7`, configurable polling, DB/I/Q/M addressing |
 | **Attack Framework** | Scripted, random, and LLM-based attackers with structured action schema (LM Studio / OpenAI-compatible) |
+| **Agent Mode** | Live adversarial multi-agent runtime — autonomous LLM attacker and defender as independent processes |
 | **Safety Shield** | Mandatory validation of every write — whitelist, range, duration, interlock, rollback |
 | **Defender Stack** | Threshold, invariant, and sequence-model detectors with plug-in interface |
 | **Adaptation Loop** | Hard-case extraction → replay bank → retraining → round-over-round evaluation |
@@ -34,6 +35,9 @@ cpsforge scene validate --scene tank_control
 
 # Dry-run attack experiment (no PLC writes)
 cpsforge run attack --scene tank_control --attacker scripted --dry-run --max-steps 50
+
+# Agent mode: live adversarial LLM attacker vs. LLM defender (dry-run)
+cpsforge run agent --scene level_control --dry-run --max-steps 20
 
 # Generate paper-ready tables from an experiment
 cpsforge report export-all --experiment my_experiment
@@ -80,7 +84,8 @@ See [docs/quickstart.md](docs/quickstart.md) for the full setup guide.
 3. **Attack** — Structured actions (sensor spoof, actuator override, setpoint shift, timing delay, sequence perturbation) compiled to concrete PLC writes.
 4. **Safety Shield** — Validates every action against configurable rules (range, duration, cooldown, interlock, invariant, mode-gate). Rejects or normalizes unsafe writes.
 5. **Defender** — Threshold, invariant, and ML-based detectors score every snapshot.
-6. **Adaptation** — Missed/late detections stored as hard cases; sequence detector retrained iteratively.
+6. **Agent Mode** — Live adversarial multi-agent runtime: autonomous LLM attacker and defender as independent processes with the Coordinator mediating all writes through the shield.
+7. **Adaptation** — Missed/late detections stored as hard cases; sequence detector retrained iteratively.
 
 ---
 
@@ -114,11 +119,15 @@ CPSForge/
 │   │   ├── phase2_live_run.yaml
 │   │   ├── phase3_baseline.yaml
 │   │   ├── phase3_eval_run.yaml
-│   │   └── phase5_adaptation.yaml
+│   │   ├── phase5_adaptation.yaml
+│   │   └── agent_level_control.yaml
+│   ├── agents/                 # Agent mode configs
+│   │   ├── attacker_agent.yaml
+│   │   └── defender_agent.yaml
 │   └── llm/                    # LLM provider configs + prompt templates
 │       ├── local.yaml          # LM Studio / OpenAI-compatible endpoint
 │       └── prompts/
-│           ├── v1/
+│           ├── v1/             # Batch + agent prompt templates
 │           └── v2/
 ├── cpsforge/                   # Main Python package
 │   ├── cli/                    # Typer CLI (scene, plc, run, report, adapt)
@@ -128,13 +137,14 @@ CPSForge/
 │   ├── attacks/                # Scripted, random attackers + compiler
 │   ├── shield/                 # Safety shield engine
 │   ├── defenders/              # Threshold, invariant, sequence, LLM explainer
+│   ├── agents/                 # Live multi-agent framework
 │   ├── adaptation/             # Hard-case bank, trainer, adaptation loop
 │   ├── analysis/               # Paper-ready table generation
 │   ├── llm/                    # LLM providers, attacker, prompt builder
 │   ├── logging/                # Trace recorder, artifact writer, logger
 │   ├── api/                    # FastAPI status endpoints (stub)
 │   ├── utils/                  # Shared utilities
-│   └── tests/                  # Test suites (phase 1–6 + validation)
+│   └── tests/                  # Test suites (phase 1–7 + validation)
 ├── scripts/                    # Standalone scripts (probe_plc.py)
 ├── data/
 │   ├── raw/                    # Per-run artifacts
@@ -189,6 +199,22 @@ cpsforge run closed-loop --scene tank_control --rounds 3 --dry-run
 # Replay saved trace through detectors (no PLC needed)
 cpsforge run detect-replay --experiment my_exp --run-id <run_id>
 ```
+
+### Agent Mode (Live Multi-Agent)
+
+```bash
+# Dry-run: LLM attacker vs. LLM defender, no PLC writes
+cpsforge run agent --scene level_control --dry-run --max-steps 20
+
+# Live agent run (requires PLC + CPSFORGE_LIVE_WRITES=true)
+cpsforge run agent --scene level_control --no-dry-run --max-steps 100
+
+# With explicit experiment config
+cpsforge run agent --config configs/experiments/agent_level_control.yaml
+```
+
+See [Agent Mode Guide](docs/agent_mode.md) for architecture, configuration, and
+artifact details.
 
 ### Reporting & Analysis
 
@@ -250,6 +276,7 @@ All behavior is config-driven via YAML files under `configs/`. See:
 - [Scene Config Guide](docs/scene_config.md) — Tag definitions, safety rules, attack surface
 - [Hardware Deployment Guide](docs/hardware_deployment.md) — PLC + Factory I/O setup
 - [Safety Notes](docs/safety_notes.md) — Shield rules, dry-run mode, live-write controls
+- [Agent Mode Guide](docs/agent_mode.md) — Live multi-agent architecture, configuration, artifacts
 
 ---
 
@@ -283,7 +310,7 @@ pip install -e ".[dev]"
 python -m pytest cpsforge/tests/ -q
 ```
 
-318 tests across phases 1–6 + LLM provider and scene tests covering: schema validation, attack compilation, shield logic, detector interfaces, adaptation loop, CLI commands, LLM provider integration, scene logic, cross-model reporting, and paper-ready analysis.
+350 tests across phases 1–7 covering: schema validation, attack compilation, shield logic, detector interfaces, adaptation loop, CLI commands, LLM provider integration, scene logic, cross-model reporting, paper-ready analysis, and live multi-agent framework (IPC, event bus, coordinator mediation, agent metrics, artifact writing).
 
 ---
 

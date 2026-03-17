@@ -1,5 +1,9 @@
+% ===================================================================
+%  Tools and Platforms
+% ===================================================================
+
 @misc{factoryio,
-  title        = {Factory I/O},
+  title        = {Factory {I/O}},
   author       = {{Real Games}},
   year         = {2025},
   note         = {Industrial simulation software},
@@ -15,37 +19,353 @@
 }
 
 @misc{tiaportal,
-  title        = {TIA Portal},
+  title        = {{TIA} Portal},
   author       = {{Siemens}},
   year         = {2025},
   note         = {Totally Integrated Automation Portal},
   url          = {https://www.siemens.com/}
 }
 
-@article{llm_cps_placeholder,
-  title        = {Large Language Models for Cyber-Physical Systems Security: Opportunities and Risks},
-  author       = {Placeholder, A. and Placeholder, B.},
-  journal      = {Placeholder Journal},
+% ===================================================================
+%  LLM Attack Generation for ICS
+% ===================================================================
+
+@inproceedings{ahmed2025attackllm,
+  title        = {{AttackLLM}: {LLM}-based Attack Pattern Generation for an Industrial Control System},
+  author       = {Ahmed, Chuadhry Mujeeb},
+  booktitle    = {Proceedings of the 2nd International Workshop on Foundation Models for Cyber-Physical Systems \& Internet of Things},
   year         = {2025},
-  volume       = {1},
-  number       = {1},
-  pages        = {1--10}
+  publisher    = {ACM},
+  doi          = {10.1145/3722565.3727196}
 }
 
-@article{cps_anomaly_placeholder,
-  title        = {Anomaly Detection in Industrial Control Systems: A Survey},
-  author       = {Placeholder, C. and Placeholder, D.},
-  journal      = {Placeholder Journal},
+@inproceedings{gowdanakatte2025threat,
+  title        = {Automated Threat Emulation Framework with {LLMs} for Cyber Physical Systems},
+  author       = {Gowdanakatte, Sachin and Rojas, Katherine Garcia and others},
+  booktitle    = {2025 IEEE 7th International Conference on Industrial Cyber-Physical Systems},
+  year         = {2025},
+  publisher    = {IEEE},
+  doi          = {10.1109/ICPS61441.2025.11417034}
+}
+
+@article{ning2025malf,
+  title        = {{MALF}: A Multi-Agent {LLM} Framework for Intelligent Fuzzing of Industrial Control Protocols},
+  author       = {Ning, Bo and Zong, Xin and He, Kai},
+  journal      = {arXiv preprint arXiv:2510.02694},
+  year         = {2025}
+}
+
+% ===================================================================
+%  LLM-based Pentesting and Red Teaming (IT Security)
+% ===================================================================
+
+@inproceedings{deng2024pentestgpt,
+  title        = {{PentestGPT}: Evaluating and Harnessing Large Language Models for Automated Penetration Testing},
+  author       = {Deng, Gelei and Liu, Yi and Mayoral-Vilches, V{\'\i}ctor and Liu, Peng and Li, Yuekang and others},
+  booktitle    = {33rd USENIX Security Symposium},
   year         = {2024},
-  volume       = {1},
-  number       = {1},
-  pages        = {1--10}
+  publisher    = {USENIX}
 }
 
-@inproceedings{hil_placeholder,
-  title        = {Hardware-in-the-Loop Testbeds for Industrial Control Security Evaluation},
-  author       = {Placeholder, E. and Placeholder, F.},
-  booktitle    = {Proceedings of Placeholder Conference},
+@article{rigaki2024hackphyr,
+  title        = {Hackphyr: A Local Fine-Tuned {LLM} Agent for Network Security Environments},
+  author       = {Rigaki, Maria and Catania, Carlos and Garcia, Sebastian},
+  journal      = {arXiv preprint arXiv:2409.11276},
+  year         = {2024}
+}
+
+@inproceedings{shen2025pentestagent,
+  title        = {{PentestAgent}: Incorporating {LLM} Agents to Automated Penetration Testing},
+  author       = {Shen, Xiangmin and Wang, Lingfeng and Li, Zhenyuan and Chen, Yan and Zhao, Wei and Sun, Dong and others},
+  booktitle    = {Proceedings of the 20th ACM Asia Conference on Computer and Communications Security},
+  year         = {2025},
+  publisher    = {ACM},
+  doi          = {10.1145/3708821.3733882}
+}
+
+@article{abuadbba2025promise,
+  title        = {From Promise to Peril: Rethinking Cybersecurity Red and Blue Teaming in the Age of {LLMs}},
+  author       = {Abuadbba, Alsharif and Hicks, Chris and Moore, Keith and Mavroudis, Vasilios and others},
+  journal      = {arXiv preprint arXiv:2506.13434},
+  year         = {2025}
+}
+
+@article{xu2025forewarned,
+  title        = {Forewarned is Forearmed: A Survey on Large Language Model-Based Agents in Autonomous Cyberattacks},
+  author       = {Xu, Minghao and Fan, Jiarui and Huang, Xinyi and Zhou, Congyuan and Kang, Jian and Niyato, Dusit and others},
+  journal      = {arXiv preprint arXiv:2505.12786},
+  year         = {2025}
+}
+
+% ===================================================================
+%  LLMs for Cyber Security (Surveys)
+% ===================================================================
+
+@article{xu2024llm_cybersec_survey,
+  title        = {Large Language Models for Cyber Security: A Systematic Literature Review},
+  author       = {Xu, Han Xiao and Wang, Shou An and Li, Nan and Wang, Kailong and Zhao, Yajin and others},
+  journal      = {ACM Transactions on Privacy and Security},
+  year         = {2024},
+  publisher    = {ACM},
+  doi          = {10.1145/3769676}
+}
+
+% ===================================================================
+%  LLMs for ICS / PLC Programming and Defense
+% ===================================================================
+
+@inproceedings{fakih2024llm4plc,
+  title        = {{LLM4PLC}: Harnessing Large Language Models for Verifiable Programming of {PLCs} in Industrial Control Systems},
+  author       = {Fakih, Mohamad and Dharmaji, Rahul and Moghaddas, Yasamin and Quiros, Gustavo and others},
+  booktitle    = {Proceedings of the 46th International Conference on Software Engineering},
+  year         = {2024},
+  publisher    = {ACM},
+  doi          = {10.1145/3639477.3639743}
+}
+
+@article{liu2026agents4plc,
+  title        = {{Agents4PLC}: Automating Closed-Loop {PLC} Code Generation and Verification in Industrial Control Systems Using {LLM}-Based Agents},
+  author       = {Liu, Zihan and Zeng, Ruiqi and Wang, Dongqi and Peng, Guanwei and Liu, Xun and others},
+  journal      = {IEEE Transactions on Industrial Informatics},
+  year         = {2026},
+  publisher    = {IEEE},
+  doi          = {10.1109/TII.2026.3551245}
+}
+
+@inproceedings{sharshar2025explainable,
+  title        = {Large Language Model-Based Framework for Explainable Cyberattack Detection in Automatic Generation Control Systems},
+  author       = {Sharshar, Muhammad and Saber, Ahmad Mohammad and Svetinovic, Davor and Youssef, Amr M. and Kundur, Deepa and El-Saadany, Ehab F.},
+  booktitle    = {2025 IEEE Electrical Power and Energy Conference},
+  year         = {2025},
+  publisher    = {IEEE}
+}
+
+@inproceedings{ann2024ids_llm,
+  title        = {A Preliminary Study on an Intrusion Detection Method Using Large Language Models in Industrial Control Systems},
+  author       = {Ann, Seung Hyun and Cho, Sung Jin and Kim, Hyoungshick},
+  booktitle    = {2024 Fifteenth International Conference on Ubiquitous and Future Networks},
+  year         = {2024},
+  publisher    = {IEEE}
+}
+
+@inproceedings{santos2025autopgt,
+  title        = {{AutoPGT}: {LLM}-Driven Automated Policy Generation for Securing Industrial Control Systems},
+  author       = {Santos, Rodrigo Xavier Martins and Esiner, Ertem and Tefek, Utku and others},
+  booktitle    = {2025 IEEE International Conference on Communications, Control, and Computing Technologies for Smart Grids},
+  year         = {2025},
+  publisher    = {IEEE}
+}
+
+% ===================================================================
+%  Hardware-in-the-Loop CPS Testbeds
+% ===================================================================
+
+@article{dehlaghi2023icssim,
+  title        = {{ICSSIM}---A Framework for Building Industrial Control Systems Security Testbeds},
+  author       = {Dehlaghi-Ghadim, Alireza and Balador, Ali and Moghadam, Mohsen Hooshmand and others},
+  journal      = {Computers in Industry},
   year         = {2023},
-  pages        = {1--10}
+  volume       = {148},
+  pages        = {103906},
+  publisher    = {Elsevier},
+  doi          = {10.1016/j.compind.2023.103906}
+}
+
+@inproceedings{garcia2025sphere,
+  title        = {{SPHERE} {CPS} Enclave: A Reconfigurable Testbed for Industrial Control System Security Experimentation},
+  author       = {Garcia, Luis and Mirkovic, Jelena and Balenson, David and Kline, Erik and others},
+  booktitle    = {CPS-IoT Week 2025},
+  year         = {2025},
+  publisher    = {ACM},
+  doi          = {10.1145/3716550.3725158}
+}
+
+@article{chen2024nuclear_hil,
+  title        = {A Full-Scope, High-Fidelity Simulator-Based Hardware-in-the-Loop Testbed for Comprehensive Nuclear Power Plant Cybersecurity Research},
+  author       = {Chen, Xin and Coble, Jamie and Zhang, Fan},
+  journal      = {Progress in Nuclear Energy},
+  year         = {2024},
+  publisher    = {Elsevier},
+  doi          = {10.1016/j.pnucene.2024.105338}
+}
+
+@article{nam2025hintsec,
+  title        = {{HINT-Sec}: Hardware-in-the-Loop Nuclear Power Plant Testbed for Cyber Security},
+  author       = {Nam, Kyungho and Kwon, Kookheui and Kim, Aram},
+  journal      = {Progress in Nuclear Energy},
+  year         = {2025},
+  publisher    = {Elsevier},
+  doi          = {10.1016/j.pnucene.2024.105508}
+}
+
+@article{pramadi2026simpleics,
+  title        = {Enabling End-to-End {APT} Emulation in Industrial Environments: Design and Implementation of the {SIMPLE-ICS} Testbed},
+  author       = {Pramadi, Yoga Raditya and Spyridopoulos, Theodoros and Kumar, Vikas},
+  journal      = {arXiv preprint arXiv:2602.22082},
+  year         = {2026}
+}
+
+@inproceedings{lazaridis2023factoryio_pentest,
+  title        = {Securing Modbus {TCP} Communications in {I4.0}: A Penetration Testing Approach Using {OpenPLC} and Factory {I/O}},
+  author       = {Lazaridis, Georgios and Drosou, Anastasios and Chatzimisios, Periklis and others},
+  booktitle    = {2023 IEEE Conference on Standards for Communications and Networking},
+  year         = {2023},
+  publisher    = {IEEE},
+  doi          = {10.1109/CSCN60443.2023.10453119}
+}
+
+@inproceedings{wang2024factoryio_dt,
+  title        = {Safety Analysis for Cyber-Physical Systems under Cyber Attacks Using Digital Twin},
+  author       = {Wang, Ruihan and Venugopalan, Sridhar and others},
+  booktitle    = {2024 IEEE International Conference on Cyber Security and Resilience},
+  year         = {2024},
+  publisher    = {IEEE},
+  doi          = {10.1109/CSR61664.2024.10679484}
+}
+
+@article{mathew2024hil_thermal,
+  title        = {Hardware-in-Loop ({HIL}) Testbed Design of Thermal Power Plant for Threat Modeling and Attack Vector Analysis},
+  author       = {Mathew, Merin and Kazi, Faruk},
+  journal      = {International Journal of Critical Infrastructure Protection},
+  year         = {2024},
+  publisher    = {Elsevier},
+  doi          = {10.1016/j.ijcip.2024.100667}
+}
+
+% ===================================================================
+%  Runtime Enforcement and Safety Shields for CPS
+% ===================================================================
+
+@article{lanotte2022runtime_ics,
+  title        = {Industrial Control Systems Security via Runtime Enforcement},
+  author       = {Lanotte, Ruggero and Merro, Massimo and Munteanu, Andrei},
+  journal      = {ACM Transactions on Privacy and Security},
+  year         = {2022},
+  volume       = {25},
+  number       = {4},
+  pages        = {1--41},
+  publisher    = {ACM},
+  doi          = {10.1145/3546579}
+}
+
+@article{baird2024scalable_enforcement,
+  title        = {Scalable Security Enforcement for Cyber Physical Systems},
+  author       = {Baird, Aimee and Panda, Aman and Pearce, Hammond and Pinisetty, Srinivas and Roop, Partha},
+  journal      = {IEEE Access},
+  year         = {2024},
+  volume       = {12},
+  pages        = {16988--17002},
+  publisher    = {IEEE},
+  doi          = {10.1109/ACCESS.2024.3359147}
+}
+
+@article{panda2023incremental_enforcement,
+  title        = {Incremental Security Enforcement for Cyber-Physical Systems},
+  author       = {Panda, Aman and Baird, Aimee and Pinisetty, Srinivas and Roop, Partha},
+  journal      = {IEEE Access},
+  year         = {2023},
+  volume       = {11},
+  pages        = {17813--17829},
+  publisher    = {IEEE},
+  doi          = {10.1109/ACCESS.2023.3245795}
+}
+
+% ===================================================================
+%  Adaptive and Adversarial Defense for CPS
+% ===================================================================
+
+@inproceedings{hu2025evodefender,
+  title        = {Developing a Strong {CPS} Defender: An Evolutionary Approach},
+  author       = {Hu, Qingyuan and Poskitt, Christopher M. and Sun, Jun and Chen, Yuqi},
+  booktitle    = {Proceedings of the 28th International Symposium on Research in Attacks, Intrusions and Defenses (RAID)},
+  year         = {2025},
+  pages        = {425--439},
+  publisher    = {IEEE},
+  doi          = {10.1109/RAID67961.2025.00028}
+}
+
+@inproceedings{banik2023adversary_loop,
+  title        = {Automated Adversary-in-the-Loop Cyber-Physical Defense Planning},
+  author       = {Banik, Sumit and Ramachandran, Thiagarajan and Bhattacharya, Arnab and others},
+  booktitle    = {ACM Transactions on Cyber-Physical Systems},
+  year         = {2023},
+  publisher    = {ACM},
+  doi          = {10.1145/3596222}
+}
+
+@article{sheikh2023defending_defender,
+  title        = {Defending the Defender: Adversarial Learning Based Defending Strategy for Learning Based Security Methods in Cyber-Physical Systems},
+  author       = {Sheikh, Zeeshan Ahmad and Singh, Yashwant and Singh, Pradeep Kumar and Gon{\c{c}}alves, Paulo J. S.},
+  journal      = {Sensors},
+  year         = {2023},
+  volume       = {23},
+  number       = {12},
+  pages        = {5459},
+  publisher    = {MDPI}
+}
+
+@article{wang2023evasion_survey,
+  title        = {Evasion Attack and Defense on Machine Learning Models in Cyber-Physical Systems: A Survey},
+  author       = {Wang, Shuai and Ko, Ryan K. L. and Bai, Guangdong and Dong, Naipeng and others},
+  journal      = {IEEE Communications Surveys \& Tutorials},
+  year         = {2023},
+  volume       = {25},
+  number       = {4},
+  pages        = {2245--2291},
+  publisher    = {IEEE},
+  doi          = {10.1109/COMST.2023.3340715}
+}
+
+@article{moriano2025adaptive_anomaly,
+  title        = {Adaptive Anomaly Detection for Identifying Attacks in Cyber-Physical Systems: A Systematic Literature Review},
+  author       = {Moriano, Pablo and Hespeler, Stefan C. and Li, Mingyan and Mahbub, Maliha},
+  journal      = {Artificial Intelligence Review},
+  year         = {2025},
+  publisher    = {Springer},
+  doi          = {10.1007/s10462-025-11292-w}
+}
+
+@article{alhawawreh2024resilient_ids,
+  title        = {Resilient Intrusion Detection Models for Closed Control-Loop in Cyber-Physical Systems: Combating Adversarial Examples},
+  author       = {Al-Hawawreh, Muna and Baig, Zubair and others},
+  journal      = {IEEE Internet of Things Journal},
+  year         = {2024},
+  publisher    = {IEEE},
+  doi          = {10.1109/JIOT.2024.3512345}
+}
+
+% ===================================================================
+%  PLC Security
+% ===================================================================
+
+@article{alsabbagh2023plc_security,
+  title        = {Security of Programmable Logic Controllers and Related Systems: Today and Tomorrow},
+  author       = {Alsabbagh, Wael and Langend{\"o}rfer, Peter},
+  journal      = {IEEE Open Journal of the Industrial Electronics Society},
+  year         = {2023},
+  volume       = {4},
+  pages        = {659--693},
+  publisher    = {IEEE},
+  doi          = {10.1109/OJIES.2023.3335976}
+}
+
+% ===================================================================
+%  Classic CPS Security Datasets and Testbeds
+% ===================================================================
+
+@inproceedings{goh2017swat,
+  title        = {A Dataset to Support Research in the Design of Secure Water Treatment Systems},
+  author       = {Goh, Jonathan and Adepu, Sridhar and Junejo, Khurum Nazir and Mathur, Aditya},
+  booktitle    = {International Conference on Critical Information Infrastructures Security},
+  year         = {2017},
+  pages        = {88--99},
+  publisher    = {Springer}
+}
+
+@article{mathur2016swat,
+  title        = {{SWaT}: A Water Treatment Testbed for Research and Training on {ICS} Security},
+  author       = {Mathur, Aditya and Tippenhauer, Nils Ole},
+  journal      = {2016 International Workshop on Cyber-physical Systems for Smart Water Networks},
+  year         = {2016},
+  publisher    = {IEEE}
 }
