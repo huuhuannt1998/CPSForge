@@ -1,0 +1,13 @@
+# =============================================================================
+# CPSForge Attack Policy — Random (Sorting Station)
+# =============================================================================
+name: random_sorting_station
+attacker_type: random
+scene_name: sorting_station
+max_actions: 10
+inter_attack_delay_ms: 2000
+attack_types:
+- actuator_override
+- sequence_perturbation
+random_seed: 42
+value_noise_std: 0.1

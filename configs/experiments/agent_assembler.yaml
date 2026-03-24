@@ -1,0 +1,22 @@
+# =============================================================================
+# CPSForge Agent Mode (Assembler)
+# =============================================================================
+name: agent_assembler
+description: Live attacker and defender agents on assembler.
+mode: agent
+scene_config: scenes/assembler.yaml
+plc_config: system/plc.yaml
+attackers: []
+defenders:
+- threshold_assembler
+- invariant_assembler
+attacker_agent: attacker_agent
+defender_agent: defender_agent
+live_writes_enabled: true
+dry_run: false
+eval_run: true
+max_steps: 200
+run_duration_s: null
+save_trace: true
+save_metrics: true
+reset_after_run: true

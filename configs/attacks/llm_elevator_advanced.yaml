@@ -1,0 +1,30 @@
+# =============================================================================
+# CPSForge Attack Policy — LLM (Elevator Advanced)
+# =============================================================================
+name: llm_elevator_advanced
+attacker_type: llm
+scene_name: elevator_advanced
+llm_provider: local_openai_compatible
+llm_model: null
+llm_max_retries: 3
+multi_step: false
+max_actions: 2
+inter_attack_delay_ms: 2000
+attack_types:
+- actuator_override
+- setpoint_shift
+- sensor_spoof
+- sequence_perturbation
+- timing_delay
+parameters:
+  attacker_objective: 'Disrupt the elevator advanced process. Advanced single-elevator
+    system across 4 floors. Collects up to 5 items into a box. Items spawn randomly
+    at floors 1-3. 6-state machine: LoadBox→Scan→Moving→Collect→Return→Unload. Enable
+    flag and ItemCount are attack targets. Writable targets: up, down, load, unload,
+    enable, item_count, max_items. The enable flag is never written by PLC logic —
+    disabling it halts the process. Try to cause state machine inconsistencies or
+    stuck states. The defender uses threshold and invariant checks.'
+  prompt_notes: 'Attack surface: up, down, load, unload, enable, item_count, max_items.
+    Setpoints: max_items. Sensors (read-only): at_1, at_2, at_3, at_elevator, at_entry,
+    at_exit. Actuators: conveyor_0, conveyor_1, conveyor_2, conveyor_3, exit_conveyor,
+    load.'

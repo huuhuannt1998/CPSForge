@@ -1,0 +1,11 @@
+name: lstm_ad_level_control
+detector_type: lstm_ad
+scene_name: level_control
+enabled: true
+model_path: data/models/level_control/lstm_ad_level_control.pt
+window_size: 20
+anomaly_threshold: 0.23042339384555813
+parameters:
+  hidden_dim: 32
+  num_layers: 1
+  reconstruction_threshold: 0.23042339384555813

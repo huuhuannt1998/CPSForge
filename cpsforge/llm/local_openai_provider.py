@@ -73,9 +73,25 @@ class LocalOpenAICompatibleProvider(BaseLLMProvider):
     # Core completion
     # ------------------------------------------------------------------
 
-    def complete(self, system_prompt: str, user_prompt: str) -> CompletionResult:
+    def complete(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        response_format: Optional[Dict[str, Any]] = None,
+    ) -> CompletionResult:
         """
         Call the local model server via the OpenAI chat-completions endpoint.
+
+        Parameters
+        ----------
+        system_prompt:
+            Model-level instruction with role/constraints.
+        user_prompt:
+            Turn-level prompt with current plant state / objective.
+        response_format:
+            Optional ``response_format`` dict forwarded verbatim to the API.
+            Use ``{"type": "json_schema", "json_schema": {...}}`` to enable
+            LM Studio structured-output mode and enforce field constraints.
 
         Returns
         -------
@@ -91,13 +107,13 @@ class LocalOpenAICompatibleProvider(BaseLLMProvider):
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ]
-        result = self._call(messages)
+        result = self._call(messages, response_format=response_format)
 
         # If the model rejects system role, retry with system content folded into user
         if result is None:
             merged = f"{system_prompt}\n\n---\n\n{user_prompt}"
             messages = [{"role": "user", "content": merged}]
-            result = self._call(messages)
+            result = self._call(messages, response_format=response_format)
             if result is None:
                 raise ProviderError(
                     "Local model server rejected both system-role and merged prompts."
@@ -105,7 +121,11 @@ class LocalOpenAICompatibleProvider(BaseLLMProvider):
 
         return result
 
-    def _call(self, messages: list) -> Optional[CompletionResult]:
+    def _call(
+        self,
+        messages: list,
+        response_format: Optional[Dict[str, Any]] = None,
+    ) -> Optional[CompletionResult]:
         """Low-level call; returns None if the server rejects the role format."""
         endpoint = f"{self._base_url}/chat/completions"
         payload: Dict[str, Any] = {
@@ -115,6 +135,8 @@ class LocalOpenAICompatibleProvider(BaseLLMProvider):
             "max_tokens": self._config.max_tokens,
             "stream": False,
         }
+        if response_format is not None:
+            payload["response_format"] = response_format
 
         t0 = time.monotonic()
         try:

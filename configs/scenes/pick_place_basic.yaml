@@ -1,0 +1,189 @@
+# =============================================================================
+# CPSForge Scene Configuration — Pick & Place (Basic)
+# =============================================================================
+# Factory I/O scene: Pick & Place (Basic)
+# DB23: Instance DB for FB_PickPlaceBasic (non-optimized)
+#
+# Physical setup:
+#   - Siemens S7 PLC at 192.168.0.1, TIA Portal v17
+#   - Rotary arm with gripper picks items from one conveyor, places on another
+#   - 8-state machine: Wait→Lower→Grip→Raise→Rotate→Lower→Release→Return
+#
+# Attack surface: Gripper, ArmRotate, ArmUp/Down
+# =============================================================================
+
+scene_name: pick_place_basic
+scene_id: 14  # OB_Main CASE 14 — DB16
+
+description: >
+  Basic pick-and-place with rotary arm. Items arrive on input conveyor,
+  arm picks them up and rotates to place on output conveyor. 8-state
+  machine controls the full cycle.
+
+sampling_interval_ms: 500
+
+tags:
+  - name: item_at_pick
+    address: "DB16,BOOL0.0"
+    data_type: bool
+    access: read
+    description: "Item at pick position"
+    category: sensor
+    scene_name: pick_place_basic
+
+  - name: item_at_place
+    address: "DB16,BOOL2.0"
+    data_type: bool
+    access: read
+    description: "Item at place position"
+    category: sensor
+    scene_name: pick_place_basic
+
+  - name: gripper_closed
+    address: "DB16,BOOL4.0"
+    data_type: bool
+    access: read
+    description: "Gripper closed sensor"
+    category: sensor
+    scene_name: pick_place_basic
+
+  - name: arm_at_pick
+    address: "DB16,BOOL6.0"
+    data_type: bool
+    access: read
+    description: "Arm at pick position"
+    category: sensor
+    scene_name: pick_place_basic
+
+  - name: arm_at_place
+    address: "DB16,BOOL8.0"
+    data_type: bool
+    access: read
+    description: "Arm at place position"
+    category: sensor
+    scene_name: pick_place_basic
+
+  - name: conveyor_in
+    address: "DB16,BOOL10.0"
+    data_type: bool
+    access: read_write
+    description: "Input conveyor"
+    category: actuator
+    scene_name: pick_place_basic
+
+  - name: conveyor_out
+    address: "DB16,BOOL12.0"
+    data_type: bool
+    access: read_write
+    description: "Output conveyor"
+    category: actuator
+    scene_name: pick_place_basic
+
+  - name: gripper
+    address: "DB16,BOOL14.0"
+    data_type: bool
+    access: read_write
+    description: "Gripper actuator"
+    category: actuator
+    scene_name: pick_place_basic
+
+  - name: arm_rotate
+    address: "DB16,BOOL16.0"
+    data_type: bool
+    access: read_write
+    description: "Arm rotate command"
+    category: actuator
+    scene_name: pick_place_basic
+
+  - name: arm_up
+    address: "DB16,BOOL18.0"
+    data_type: bool
+    access: read_write
+    description: "Arm raise command"
+    category: actuator
+    scene_name: pick_place_basic
+
+  - name: arm_down
+    address: "DB16,BOOL20.0"
+    data_type: bool
+    access: read_write
+    description: "Arm lower command"
+    category: actuator
+    scene_name: pick_place_basic
+
+  - name: emitter
+    address: "DB16,BOOL22.0"
+    data_type: bool
+    access: read_write
+    description: "Item emitter"
+    category: actuator
+    scene_name: pick_place_basic
+
+  - name: state
+    address: "DB16,INT24"
+    data_type: int
+    access: read
+    min_value: 0
+    max_value: 7
+    description: "State machine (0-7)"
+    category: internal
+    scene_name: pick_place_basic
+
+writable_tags:
+  - conveyor_in
+  - conveyor_out
+  - gripper
+  - arm_rotate
+  - arm_up
+  - arm_down
+  - emitter
+
+attack_surface:
+  - gripper
+  - arm_rotate
+  - arm_up
+  - arm_down
+
+safety_rules:
+  - rule_id: PPB-SR-001
+    description: "ArmUp and ArmDown must not be active simultaneously"
+    rule_type: mutual_exclusion
+    tags: [arm_up, arm_down]
+    parameters:
+      forbidden_pairs: [[true, true]]
+    enabled: true
+    priority: 100
+
+  - rule_id: PPB-SR-002
+    description: "Gripper override capped at 30 seconds"
+    rule_type: duration
+    tags: [gripper]
+    parameters:
+      max_duration_ms: 30000
+    enabled: true
+    priority: 50
+
+  - rule_id: PPB-SR-003
+    description: "ArmRotate override capped at 20 seconds"
+    rule_type: duration
+    tags: [arm_rotate]
+    parameters:
+      max_duration_ms: 20000
+    enabled: true
+    priority: 60
+
+reset_procedure:
+  - tag: conveyor_in
+    value: false
+  - tag: conveyor_out
+    value: false
+  - tag: gripper
+    value: false
+  - tag: arm_rotate
+    value: false
+  - tag: arm_up
+    value: false
+  - tag: arm_down
+    value: false
+  - tag: emitter
+    value: false

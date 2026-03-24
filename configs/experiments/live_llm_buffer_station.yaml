@@ -1,0 +1,21 @@
+# =============================================================================
+# CPSForge Live Eval — LLM (Buffer Station)
+# =============================================================================
+name: live_llm_buffer_station
+description: 'Live eval run: LLM batch attacker vs threshold + invariant detectors
+  on buffer station.'
+scene_config: scenes/buffer_station.yaml
+plc_config: system/plc.yaml
+attackers:
+- llm_buffer_station
+defenders:
+- threshold_buffer_station
+- invariant_buffer_station
+live_writes_enabled: true
+dry_run: false
+eval_run: true
+max_steps: 150
+run_duration_s: 150.0
+save_trace: true
+save_metrics: true
+reset_after_run: true

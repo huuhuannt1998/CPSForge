@@ -313,9 +313,8 @@ def load_trace_snapshots(trace_path: Path, run_id: str) -> "List[PlantSnapshot]"
             alarms=_unpack("alarm__"),
             setpoints=_unpack("setpoint__"),
             derived_features={
-                k: float(v)
+                k: (float(v) if v is not None else 0.0)
                 for k, v in _unpack("feat__").items()
-                if v is not None
             },
             attack_context=attack_ctx,
             defense_context=defense_ctx,

@@ -87,7 +87,7 @@ def run_attack(
     scene: str = typer.Option("tank_control", "--scene", "-s"),
     attacker: str = typer.Option(
         "scripted", "--attacker", "-a",
-        help="Attacker type: scripted | random | llm"
+        help="Attacker type: scripted | random | llm | campaign"
     ),
     experiment: Optional[str] = typer.Option(None, "--experiment", "-e"),
     dry_run: bool = typer.Option(True, "--dry-run/--no-dry-run"),
@@ -99,7 +99,7 @@ def run_attack(
     """
     Run an adversarial attack experiment.
 
-    Attackers: scripted (deterministic), random, or llm.
+    Attackers: scripted (deterministic), random, llm (batch), or campaign (multi-phase LLM).
     Use --eval-run to label this as an official paper-result run.
     """
     from cpsforge.core.config import ConfigLoader, ExperimentConfig
@@ -110,8 +110,10 @@ def run_attack(
     loader = ConfigLoader()
 
     exp_cfg_name = experiment or f"{attacker}_{scene}"
+    _from_file = False
     try:
         exp_cfg = loader.load_experiment(exp_cfg_name)
+        _from_file = True
     except FileNotFoundError:
         attacker_cfg_name = f"{attacker}_{scene}"
         exp_cfg = ExperimentConfig(
@@ -125,10 +127,12 @@ def run_attack(
             max_steps=max_steps,
         )
 
-    exp_cfg.dry_run = dry_run
-    exp_cfg.eval_run = eval_run
+    # Only override config-file values when no experiment file was loaded
+    if not _from_file:
+        exp_cfg.dry_run = dry_run
+        exp_cfg.eval_run = eval_run
 
-    if not dry_run and not yes:
+    if not exp_cfg.dry_run and not yes:
         confirm = typer.confirm(
             "[!] live_writes_enabled=True. This will issue REAL PLC writes. Continue?"
         )
@@ -217,6 +221,12 @@ def run_closed_loop(
     scene: str = typer.Option("tank_control", "--scene", "-s"),
     rounds: int = typer.Option(3, "--rounds", "-r", help="Number of adaptation rounds"),
     experiment: Optional[str] = typer.Option(None, "--experiment", "-e"),
+    attacker: Optional[str] = typer.Option(
+        None, "--attacker", "-a",
+        help="Attacker type: 'scripted', 'random', 'llm', 'campaign'. "
+             "Default: scripted+random. Use 'llm' or 'campaign' to drive "
+             "harder adaptation with LLM-generated attacks."
+    ),
     dry_run: bool = typer.Option(True, "--dry-run/--no-dry-run"),
     max_steps: int = typer.Option(400, "--max-steps", help="Max steps per round"),
     min_hard_cases: int = typer.Option(
@@ -229,6 +239,7 @@ def run_closed_loop(
         help="Name of a baseline (no-attack) experiment for normal training windows"
     ),
     output_dir: Optional[Path] = typer.Option(None, "--output-dir"),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip live-write confirmation prompt"),
 ) -> None:
     """
     Run the full closed-loop red-team / blue-team experiment across multiple rounds.
@@ -262,33 +273,54 @@ def run_closed_loop(
 
     exp_name = experiment or f"closed_loop_{scene}"
 
+    # Determine attacker list based on --attacker flag
+    if attacker == "llm":
+        _attackers = [f"llm_{scene}"]
+    elif attacker == "campaign":
+        _attackers = [f"campaign_{scene}"]
+    elif attacker == "scripted":
+        _attackers = [f"scripted_{scene}"]
+    elif attacker == "random":
+        _attackers = [f"random_{scene}"]
+    else:
+        # Default: scripted + random (backward compatible)
+        _attackers = [f"scripted_{scene}", f"random_{scene}"]
+
     # Load or build experiment config
+    # Always derive scene/attackers/defenders from the --scene CLI argument so
+    # fallback configs (phase5_adaptation) don't silently use the wrong scene.
+    _seq_model_name = f"sequence_model_{scene}"
+    _seq_cfg_exists = (loader.configs_dir / "defenders" / f"{_seq_model_name}.yaml").exists()
+    _defenders = [
+        f"threshold_{scene}",
+        f"invariant_{scene}",
+    ]
+    if _seq_cfg_exists:
+        _defenders.append(_seq_model_name)
+
     try:
         base_cfg = loader.load_experiment(exp_name)
+        # If we loaded a cached config, still override scene-specific fields.
+        base_cfg.scene_config = f"scenes/{scene}.yaml"
+        base_cfg.attackers = _attackers
+        base_cfg.defenders = _defenders
     except FileNotFoundError:
-        try:
-            base_cfg = loader.load_experiment("phase5_adaptation")
-            base_cfg.name = exp_name
-        except FileNotFoundError:
-            base_cfg = ExperimentConfig(
-                name=exp_name,
-                scene_config=f"scenes/{scene}.yaml",
-                attackers=[f"scripted_{scene}", f"random_{scene}"],
-                defenders=[
-                    f"threshold_{scene}",
-                    f"invariant_{scene}",
-                    f"sequence_model_{scene}",
-                ],
-                dry_run=dry_run,
-                live_writes_enabled=not dry_run,
-                max_steps=max_steps,
-            )
+        base_cfg = ExperimentConfig(
+            name=exp_name,
+            scene_config=f"scenes/{scene}.yaml",
+            attackers=_attackers,
+            defenders=_defenders,
+            dry_run=dry_run,
+            live_writes_enabled=not dry_run,
+            max_steps=max_steps,
+        )
 
+    base_cfg.name = exp_name
     base_cfg.dry_run = dry_run
     base_cfg.live_writes_enabled = not dry_run
     base_cfg.max_steps = max_steps
 
-    if not dry_run:
+    if not dry_run and not yes:
         confirm = typer.confirm(
             "[!] dry_run=False — live PLC writes will be issued. Continue?"
         )

@@ -1,0 +1,39 @@
+# =============================================================================
+# CPSForge Defender — Invariant (Elevator Advanced)
+# =============================================================================
+name: invariant_elevator_advanced
+detector_type: invariant
+scene_name: elevator_advanced
+enabled: true
+invariant_rules:
+- rule_id: EA-INV-001
+  description: UP and DOWN must not be active simultaneously
+  condition: NOT (up == True AND down == True)
+  tags:
+  - up
+  - down
+  severity: critical
+  label: up_down_conflict
+- rule_id: EA-INV-002
+  description: Load and unload must not be active simultaneously
+  condition: NOT (load == True AND unload == True)
+  tags:
+  - load
+  - unload
+  severity: critical
+  label: load_unload_conflict
+- rule_id: EA-INV-003
+  description: Enable must be on when conveyor_0 is active
+  condition: NOT (enable == False AND conveyor_0 == True)
+  tags:
+  - enable
+  - conveyor_0
+  severity: high
+  label: enable_off_with_conveyor_0
+- rule_id: EA-INV-004
+  description: State must be within valid range [0, 5]
+  condition: NOT (state < 0 OR state > 5)
+  tags:
+  - state
+  severity: high
+  label: invalid_state_range

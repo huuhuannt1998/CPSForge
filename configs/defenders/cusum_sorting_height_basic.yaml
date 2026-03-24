@@ -1,0 +1,18 @@
+# =============================================================================
+# CPSForge Defender — CUSUM Detector (Sorting Height Basic)
+# =============================================================================
+name: cusum_sorting_height_basic
+detector_type: cusum
+scene_name: sorting_height_basic
+enabled: true
+
+parameters:
+  target_tags:
+    - counter_out
+    - item_count
+    - dwell_timer
+    - state
+  slack: 1.0
+  threshold: 8.0
+  warmup_steps: 40
+  reset_on_alarm: true

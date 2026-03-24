@@ -1,0 +1,15 @@
+# =============================================================================
+# CPSForge Defender — Isolation Forest Detector (From A to B)
+# =============================================================================
+name: iforest_from_a_to_b
+detector_type: isolation_forest
+scene_name: from_a_to_b
+enabled: true
+model_path: null
+window_size: 20
+anomaly_threshold: 0.5
+
+parameters:
+  n_estimators: 100
+  contamination: auto
+  point_wise: true

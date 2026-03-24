@@ -1,0 +1,21 @@
+# =============================================================================
+# CPSForge Live Eval — Random (Warehouse)
+# =============================================================================
+name: live_random_warehouse
+description: 'Live eval run: random attacker vs threshold + invariant detectors on
+  warehouse.'
+scene_config: scenes/warehouse.yaml
+plc_config: system/plc.yaml
+attackers:
+- random_warehouse
+defenders:
+- threshold_warehouse
+- invariant_warehouse
+live_writes_enabled: true
+dry_run: false
+eval_run: true
+max_steps: 200
+run_duration_s: 180.0
+save_trace: true
+save_metrics: true
+reset_after_run: true

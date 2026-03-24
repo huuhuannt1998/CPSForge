@@ -1,0 +1,16 @@
+# =============================================================================
+# CPSForge Defender — One-Class SVM Detector (Sorting Height Basic)
+# =============================================================================
+name: ocsvm_sorting_height_basic
+detector_type: ocsvm
+scene_name: sorting_height_basic
+enabled: true
+model_path: null
+window_size: 20
+anomaly_threshold: 0.5
+
+parameters:
+  kernel: rbf
+  nu: 0.05
+  gamma: scale
+  use_window: true

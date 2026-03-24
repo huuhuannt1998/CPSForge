@@ -1,74 +1,51 @@
 // MANTIS — Scene 1: From A to B
 // Transport a box on a conveyor until it reaches the sensor at the end.
-// DB10: Instance DB for FB_FromAtoB (non-optimized access)
+// DB3: Instance DB for FB_FromAtoB (non-optimized access)
 //
 // Factory I/O layout:
 //   - Emitter automatically creates a box (not PLC-controlled)
 //   - Conveyor moves the box from LEFT → RIGHT  (%Q0.0)
-//   - Sensor (diffuse) at the RIGHT end detects the box  (%I0.0)
-//   - Remover is automatic (not PLC-controlled)
+//   - Sensor (diffuse) at the RIGHT end detects the box  (%I10.0)
 //
-// Only 1 sensor and 1 actuator are mapped in the driver:
-//   Sensor  → %I0.0  (Factory I/O → PLC)
+// Driver config (Bool Inputs Offset=10, Bool Outputs Offset=0):
+//   Sensor  → %I10.0  (Factory I/O → PLC)
 //   Conveyor → %Q0.0  (PLC → Factory I/O)
 //
-// DB10 byte layout (non-optimized):
-//   Byte 0   : Sensor   (BOOL)   — copied from %I0.0
+// DB3 byte layout (non-optimized):
+//   Byte 0   : Sensor   (BOOL)  — copied from %I10.0
 //   Byte 1   : padding
-//   Byte 2   : Conveyor (BOOL)   — copied to  %Q0.0
+//   Byte 2   : Conveyor (BOOL)  — copied to  %Q0.0
 //   Byte 3   : padding
-//   Byte 4-5 : iState   (INT)    — state machine: 0=Transport, 1=Arrived
-//   Byte 6   : Enable   (BOOL)   — system enable flag (default TRUE)
-//   Byte 7   : padding
-//   Total = 8 bytes
+//   Byte 4   : Enable   (BOOL)  — system enable (default TRUE)
+//   Byte 5   : padding
+//   Total = 6 bytes
 //
-// Normal cycle:
-//   State 0 (Transport): Conveyor ON → box moves toward sensor
-//   State 1 (Arrived):   Conveyor OFF → box at sensor, wait for it to clear
+// Logic: Conveyor = Enable AND Sensor
+//   Sensor True  → path clear, no box → Conveyor ON
+//   Sensor False → box detected        → Conveyor OFF
+//   Factory I/O reset clears all boxes → sensor True → conveyor starts.
 //
-// Vulnerability: Enable flag is read by logic but NEVER written.
-//   An attacker who sets Enable=FALSE in DB10 will stop the conveyor
-//   permanently — the PLC logic itself disables the motor.
+// Vulnerability: Enable flag is read by logic but NEVER written by the FB.
+//   An attacker who sets Enable=FALSE in DB3 stops the conveyor permanently.
 
 FUNCTION_BLOCK "FB_FromAtoB"
 { S7_Optimized_Access := 'FALSE' }
-VERSION : 0.4
+VERSION : 0.5
 
 VAR_INPUT
 END_VAR
 
 VAR
-    // Mapped to DB10 — order determines byte offsets (non-optimized)
-    // DB10.DBX0.0 = Sensor,  DB10.DBX2.0 = Conveyor
-    // DB10.DBW4   = iState,  DB10.DBX6.0 = Enable
+    // DB3.DBX0.0 = Sensor,  DB3.DBX2.0 = Conveyor,  DB3.DBX4.0 = Enable
     Sensor    : BOOL;         // byte 0.0 — Sensor: box at end of conveyor
     _pad0     : BYTE;         // byte 1   — padding
     Conveyor  : BOOL;         // byte 2.0 — Actuator: conveyor motor
     _pad1     : BYTE;         // byte 3   — padding
-    iState    : INT := 0;     // byte 4-5 — State: 0=Transport, 1=Arrived
-    Enable    : BOOL := TRUE; // byte 6.0 — System enable (default ON)
-    _pad2     : BYTE;         // byte 7   — padding
+    Enable    : BOOL := TRUE; // byte 4.0 — System enable (default ON)
+    _pad2     : BYTE;         // byte 5   — padding
 END_VAR
 
 BEGIN
-    // ── Safety gate: if Enable is FALSE, shut everything down ──
-    IF NOT Enable THEN
-        Conveyor := FALSE;
-        RETURN;
-    END_IF;
-
-    // ── Normal state machine ──
-    CASE iState OF
-        0: // Transport — run conveyor, box moves toward sensor
-            Conveyor := TRUE;
-            IF Sensor THEN          // box reached sensor at end
-                iState := 1;
-            END_IF;
-
-        1: // Arrived — stop conveyor, wait for box removal
-            Conveyor := FALSE;
-            IF NOT Sensor THEN      // box removed automatically
-                iState := 0;
-            END_IF;
-    END_CASE;
+    // Conveyor runs whenever enabled and no box at sensor
+    Conveyor := Enable AND Sensor;
 END_FUNCTION_BLOCK

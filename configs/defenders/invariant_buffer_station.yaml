@@ -1,0 +1,23 @@
+# =============================================================================
+# CPSForge Defender — Invariant (Buffer Station)
+# =============================================================================
+name: invariant_buffer_station
+detector_type: invariant
+scene_name: buffer_station
+enabled: true
+invariant_rules:
+- rule_id: BS-INV-001
+  description: Both stoppers must not be released simultaneously during fill
+  condition: NOT (stopper1 == True AND stopper2 == True)
+  tags:
+  - stopper1
+  - stopper2
+  severity: critical
+  label: stopper1_stopper2_conflict
+- rule_id: BS-INV-002
+  description: State must be within valid range [0, 2]
+  condition: NOT (state < 0 OR state > 2)
+  tags:
+  - state
+  severity: high
+  label: invalid_state_range

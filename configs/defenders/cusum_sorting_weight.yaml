@@ -1,0 +1,18 @@
+# =============================================================================
+# CPSForge Defender — CUSUM Detector (Sorting Weight)
+# =============================================================================
+name: cusum_sorting_weight
+detector_type: cusum
+scene_name: sorting_weight
+enabled: true
+
+parameters:
+  target_tags:
+    - weight
+    - measured_weight
+    - light_thresh
+    - heavy_thresh
+  slack: 0.5
+  threshold: 5.0
+  warmup_steps: 30
+  reset_on_alarm: true

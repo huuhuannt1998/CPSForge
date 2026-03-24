@@ -16,10 +16,15 @@
 
 {notes}
 
+PERMITTED TARGETS (you MUST use one of these EXACT names — no others):
+{attack_surface}
+
+For numeric tags, the "value" field MUST be within the specified range.
+For bool tags, the "value" field MUST be 0 or 1.
+
 Generate ONE attack action as a **flat** JSON object with EXACTLY these keys:
 attack_type, target, value, duration_ms, rationale, expected_effect, confidence.
 
-Example (do NOT copy values -- adapt to the current state):
-{{"attack_type":"sensor_spoof","target":"water_level","value":95.0,"duration_ms":5000,"rationale":"...","expected_effect":"...","confidence":0.8}}
+The "target" field MUST be one of the permitted targets listed above.
 
 Respond with ONLY the JSON object. No markdown, no explanation.

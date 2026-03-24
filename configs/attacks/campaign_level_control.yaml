@@ -1,0 +1,21 @@
+# =============================================================================
+# CPSForge Attack Policy — LLM Campaign (Level Control)
+# =============================================================================
+name: campaign_level_control
+attacker_type: campaign
+scene_name: level_control
+max_actions: 12
+inter_attack_delay_ms: 3000
+attack_types:
+  - actuator_override
+  - sensor_spoof
+  - setpoint_shift
+llm_provider: local
+llm_max_retries: 3
+multi_step: true
+
+parameters:
+  campaign_objective: >
+    Cause the tank level to deviate from its setpoint by at least 20%
+    while keeping the deviation rate gradual enough to avoid threshold-based
+    detection. Prefer setpoint manipulation and valve bias over sudden overrides.

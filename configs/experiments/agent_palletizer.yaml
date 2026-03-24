@@ -1,0 +1,22 @@
+# =============================================================================
+# CPSForge Agent Mode (Palletizer)
+# =============================================================================
+name: agent_palletizer
+description: Live attacker and defender agents on palletizer.
+mode: agent
+scene_config: scenes/palletizer.yaml
+plc_config: system/plc.yaml
+attackers: []
+defenders:
+- threshold_palletizer
+- invariant_palletizer
+attacker_agent: attacker_agent
+defender_agent: defender_agent
+live_writes_enabled: true
+dry_run: false
+eval_run: true
+max_steps: 200
+run_duration_s: null
+save_trace: true
+save_metrics: true
+reset_after_run: true

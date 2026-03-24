@@ -123,6 +123,11 @@ class ExperimentOrchestrator:
 
         # --- Load components ---
         plc_cfg = self._loader.load_plc()
+        # Propagate the experiment-level live_writes flag to the PLC client.
+        # plc.yaml defaults to live_writes_enabled=false for safety; the
+        # experiment config (or CLI --no-dry-run) is the authoritative source.
+        if self._config.live_writes_enabled:
+            plc_cfg.live_writes_enabled = True
         shield = self._build_shield(scene)
         defenders = self._build_defenders(scene)
         attackers = self._build_attackers(scene)
@@ -134,6 +139,30 @@ class ExperimentOrchestrator:
         if not self._config.dry_run:
             plc_client.connect()
             logger.info("PLC connected.")
+            # --- Switch PLC to the correct scene via DB_Config.ActiveScene ---
+            # OB_Main uses a CASE statement on DB1.ActiveScene to select which FB
+            # runs each scan cycle. If this is not set, the PLC runs whatever scene
+            # was last compiled into DB_Config (default: scene 19, Sorting Height Basic).
+            if scene.profile.scene_id is not None:
+                ok = plc_client.switch_active_scene(scene.profile.scene_id)
+                if ok:
+                    # Allow 1 full PLC scan cycle for the new FB to initialise before polling.
+                    time.sleep(max(0.5, scene.profile.sampling_interval_ms / 1000.0))
+                else:
+                    logger.warning(
+                        "ActiveScene write failed for scene_id=%d (%s). "
+                        "Proceeding anyway — data quality may be poor if the wrong scene FB is active.",
+                        scene.profile.scene_id,
+                        scene.profile.scene_name,
+                    )
+            else:
+                logger.warning(
+                    "Scene '%s' has no scene_id configured. "
+                    "DB_Config.ActiveScene will NOT be updated. "
+                    "Add 'scene_id: N' to configs/scenes/%s.yaml to fix this.",
+                    scene.profile.scene_name,
+                    scene.profile.scene_name,
+                )
         else:
             logger.info("Dry-run mode: PLC connection skipped.")
 
@@ -542,6 +571,27 @@ class ExperimentOrchestrator:
             if attack_impact_full else 0.0
         )
 
+        # Stealth score: fraction of attack steps that were NOT detected.
+        # A stealth score of 1.0 means no attack step was detected.
+        undetected_attack_steps = attack_steps - detected_steps
+        stealth_score = (
+            round(len(undetected_attack_steps) / len(attack_steps), 4)
+            if attack_steps else 0.0
+        )
+
+        # Mean deviation: average process impact across all executed attacks.
+        mean_deviation = process_impact_score  # alias for now; same computation
+
+        # Campaign phases: check if any attacker is a CampaignAttacker
+        campaign_phases = 0
+        for attacker in self._actions:
+            if attacker.rationale and any(
+                attacker.rationale.startswith(f"[{p.upper()}]")
+                for p in ("reconnaissance", "preparation", "exploitation", "persistence")
+            ):
+                campaign_phases = 4
+                break
+
         return EvalMetrics(
             run_id=self._run_id,
             scene_name=scene_name,
@@ -563,6 +613,9 @@ class ExperimentOrchestrator:
             false_negatives=fn,
             hard_case_flag=(fn > 0),
             adaptation_round=self._config.adaptation_round,
+            stealth_score=stealth_score,
+            mean_deviation=mean_deviation,
+            campaign_phases=campaign_phases,
             total_steps=len(self._snapshots),
             total_attacks=total,
             eval_run=self._config.eval_run,

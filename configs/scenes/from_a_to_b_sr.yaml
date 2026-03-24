@@ -1,0 +1,109 @@
+# =============================================================================
+# CPSForge Scene Configuration — From A to B (Set/Reset)
+# =============================================================================
+# Factory I/O scene: From A to B (Set/Reset)
+# DB4: Instance DB for FB_FromAtoB_SR (non-optimized, 10 bytes)
+#
+# Physical setup:
+#   - Siemens S7 PLC at 192.168.0.1, TIA Portal v17
+#   - SensorA at left end, SensorB at right end
+#   - SensorA triggers conveyor START (set), SensorB triggers STOP (reset)
+#   - Remover at exit is automatic (not PLC-controlled)
+#
+# Attack surface: Enable flag (DoS stop), SensorB spoof (premature stop or overshoot)
+# =============================================================================
+
+scene_name: from_a_to_b_sr
+scene_id: 2  # OB_Main CASE 2 — DB4
+
+description: >
+  Set/Reset conveyor. Factory I/O Running gates all logic. SensorA sets
+  conveyor ON when a box arrives at entry and exit is clear. SensorB resets
+  conveyor OFF when box arrives at exit. Automatic remover clears box,
+  allowing the cycle to repeat. Enable flag is the primary DoS attack target.
+
+sampling_interval_ms: 500
+
+tags:
+  - name: sensor_a
+    address: "DB4,BOOL0.0"
+    data_type: bool
+    access: read
+    description: "Sensor A at entry — TRUE when box present"
+    category: sensor
+    scene_name: from_a_to_b_sr
+
+  - name: sensor_b
+    address: "DB4,BOOL2.0"
+    data_type: bool
+    access: read
+    description: "Sensor B at exit — TRUE when box present"
+    category: sensor
+    scene_name: from_a_to_b_sr
+
+  - name: fio_running
+    address: "DB4,BOOL4.0"
+    data_type: bool
+    access: read
+    description: "Factory I/O Running — always TRUE while simulation is active"
+    category: sensor
+    scene_name: from_a_to_b_sr
+
+  - name: conveyor
+    address: "DB4,BOOL6.0"
+    data_type: bool
+    access: read_write
+    description: "Conveyor motor — TRUE=running"
+    category: actuator
+    scene_name: from_a_to_b_sr
+
+  - name: conveyor_running
+    address: "DB4,BOOL8.0"
+    data_type: bool
+    access: read
+    description: "Internal SR latch state"
+    category: internal
+    scene_name: from_a_to_b_sr
+
+  - name: enable
+    address: "DB4,BOOL10.0"
+    data_type: bool
+    access: read_write
+    description: "System enable — ConveyorRunning gated by this flag (attack/DoS target)"
+    category: mode_bit
+    scene_name: from_a_to_b_sr
+
+writable_tags:
+  - conveyor
+  - enable
+
+attack_surface:
+  - conveyor
+  - enable
+  - sensor_b
+
+safety_rules:
+  - rule_id: FABSR-SR-001
+    description: "Enable must not be held FALSE for more than 30 seconds"
+    rule_type: duration
+    tags: [enable]
+    parameters:
+      max_duration_ms: 30000
+      forbidden_value: false
+    enabled: true
+    priority: 100
+
+  - rule_id: FABSR-SR-002
+    description: "Conveyor override duration capped at 20 seconds"
+    rule_type: duration
+    tags: [conveyor]
+    parameters:
+      max_duration_ms: 20000
+    enabled: true
+    priority: 50
+
+reset_procedure:
+  - tag: enable
+    value: true
+  - tag: conveyor
+    value: false

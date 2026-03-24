@@ -1,0 +1,200 @@
+# =============================================================================
+# CPSForge Scene Configuration — Assembler
+# =============================================================================
+# Factory I/O scene: Assembler
+# DB14: Instance DB for FB_Assembler (non-optimized)
+#
+# Physical setup:
+#   - Siemens S7 PLC at 192.168.0.1, TIA Portal v17
+#   - Two-axis pick-and-place: digital MoveX/MoveZ + Clamp
+#   - Three conveyors: base, lid, output
+#   - 7-state machine: feed → pickup → clamp → move → place → release → output
+#
+# Attack surface: Conveyors, MoveX/MoveZ, Clamp, Emitter
+# =============================================================================
+
+scene_name: assembler
+scene_id: 5  # OB_Main CASE 5 — DB7
+
+description: >
+  Digital two-axis pick-and-place assembler. Base parts and lids arrive on
+  separate conveyors. The arm picks lids and places them on bases. 7-state
+  machine controls the full pick-clamp-place-release cycle.
+
+sampling_interval_ms: 500
+
+tags:
+  - name: part_at_pickup
+    address: "DB7,BOOL0.0"
+    data_type: bool
+    access: read
+    description: "Part detected at pickup position"
+    category: sensor
+    scene_name: assembler
+
+  - name: part_at_place
+    address: "DB7,BOOL2.0"
+    data_type: bool
+    access: read
+    description: "Part detected at place position"
+    category: sensor
+    scene_name: assembler
+
+  - name: lid_at_pickup
+    address: "DB7,BOOL4.0"
+    data_type: bool
+    access: read
+    description: "Lid detected at pickup"
+    category: sensor
+    scene_name: assembler
+
+  - name: clamp_sensor
+    address: "DB7,BOOL6.0"
+    data_type: bool
+    access: read
+    description: "Clamp closed sensor"
+    category: sensor
+    scene_name: assembler
+
+  - name: moving_x
+    address: "DB7,BOOL8.0"
+    data_type: bool
+    access: read
+    description: "X-axis is in motion"
+    category: sensor
+    scene_name: assembler
+
+  - name: moving_z
+    address: "DB7,BOOL10.0"
+    data_type: bool
+    access: read
+    description: "Z-axis is in motion"
+    category: sensor
+    scene_name: assembler
+
+  - name: conveyor_base
+    address: "DB7,BOOL12.0"
+    data_type: bool
+    access: read_write
+    description: "Base part conveyor"
+    category: actuator
+    scene_name: assembler
+
+  - name: conveyor_lid
+    address: "DB7,BOOL14.0"
+    data_type: bool
+    access: read_write
+    description: "Lid conveyor"
+    category: actuator
+    scene_name: assembler
+
+  - name: conveyor_out
+    address: "DB7,BOOL16.0"
+    data_type: bool
+    access: read_write
+    description: "Output conveyor"
+    category: actuator
+    scene_name: assembler
+
+  - name: move_x
+    address: "DB7,BOOL18.0"
+    data_type: bool
+    access: read_write
+    description: "X-axis move command"
+    category: actuator
+    scene_name: assembler
+
+  - name: move_z
+    address: "DB7,BOOL20.0"
+    data_type: bool
+    access: read_write
+    description: "Z-axis move command"
+    category: actuator
+    scene_name: assembler
+
+  - name: clamp
+    address: "DB7,BOOL22.0"
+    data_type: bool
+    access: read_write
+    description: "Clamp actuator"
+    category: actuator
+    scene_name: assembler
+
+  - name: emitter
+    address: "DB7,BOOL24.0"
+    data_type: bool
+    access: read_write
+    description: "Part emitter"
+    category: actuator
+    scene_name: assembler
+
+  - name: state
+    address: "DB7,INT26"
+    data_type: int
+    access: read
+    min_value: 0
+    max_value: 6
+    description: "State: 0=FeedBase, 1=MoveToPickup, 2=Clamp, 3=MoveToPlace, 4=Lower, 5=Release, 6=Output"
+    category: internal
+    scene_name: assembler
+
+writable_tags:
+  - conveyor_base
+  - conveyor_lid
+  - conveyor_out
+  - move_x
+  - move_z
+  - clamp
+  - emitter
+
+attack_surface:
+  - conveyor_base
+  - conveyor_lid
+  - conveyor_out
+  - move_x
+  - move_z
+  - clamp
+
+safety_rules:
+  - rule_id: ASM-SR-001
+    description: "MoveX and MoveZ should not both be active simultaneously"
+    rule_type: mutual_exclusion
+    tags: [move_x, move_z]
+    parameters:
+      forbidden_pairs: [[true, true]]
+    enabled: true
+    priority: 90
+
+  - rule_id: ASM-SR-002
+    description: "Clamp override capped at 30 seconds"
+    rule_type: duration
+    tags: [clamp]
+    parameters:
+      max_duration_ms: 30000
+    enabled: true
+    priority: 50
+
+  - rule_id: ASM-SR-003
+    description: "MoveZ override capped at 20 seconds"
+    rule_type: duration
+    tags: [move_z]
+    parameters:
+      max_duration_ms: 20000
+    enabled: true
+    priority: 60
+
+reset_procedure:
+  - tag: conveyor_base
+    value: false
+  - tag: conveyor_lid
+    value: false
+  - tag: conveyor_out
+    value: false
+  - tag: move_x
+    value: false
+  - tag: move_z
+    value: false
+  - tag: clamp
+    value: false
+  - tag: emitter
+    value: false

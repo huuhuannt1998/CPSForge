@@ -357,6 +357,18 @@ class EvalMetrics(BaseModel):
     # Adaptation
     hard_case_flag: bool = False
     adaptation_round: int = Field(0, ge=0)
+    # Stealth and campaign metrics (Option A)
+    stealth_score: float = Field(
+        0.0, ge=0.0, le=1.0,
+        description="Fraction of attack steps that were not detected (1.0 = fully stealthy)",
+    )
+    mean_deviation: float = Field(
+        0.0, ge=0.0,
+        description="Mean absolute process deviation during attack steps",
+    )
+    campaign_phases: int = Field(
+        0, ge=0, description="Number of campaign phases executed (0 = non-campaign run)"
+    )
     # Run metadata
     total_steps: int = Field(0, ge=0)
     total_attacks: int = Field(0, ge=0)
@@ -413,6 +425,14 @@ class SceneProfile(BaseModel):
 
     scene_name: str
     description: str = ""
+    scene_id: Optional[int] = Field(
+        None,
+        description=(
+            "OB_Main CASE selector value (1-21). "
+            "CPSForge writes this to DB_Config.ActiveScene (DB1,INT0) before each run "
+            "so the correct Factory I/O FB executes on the real PLC."
+        ),
+    )
     tags: List[TagDefinition] = Field(default_factory=list)
     writable_tags: List[str] = Field(
         default_factory=list,

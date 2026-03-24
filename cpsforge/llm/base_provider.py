@@ -14,7 +14,7 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from cpsforge.core.config import LLMConfig
 
@@ -90,7 +90,12 @@ class BaseLLMProvider(ABC):
     # ------------------------------------------------------------------
 
     @abstractmethod
-    def complete(self, system_prompt: str, user_prompt: str) -> CompletionResult:
+    def complete(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        response_format: Optional[Dict[str, Any]] = None,
+    ) -> CompletionResult:
         """
         Send a chat/completion request and block until a response is received.
 
@@ -102,6 +107,11 @@ class BaseLLMProvider(ABC):
         user_prompt:
             The turn-level prompt containing the current plant state and
             attack objective.
+        response_format:
+            Optional structured-output specification forwarded to the API.
+            Supported by LM Studio / llama.cpp via
+            ``{"type": "json_schema", "json_schema": {...}}``.
+            When provided, the server constrains token generation to the schema.
 
         Returns
         -------

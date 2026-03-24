@@ -1,0 +1,168 @@
+# =============================================================================
+# CPSForge Scene Configuration — Production Line
+# =============================================================================
+# Factory I/O scene: Production Line
+# DB25: Instance DB for FB_ProductionLine (non-optimized)
+#
+# Physical setup:
+#   - Siemens S7 PLC at 192.168.0.1, TIA Portal v17
+#   - Two machining centers: one for lids, one for bases
+#   - Balance production: run whichever side has fewer parts
+#   - Conveyors for lid, base, and output
+#
+# Attack surface: LidMachine, BaseMachine, Conveyors
+# =============================================================================
+
+scene_name: production_line
+scene_id: 16  # OB_Main CASE 16 — DB18
+
+description: >
+  Balanced production line with two machining centers. Lid machine and
+  base machine alternate to produce equal numbers of lids and bases.
+  Simple comparison-based scheduling.
+
+sampling_interval_ms: 500
+
+tags:
+  - name: lid_ready
+    address: "DB18,BOOL0.0"
+    data_type: bool
+    access: read
+    description: "Lid at machining center output"
+    category: sensor
+    scene_name: production_line
+
+  - name: base_ready
+    address: "DB18,BOOL2.0"
+    data_type: bool
+    access: read
+    description: "Base at machining center output"
+    category: sensor
+    scene_name: production_line
+
+  - name: lid_at_assembly
+    address: "DB18,BOOL4.0"
+    data_type: bool
+    access: read
+    description: "Lid arrived at assembly point"
+    category: sensor
+    scene_name: production_line
+
+  - name: base_at_assembly
+    address: "DB18,BOOL6.0"
+    data_type: bool
+    access: read
+    description: "Base arrived at assembly point"
+    category: sensor
+    scene_name: production_line
+
+  - name: lid_machine
+    address: "DB18,BOOL8.0"
+    data_type: bool
+    access: read_write
+    description: "Lid machining center ON/OFF"
+    category: actuator
+    scene_name: production_line
+
+  - name: base_machine
+    address: "DB18,BOOL10.0"
+    data_type: bool
+    access: read_write
+    description: "Base machining center ON/OFF"
+    category: actuator
+    scene_name: production_line
+
+  - name: conveyor_lid
+    address: "DB18,BOOL12.0"
+    data_type: bool
+    access: read_write
+    description: "Lid conveyor"
+    category: actuator
+    scene_name: production_line
+
+  - name: conveyor_base
+    address: "DB18,BOOL14.0"
+    data_type: bool
+    access: read_write
+    description: "Base conveyor"
+    category: actuator
+    scene_name: production_line
+
+  - name: conveyor_out
+    address: "DB18,BOOL16.0"
+    data_type: bool
+    access: read_write
+    description: "Output conveyor"
+    category: actuator
+    scene_name: production_line
+
+  - name: emitter
+    address: "DB18,BOOL18.0"
+    data_type: bool
+    access: read_write
+    description: "Part emitter"
+    category: actuator
+    scene_name: production_line
+
+  - name: lid_count
+    address: "DB18,INT20"
+    data_type: int
+    access: read
+    description: "Lids produced"
+    category: internal
+    scene_name: production_line
+
+  - name: base_count
+    address: "DB18,INT22"
+    data_type: int
+    access: read
+    description: "Bases produced"
+    category: internal
+    scene_name: production_line
+
+writable_tags:
+  - lid_machine
+  - base_machine
+  - conveyor_lid
+  - conveyor_base
+  - conveyor_out
+  - emitter
+
+attack_surface:
+  - lid_machine
+  - base_machine
+  - conveyor_lid
+  - conveyor_base
+
+safety_rules:
+  - rule_id: PL-SR-001
+    description: "Machine override capped at 30 seconds"
+    rule_type: duration
+    tags: [lid_machine]
+    parameters:
+      max_duration_ms: 30000
+    enabled: true
+    priority: 50
+
+  - rule_id: PL-SR-002
+    description: "Base machine override capped at 30 seconds"
+    rule_type: duration
+    tags: [base_machine]
+    parameters:
+      max_duration_ms: 30000
+    enabled: true
+    priority: 50
+
+reset_procedure:
+  - tag: lid_machine
+    value: false
+  - tag: base_machine
+    value: false
+  - tag: conveyor_lid
+    value: false
+  - tag: conveyor_base
+    value: false
+  - tag: conveyor_out
+    value: false
+  - tag: emitter
+    value: false

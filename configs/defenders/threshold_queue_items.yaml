@@ -1,0 +1,38 @@
+# =============================================================================
+# CPSForge Defender — Threshold (Queue Items)
+# =============================================================================
+name: threshold_queue_items
+detector_type: threshold
+scene_name: queue_items
+enabled: true
+thresholds:
+- tag: state
+  operator: '>'
+  value: 1
+  severity: high
+  label: invalid_state_high
+  description: State machine value exceeds max (1)
+- tag: state
+  operator: <
+  value: 0
+  severity: high
+  label: invalid_state_low
+  description: State machine value below min (0)
+- tag: target_count
+  operator: '>'
+  value: 10
+  severity: high
+  label: target_count_exceeds_max
+  description: target_count exceeds max (10)
+- tag: conveyor
+  operator: ==
+  value: 0
+  severity: medium
+  label: conveyor_stopped
+  description: conveyor is stopped — possible actuator override
+- tag: emitter
+  operator: ==
+  value: 0
+  severity: medium
+  label: emitter_stopped
+  description: emitter is stopped — possible actuator override

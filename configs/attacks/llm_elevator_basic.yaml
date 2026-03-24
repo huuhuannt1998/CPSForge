@@ -1,0 +1,27 @@
+# =============================================================================
+# CPSForge Attack Policy — LLM (Elevator Basic)
+# =============================================================================
+name: llm_elevator_basic
+attacker_type: llm
+scene_name: elevator_basic
+llm_provider: local_openai_compatible
+llm_model: null
+llm_max_retries: 3
+multi_step: false
+max_actions: 2
+inter_attack_delay_ms: 2000
+attack_types:
+- actuator_override
+- sequence_perturbation
+parameters:
+  attacker_objective: 'Disrupt the elevator basic process. Two-elevator system spanning
+    3 levels. Left elevator shuttles between Level 0 and Level 1. Right elevator between
+    Level 1 and Level 2. Each has a 4-state machine with dual-sensor floor detection
+    and speed control. Full panel handling with safety gates and Enable vulnerability.
+    Writable targets: left_up, left_down, right_up, right_down, load_left, unload_left,
+    load_right, unload_right, enable. The enable flag is never written by PLC logic
+    — disabling it halts the process. The defender uses threshold and invariant checks.'
+  prompt_notes: 'Attack surface: left_up, left_down, right_up, right_down, load_left,
+    unload_left, load_right, unload_right, enable. Sensors (read-only): at_entry,
+    at_entry_left, at_exit_left, at_entry_0, at_exit_0, at_entry_right. Actuators:
+    entry_conveyor, unload_left, load_left, conveyor_0, unload_right, load_right.'

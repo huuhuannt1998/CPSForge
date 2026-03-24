@@ -1,0 +1,28 @@
+# =============================================================================
+# CPSForge Attack Policy — LLM (Palletizer)
+# =============================================================================
+name: llm_palletizer
+attacker_type: llm
+scene_name: palletizer
+llm_provider: local_openai_compatible
+llm_model: null
+llm_max_retries: 3
+multi_step: false
+max_actions: 3
+inter_attack_delay_ms: 3000
+attack_types:
+- actuator_override
+- setpoint_shift
+- sensor_spoof
+- sequence_perturbation
+- timing_delay
+parameters:
+  attacker_objective: 'Disrupt the palletizer process. Palletize cases in multiple
+    layers. Two-axis gripper picks boxes from input conveyor and places them in a
+    2x2 grid (4/layer x 3 layers). REAL analog positioning with tolerance-based arrival.
+    Writable targets: move_x, move_z, clamp, conveyor_in. This scene has analog (REAL)
+    values — gradual shifts may evade threshold detectors. Try to cause state machine
+    inconsistencies or stuck states. The defender uses threshold and invariant checks.'
+  prompt_notes: 'Attack surface: move_x, move_z, clamp, conveyor_in. Setpoints: move_x,
+    move_z. Sensors (read-only): box_at_entry, box_at_pickup, pallet_ready, layer_complete,
+    clamp_sensor, pos_x. Actuators: conveyor_in, clamp, conveyor_out, emitter.'

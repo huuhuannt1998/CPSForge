@@ -9,9 +9,9 @@ Compared to traditional IT environments, CPS attacks are constrained by the phys
 
 \subsection{Why LLMs Matter in CPS Security}
 
-LLMs offer flexible reasoning over unstructured descriptions, structured telemetry, process semantics, and attacker objectives. In principle, they can help generate process-aware attacks, synthesize invariants, explain anomalies, and support adaptive security analysis. However, LLMs also introduce well-known risks: they can hallucinate, over-generalize, misinterpret context, or propose unsafe actions. These risks are amplified in CPS because model outputs may influence physical behavior.
+LLMs offer flexible reasoning over unstructured descriptions, structured telemetry, process semantics, and attacker objectives. Recent work has shown that they can generate process-aware attacks~\cite{ahmed2025attackllm}, synthesize invariants~\cite{fakih2024llm4plc}, and support security analysis~\cite{xu2024llm_cybersec_survey}. However, LLMs also introduce well-known risks: they can hallucinate, over-generalize, misinterpret context, or propose unsafe actions. These risks are amplified in CPS because model outputs may influence physical behavior.
 
-Therefore, the appropriate research question is not whether an LLM should be granted unrestricted plant control. Instead, the relevant question is whether LLM reasoning can be embedded into a rigorously constrained environment where actions are structured, validated, logged, and evaluated against real process behavior.
+Therefore, the research question this paper addresses is whether LLM reasoning can be embedded into a rigorously constrained environment where actions are structured, validated, logged, and evaluated against real process behavior---and whether the resulting framework yields insights that purely offline or simulated evaluations cannot.
 
 \subsection{Limits of Existing Evaluation Practice}
 
@@ -21,7 +21,7 @@ Likewise, recent LLM-based CPS studies often stop at anomaly explanation, invari
 
 \subsection{Motivation for a Closed-Loop Testbed}
 
-CPSForge is motivated by the need for a realistic yet safe experimental platform that can study offensive and defensive LLM use together. The real PLC provides authentic controller timing and execution semantics, while Factory I/O supplies reproducible physical-process scenes. This combination offers a practical hardware-in-the-loop substrate for evaluating process-grounded attacks and defenses.
+CPSForge is motivated by the need for a realistic yet safe experimental platform that can study offensive and defensive LLM use together. The real PLC provides authentic controller timing and execution semantics, while Factory~I/O supplies reproducible software-emulated industrial process scenes with realistic I/O behaviour. This combination---which we term \emph{PLC-in-the-loop}---provides a practical substrate that reproduces real controller scan cycles and actuator response while keeping the physical process safely virtualised. Unlike full hardware-in-the-loop testbeds with real sensors and actuators (e.g., SWaT~\cite{mathur2016swat}), this configuration cannot capture physical coupling effects such as fluid dynamics or mechanical wear, but it preserves the most security-relevant aspect: the PLC executes real control logic on each scan cycle and the process emulator responds with physically plausible state transitions.
 
 The design also emphasizes a closed-loop attacker-defender cycle. A one-shot attacker evaluation reveals only whether a particular defense succeeds on a fixed set of cases. In contrast, a closed-loop system can reveal how defenders fail, how attacks diversify, and whether repeated adaptation improves resilience. This aligns more closely with real-world adversarial evolution and provides a stronger foundation for research claims about robustness.
 
@@ -30,7 +30,7 @@ The design also emphasizes a closed-loop attacker-defender cycle. A one-shot att
 The design of CPSForge is guided by four main goals:
 
 \begin{itemize}[leftmargin=1.5em]
-    \item \textbf{Realism.} The system should operate over a real PLC and a live process emulator rather than relying solely on offline traces.
+    \item \textbf{Realism.} The system should operate over a real PLC and a live process emulator rather than relying solely on offline traces or purely synthetic controllers.
     \item \textbf{Safety.} No model or attack component should write directly to the controller without mediation by a safety layer.
     \item \textbf{Reproducibility.} Every experiment should produce structured artifacts that support replay, auditing, and analysis.
     \item \textbf{Adaptation.} The framework should support repeated attack and defense rounds so that defender improvement can be measured over time.

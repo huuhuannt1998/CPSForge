@@ -1,0 +1,262 @@
+﻿%% ==========================================================================
+%% Appendix â€” CPSForge: Detailed Experiment Results
+%% ==========================================================================
+\appendix
+
+\section{Scene Tag Specifications}
+\label{sec:appendix-tags}
+
+This appendix provides full tag specifications for the five Factory~I/O scenes
+evaluated in this work. All tags are read from Siemens S7~data blocks (DBs)
+via python-snap7 at 500\,ms intervals.
+
+\begin{table}[!t]
+\centering
+\caption{PLC tag summary for each evaluated scene. R/W indicates writable tags usable as attack targets.}
+\label{tab:tag-summary}
+\small
+\begin{tabular}{lccccl}
+\toprule
+\textbf{Scene} & \textbf{DB} & \textbf{Tags} & \textbf{R/W} & \textbf{Rules} & \textbf{Process Type} \\
+\midrule
+From A to B         & DB3  &  4  & 2 & 3 & Discrete \\
+Filling Tank        & DB5  &  8  & 3 & 4 & Continuous \\
+Level Control       & DB14 & 15  & 4 & 6 & Continuous \\
+Sorting by Height   & DB21 & 30  & 8 & 5 & Discrete \\
+Sorting by Weight   & DB22 & 35  & 8 & 7 & Discrete \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Level Control Tags (DB14)}
+\label{subsec:appendix-tags-level}
+
+\begin{table}[!t]
+\centering
+\caption{Level Control tag definitions. 15~tags, 4~writable.}
+\label{tab:tags-level-control}
+\small
+\setlength{\tabcolsep}{2pt}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{llllcc}
+\toprule
+\textbf{Tag} & \textbf{Address} & \textbf{Type} & \textbf{Category} & \textbf{R/W} & \textbf{Range} \\
+\midrule
+start\_button    & DB14,BOOL0.0  & bool & sensor   & R & --- \\
+reset\_button    & DB14,BOOL2.0  & bool & sensor   & R & --- \\
+stop\_button     & DB14,BOOL4.0  & bool & sensor   & R & --- \\
+start\_light     & DB14,BOOL6.0  & bool & actuator & R & --- \\
+reset\_light     & DB14,BOOL8.0  & bool & actuator & R & --- \\
+stop\_light      & DB14,BOOL10.0 & bool & actuator & R & --- \\
+level\_meter     & DB14,REAL12   & real & sensor   & R & 0--10\,V \\
+flow\_meter      & DB14,REAL16   & real & sensor   & R & 0--10\,V \\
+setpoint\_in     & DB14,REAL20   & real & setpoint & RW & 0--10\,V \\
+fill\_valve      & DB14,REAL24   & real & actuator & RW & 0--10\,V \\
+discharge\_valve & DB14,REAL28   & real & actuator & RW & 0--10\,V \\
+sp\_display      & DB14,DINT32   & dint & internal & R & 0--100 \\
+pv\_display      & DB14,DINT36   & dint & internal & R & 0--100 \\
+running          & DB14,BOOL40.0 & bool & internal & R & --- \\
+enable           & DB14,BOOL42.0 & bool & mode\_bit & RW & --- \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\subsection{Sorting by Weight Tags (DB22)}
+\label{subsec:appendix-tags-weight}
+
+The Sorting by Weight scene has 35~tags including 3~weight sensors, 9~conveyor/actuator outputs, and 8~counter registers. All analog sensors use the Factory~I/O 0--10\,V range. Eight tags are writable and form the attack surface.
+
+\subsection{Sorting by Height Tags (DB21)}
+\label{subsec:appendix-tags-height}
+
+The Sorting by Height scene has 30~tags including photoelectric sensors for height classification, three sorting lanes, and counting registers. Eight tags are writable.
+
+\subsection{From A to B, Filling Tank}
+\label{subsec:appendix-tags-small}
+
+From A to B (DB3) is a minimal discrete transport scene with 4~tags (2~writable). Filling Tank (DB5) is a continuous filling process with 8~tags (3~writable). Both serve as complexity baselines.
+
+%% ====================================================================
+\section{Safety Shield Rule Specifications}
+\label{sec:appendix-shield}
+
+Each scene defines a set of safety rules enforced by the runtime shield. All proposed attack actions pass through these rules before reaching the PLC. The shield checks rules in priority order and rejects any action that violates at least one rule.
+
+\begin{table}[!t]
+\centering
+\caption{Safety rules for Level Control. All rules are enabled by default.}
+\label{tab:rules-level-control}
+\small
+\setlength{\tabcolsep}{2pt}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{llll}
+\toprule
+\textbf{ID} & \textbf{Type} & \textbf{Tags} & \textbf{Constraint} \\
+\midrule
+LC-SR-001 & range     & fill\_valve      & $[0.0, 10.0]$\,V \\
+LC-SR-002 & range     & discharge\_valve  & $[0.0, 10.0]$\,V \\
+LC-SR-003 & range     & setpoint\_in     & $[0.0, 10.0]$\,V \\
+LC-SR-004 & invariant & level\_meter     & $\leq 9.5$\,V \\
+LC-SR-005 & duration  & enable           & FALSE $\leq 30$\,s \\
+LC-SR-006 & mutex     & fill/discharge   & not both $> 8.0$\,V \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\begin{table}[!t]
+\centering
+\caption{Safety rules for Sorting by Weight (7 rules).}
+\label{tab:rules-sorting-weight}
+\small
+\setlength{\tabcolsep}{2pt}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{llll}
+\toprule
+\textbf{ID} & \textbf{Type} & \textbf{Tags} & \textbf{Constraint} \\
+\midrule
+SW-SR-001 & range     & conveyor\_entry   & $[0.0, 10.0]$\,V \\
+SW-SR-002 & range     & conveyor1/2/3     & $[0.0, 10.0]$\,V \\
+SW-SR-003 & mutex     & sorters           & $\leq 1$ active \\
+SW-SR-004 & invariant & item\_at\_sensors  & sorter idle \\
+SW-SR-005 & duration  & stop\_blade        & raise $\leq 5$\,s \\
+SW-SR-006 & range     & turntable\_pos     & $[0.0, 10.0]$\,V \\
+SW-SR-007 & interlock & conveyor/sorter    & sequence order \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+%% ====================================================================
+\section{Attack Type Definitions}
+\label{sec:appendix-attack-types}
+
+CPSForge supports three attack types, each compiled from a structured \texttt{AttackAction} schema into concrete PLC tag writes:
+
+\begin{description}[leftmargin=1em]
+\item[\texttt{actuator\_override}] Directly overwrites an actuator tag (e.g., valve, conveyor speed) with an adversarial value for a specified duration. Most common type (119/171 = 69.6\% of all actions).
+
+\item[\texttt{setpoint\_shift}] Modifies a controller setpoint to induce gradual deviation. Favored by the campaign attacker (45\% of campaign actions) as it is harder to detect than direct overrides.
+
+\item[\texttt{sequence\_perturbation}] Re-orders or delays discrete process steps (e.g., activating a sorter while conveyor is running). Only generated by the random attacker in discrete scenes.
+\end{description}
+
+\begin{table}[!t]
+\centering
+\caption{Attack type distribution across attacker variants (171 total actions).}
+\label{tab:attack-type-dist}
+\small
+\begin{tabular}{lcccc|c}
+\toprule
+\textbf{Type} & \textbf{Script} & \textbf{Random} & \textbf{LLM} & \textbf{Campaign} & \textbf{Total} \\
+\midrule
+actuator\_override       & 46 & 59 &  8 &  6 & 119 \\
+setpoint\_shift          &  4 & 10 &  3 & 14 &  31 \\
+sequence\_perturbation   &  0 & 21 &  0 &  0 &  21 \\
+\midrule
+\textbf{Total}           & 50 & 90 & 11 & 20 & 171 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%% ====================================================================
+\section{Per-Run Detailed Results}
+\label{sec:appendix-per-run}
+
+Table~\ref{tab:per-run-level} reports individual run results for Level Control, the primary evaluation scene for adaptation, showing the per-run variance that underlies the averages reported in the main text.
+
+\begin{table}[!t]
+\centering
+\caption{Per-run results for Level Control (batch-mode experiments).}
+\label{tab:per-run-level}
+\small
+\setlength{\tabcolsep}{2pt}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{llccccc}
+\toprule
+\textbf{Attacker} & \textbf{Run ID} & \textbf{Steps} & \textbf{ASR} & \textbf{F1} & \textbf{FP} & \textbf{FN} \\
+\midrule
+Scripted & 20260312 & 120 & 1.00 & 0.50 & 40 & 0 \\
+Scripted & 20260318a & 120 & 0.50 & --- & --- & --- \\
+Random   & 20260312 & 120 & 0.80 & 0.10 & 5 & 80 \\
+Random   & 20260318 & 120 & 0.70 & 0.46 & 57 & 14 \\
+LLM batch & 20260319a & 120 & 0.33 & 0.33 & 28 & 0 \\
+LLM batch & 20260319b & 120 & 0.33 & 0.44 & 75 & 0 \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+%% ====================================================================
+\section{Detector Configuration Details}
+\label{sec:appendix-detectors}
+
+\subsection{Threshold Detector}
+\label{subsec:appendix-threshold}
+
+The threshold detector fires when any monitored tag exceeds a configured bound for a minimum number of consecutive observations. For Level Control, 7~rules monitor:
+\begin{itemize}[leftmargin=1em,nosep]
+  \item \texttt{level\_meter}: $> 9.0$\,V (high) or $< 0.5$\,V (low)
+  \item \texttt{fill\_valve}: $> 9.5$\,V or $< 0.1$\,V (stuck)
+  \item \texttt{discharge\_valve}: $> 9.5$\,V or $< 0.1$\,V (stuck)
+  \item \texttt{setpoint\_in}: deviation $> 2.0$\,V from last known good
+\end{itemize}
+Minimum consecutive violations: 3~samples (1.5\,s at 500\,ms polling).
+
+\subsection{Invariant Detector}
+\label{subsec:appendix-invariant}
+
+The invariant detector checks process-level constraints that must hold in normal operation:
+\begin{itemize}[leftmargin=1em,nosep]
+  \item When \texttt{running=TRUE}: \texttt{level\_meter} must track \texttt{setpoint\_in} within $\pm 2.0$\,V after a settling window of 10~samples.
+  \item \texttt{fill\_valve} and \texttt{discharge\_valve} must not both exceed $8.0$\,V simultaneously.
+  \item \texttt{enable=FALSE} for $> 15$\,s indicates anomalous shutdown.
+\end{itemize}
+
+\subsection{ML-Based Detectors}
+\label{subsec:appendix-ml-detectors}
+
+\paragraph{OCSVM.} One-Class SVM with RBF kernel ($\gamma=0.1$, $\nu=0.05$). Trained on a 300-step baseline trace collected during normal plant operation. Feature vector: \texttt{[level\_meter, flow\_meter, fill\_valve, discharge\_valve, setpoint\_in]}. Achieves F1$=$0.620 on Level Control (Table~\ref{tab:detector-comparison}).
+
+\paragraph{Isolation Forest.} 100 estimators, contamination$=$0.05, same feature vector as OCSVM. F1$=$0.620 on Level Control.
+
+\paragraph{LSTM-AD.} Single-layer LSTM (hidden\_dim$=$32), input window$=$10, MSE reconstruction loss. Trained for 50~epochs on baseline traces. F1$=$0.601 on Level Control.
+
+\paragraph{CUSUM.} Tabular CUSUM on each feature independently, threshold$=$3.0$\sigma$, drift$=$0.5$\sigma$. F1$=$0.471 on Level Control.
+
+%% ====================================================================
+\section{LLM Attacker Prompt Template}
+\label{sec:appendix-prompt}
+
+The LLM attacker receives the following system prompt (abbreviated):
+
+\begin{quote}
+\small\ttfamily
+You are a CPS security researcher analyzing a [scene\_name] process controlled by a Siemens S7~PLC. Your goal is to propose attack actions that cause maximum physical impact while remaining plausible.
+
+Available targets: [writable\_tags with ranges]\\
+Current state: [latest PlantSnapshot summary]\\
+Safety constraints: [shield rule summaries]
+
+Output exactly one JSON object matching this schema: \{action\_type, target, value, duration\_ms, rationale, expected\_effect, confidence\}
+\end{quote}
+
+The full prompt includes the scene profile, current sensor readings, and previously executed actions (for multi-step campaigns). Responses are parsed with JSON schema validation; malformed outputs trigger up to 3~retries with corrective feedback.
+
+%% ====================================================================
+\section{Experiment Artifact Structure}
+\label{sec:appendix-artifacts}
+
+Each evaluation run produces the following artifacts in \texttt{data/raw/<experiment>/<run\_id>/}:
+
+\begin{description}[leftmargin=1em,nosep]
+\item[\texttt{trace.parquet}] Time-series of all PLC tags at 500\,ms resolution.
+\item[\texttt{metadata.json}] Run configuration, PLC IP, scene, attacker type, start/end time, duration.
+\item[\texttt{attacks.json}] List of AttackAction records with shield decisions and execution status.
+\item[\texttt{detections.json}] List of DetectionEvent records from all active detectors.
+\item[\texttt{shield\_events.json}] All ShieldDecision records including rejected actions with reasons.
+\item[\texttt{metrics.json}] Computed evaluation metrics: ASR, F1, precision, recall, FP, FN, impact score, shield rates.
+\end{description}
+
+Aggregate analysis is performed by \texttt{scripts/aggregate\_results.py}, which traverses all run folders and produces summary CSVs and experiment manifests.

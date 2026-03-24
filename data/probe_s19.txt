@@ -1,0 +1,398 @@
+Probe log started at 2026-03-18 14:02:01
+Connected to PLC at 192.168.0.1
+
+============================================================
+  Scene 19: Sorting Height Basic
+  DB21, 62 bytes
+============================================================
+
+  --- Sample 0 ---
+    HighSensor           = False     (byte 0)
+    LowSensor            = False     (byte 2)
+    PalletSensor         = False     (byte 4)
+    Loaded               = False     (byte 6)
+    iState               = 0         (byte 48)
+    Enable               = True      (byte 60)
+    --- Physical I/O ---
+    IB10               = 11110000
+    IB11               = 00001100
+    QB 0                = 11100001
+    QB 1                = 00000000
+
+  --- Sample 1 ---
+    HighSensor           = False     (byte 0)
+    LowSensor            = False     (byte 2)
+    PalletSensor         = False     (byte 4)
+    Loaded               = False     (byte 6)
+    iState               = 0         (byte 48)
+    Enable               = True      (byte 60)
+    --- Physical I/O ---
+    IB10               = 11110000
+    IB11               = 00001100
+    QB 0                = 11100001
+    QB 1                = 00000000
+
+  --- Sample 2 ---
+    HighSensor           = False     (byte 0)
+    LowSensor            = False     (byte 2)
+    PalletSensor         = False     (byte 4)
+    Loaded               = False     (byte 6)
+    iState               = 0         (byte 48)
+    Enable               = True      (byte 60)
+    --- Physical I/O ---
+    IB10               = 11110000
+    IB11               = 00101100
+    QB 0                = 11100001
+    QB 1                = 00000000
+
+  --- Sample 3 ---
+    HighSensor           = False     (byte 0)
+    LowSensor            = False     (byte 2)
+    PalletSensor         = False     (byte 4)
+    Loaded               = False     (byte 6)
+    iState               = 0         (byte 48)
+    Enable               = True      (byte 60)
+    --- Physical I/O ---
+    IB10               = 11110000
+    IB11               = 00101100
+    QB 0                = 11100001
+    QB 1                = 00000000
+
+  --- Sample 4 ---
+    HighSensor           = False     (byte 0)
+    LowSensor            = False     (byte 2)
+    PalletSensor         = False     (byte 4)
+    Loaded               = False     (byte 6)
+    iState               = 0         (byte 48)
+    Enable               = True      (byte 60)
+    --- Physical I/O ---
+    IB10               = 11110000
+    IB11               = 00101100
+    QB 0                = 11100001
+    QB 1                = 00000000
+
+  --- Sample 5 ---
+    HighSensor           = False     (byte 0)
+    LowSensor            = False     (byte 2)
+    PalletSensor         = False     (byte 4)
+    Loaded               = False     (byte 6)
+    iState               = 0         (byte 48)
+    Enable               = True      (byte 60)
+    --- Physical I/O ---
+    IB10               = 11110000
+    IB11               = 00101100
+    QB 0                = 11100001
+    QB 1                = 00000000
+
+  --- Sample 6 ---
+    HighSensor           = False     (byte 0)
+    LowSensor            = False     (byte 2)
+    PalletSensor         = False     (byte 4)
+    Loaded               = False     (byte 6)
+    iState               = 0         (byte 48)
+    Enable               = True      (byte 60)
+    --- Physical I/O ---
+    IB10               = 11110000
+    IB11               = 00101100
+    QB 0                = 11100001
+    QB 1                = 00000000
+
+  --- Sample 7 ---
+    HighSensor           = False     (byte 0)
+    LowSensor            = False     (byte 2)
+    PalletSensor         = False     (byte 4)
+    Loaded               = False     (byte 6)
+    iState               = 0         (byte 48)
+    Enable               = True      (byte 60)
+    --- Physical I/O ---
+    IB10               = 11110000
+    IB11               = 00101100
+    QB 0                = 11100001
+    QB 1                = 00000000
+
+  --- Sample 8 ---
+    HighSensor           = False     (byte 0)
+    LowSensor            = False     (byte 2)
+    PalletSensor         = True      (byte 4)
+    Loaded               = False     (byte 6)
+    iState               = 0         (byte 48)
+    Enable               = True      (byte 60)
+    --- Physical I/O ---
+    IB10               = 11110100
+    IB11               = 00101100
+    QB 0                = 11100011
+    QB 1                = 00000000
+
+  --- Sample 9 ---
+    HighSensor           = True      (byte 0)
+    LowSensor            = True      (byte 2)
+    PalletSensor         = True      (byte 4)
+    Loaded               = False     (byte 6)
+    iState               = 0         (byte 48)
+    Enable               = True      (byte 60)
+    --- Physical I/O ---
+    IB10               = 11110111
+    IB11               = 00101100
+    QB 0                = 11100011
+    QB 1                = 00000000
+
+  --- Sample 10 ---
+    HighSensor           = False     (byte 0)
+    LowSensor            = False     (byte 2)
+    PalletSensor         = False     (byte 4)
+    Loaded               = True      (byte 6)
+    iState               = 0         (byte 48)
+    Enable               = True      (byte 60)
+    --- Physical I/O ---
+    IB10               = 11111000
+    IB11               = 00101100
+    QB 0                = 11110010
+    QB 1                = 00000000
+
+  --- Sample 11 ---
+    HighSensor           = False     (byte 0)
+    LowSensor            = False     (byte 2)
+    PalletSensor         = False     (byte 4)
+    Loaded               = True      (byte 6)
+    iState               = 0         (byte 48)
+    Enable               = True      (byte 60)
+    --- Physical I/O ---
+    IB10               = 10111000
+    IB11               = 00101100
+    QB 0                = 11110010
+    QB 1                = 00000000
+
+  --- Sample 12 ---
+    HighSensor           = False     (byte 0)
+    LowSensor            = False     (byte 2)
+    PalletSensor         = False     (byte 4)
+    Loaded               = False     (byte 6)
+    iState               = 0         (byte 48)
+    Enable               = True      (byte 60)
+    --- Physical I/O ---
+    IB10               = 10110000
+    IB11               = 00101100
+    QB 0                = 11110010
+    QB 1                = 00000000
+
+  --- Sample 13 ---
+    HighSensor           = False     (byte 0)
+    LowSensor            = False     (byte 2)
+    PalletSensor         = False     (byte 4)
+    Loaded               = False     (byte 6)
+    iState               = 0         (byte 48)
+    Enable               = True      (byte 60)
+    --- Physical I/O ---
+    IB10               = 11110000
+    IB11               = 00101100
+    QB 0                = 11110010
+    QB 1                = 00000000
+
+  --- Sample 14 ---
+    HighSensor           = False     (byte 0)
+    LowSensor            = False     (byte 2)
+    PalletSensor         = False     (byte 4)
+    Loaded               = False     (byte 6)
+    iState               = 0         (byte 48)
+    Enable               = True      (byte 60)
+    --- Physical I/O ---
+    IB10               = 11110000
+    IB11               = 00101100
+    QB 0                = 11100100
+    QB 1                = 00000000
+
+  --- Sample 15 ---
+    HighSensor           = False     (byte 0)
+    LowSensor            = False     (byte 2)
+    PalletSensor         = False     (byte 4)
+    Loaded               = False     (byte 6)
+    iState               = 1         (byte 48)
+    Enable               = True      (byte 60)
+    --- Physical I/O ---
+    IB10               = 11110000
+    IB11               = 00101100
+    QB 0                = 11100001
+    QB 1                = 00000000
+
+  --- Sample 16 ---
+    HighSensor           = False     (byte 0)
+    LowSensor            = False     (byte 2)
+    PalletSensor         = False     (byte 4)
+    Loaded               = False     (byte 6)
+    iState               = 1         (byte 48)
+    Enable               = True      (byte 60)
+    --- Physical I/O ---
+    IB10               = 11110000
+    IB11               = 00101100
+    QB 0                = 11100001
+    QB 1                = 00000000
+
+  --- Sample 17 ---
+    HighSensor           = True      (byte 0)
+    LowSensor            = True      (byte 2)
+    PalletSensor         = True      (byte 4)
+    Loaded               = False     (byte 6)
+    iState               = 1         (byte 48)
+    Enable               = True      (byte 60)
+    --- Physical I/O ---
+    IB10               = 01110111
+    IB11               = 00101100
+    QB 0                = 11100011
+    QB 1                = 00000000
+
+  --- Sample 18 ---
+    HighSensor           = False     (byte 0)
+    LowSensor            = False     (byte 2)
+    PalletSensor         = False     (byte 4)
+    Loaded               = False     (byte 6)
+    iState               = 1         (byte 48)
+    Enable               = True      (byte 60)
+    --- Physical I/O ---
+    IB10               = 01110000
+    IB11               = 00101100
+    QB 0                = 11100011
+    QB 1                = 00000000
+
+  --- Sample 19 ---
+    HighSensor           = False     (byte 0)
+    LowSensor            = False     (byte 2)
+    PalletSensor         = False     (byte 4)
+    Loaded               = True      (byte 6)
+    iState               = 1         (byte 48)
+    Enable               = True      (byte 60)
+    --- Physical I/O ---
+    IB10               = 11111000
+    IB11               = 00101100
+    QB 0                = 11110010
+    QB 1                = 00000000
+
+  --- Sample 20 ---
+    HighSensor           = False     (byte 0)
+    LowSensor            = False     (byte 2)
+    PalletSensor         = False     (byte 4)
+    Loaded               = False     (byte 6)
+    iState               = 1         (byte 48)
+    Enable               = True      (byte 60)
+    --- Physical I/O ---
+    IB10               = 10110000
+    IB11               = 00101100
+    QB 0                = 11110010
+    QB 1                = 00000000
+
+  --- Sample 21 ---
+    HighSensor           = False     (byte 0)
+    LowSensor            = False     (byte 2)
+    PalletSensor         = False     (byte 4)
+    Loaded               = False     (byte 6)
+    iState               = 1         (byte 48)
+    Enable               = True      (byte 60)
+    --- Physical I/O ---
+    IB10               = 11110000
+    IB11               = 00101100
+    QB 0                = 11110010
+    QB 1                = 00000000
+
+  --- Sample 22 ---
+    HighSensor           = False     (byte 0)
+    LowSensor            = False     (byte 2)
+    PalletSensor         = False     (byte 4)
+    Loaded               = False     (byte 6)
+    iState               = 1         (byte 48)
+    Enable               = True      (byte 60)
+    --- Physical I/O ---
+    IB10               = 11110000
+    IB11               = 00101100
+    QB 0                = 11100100
+    QB 1                = 00000000
+
+  --- Sample 23 ---
+    HighSensor           = False     (byte 0)
+    LowSensor            = False     (byte 2)
+    PalletSensor         = False     (byte 4)
+    Loaded               = False     (byte 6)
+    iState               = 2         (byte 48)
+    Enable               = True      (byte 60)
+    --- Physical I/O ---
+    IB10               = 11110000
+    IB11               = 00101100
+    QB 0                = 11100001
+    QB 1                = 00000000
+
+  --- Sample 24 ---
+    HighSensor           = False     (byte 0)
+    LowSensor            = False     (byte 2)
+    PalletSensor         = False     (byte 4)
+    Loaded               = False     (byte 6)
+    iState               = 2         (byte 48)
+    Enable               = True      (byte 60)
+    --- Physical I/O ---
+    IB10               = 11110100
+    IB11               = 00101100
+    QB 0                = 11100011
+    QB 1                = 00000000
+
+  --- Sample 25 ---
+    HighSensor           = True      (byte 0)
+    LowSensor            = True      (byte 2)
+    PalletSensor         = True      (byte 4)
+    Loaded               = False     (byte 6)
+    iState               = 2         (byte 48)
+    Enable               = True      (byte 60)
+    --- Physical I/O ---
+    IB10               = 01110111
+    IB11               = 00101100
+    QB 0                = 11100011
+    QB 1                = 00000000
+
+  --- Sample 26 ---
+    HighSensor           = False     (byte 0)
+    LowSensor            = False     (byte 2)
+    PalletSensor         = False     (byte 4)
+    Loaded               = True      (byte 6)
+    iState               = 2         (byte 48)
+    Enable               = True      (byte 60)
+    --- Physical I/O ---
+    IB10               = 01111000
+    IB11               = 00101100
+    QB 0                = 11110010
+    QB 1                = 00000000
+
+  --- Sample 27 ---
+    HighSensor           = False     (byte 0)
+    LowSensor            = False     (byte 2)
+    PalletSensor         = False     (byte 4)
+    Loaded               = True      (byte 6)
+    iState               = 2         (byte 48)
+    Enable               = True      (byte 60)
+    --- Physical I/O ---
+    IB10               = 11111000
+    IB11               = 00101100
+    QB 0                = 11110010
+    QB 1                = 00000000
+
+  --- Sample 28 ---
+    HighSensor           = False     (byte 0)
+    LowSensor            = False     (byte 2)
+    PalletSensor         = False     (byte 4)
+    Loaded               = False     (byte 6)
+    iState               = 2         (byte 48)
+    Enable               = True      (byte 60)
+    --- Physical I/O ---
+    IB10               = 10110000
+    IB11               = 00101100
+    QB 0                = 11110010
+    QB 1                = 00000000
+
+  --- Sample 29 ---
+    HighSensor           = False     (byte 0)
+    LowSensor            = False     (byte 2)
+    PalletSensor         = False     (byte 4)
+    Loaded               = False     (byte 6)
+    iState               = 2         (byte 48)
+    Enable               = True      (byte 60)
+    --- Physical I/O ---
+    IB10               = 11110000
+    IB11               = 00101100
+    QB 0                = 11110010
+    QB 1                = 00000000
+Disconnected.

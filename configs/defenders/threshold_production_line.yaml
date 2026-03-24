@@ -1,0 +1,20 @@
+# =============================================================================
+# CPSForge Defender — Threshold (Production Line)
+# =============================================================================
+name: threshold_production_line
+detector_type: threshold
+scene_name: production_line
+enabled: true
+thresholds:
+- tag: lid_machine
+  operator: ==
+  value: 0
+  severity: medium
+  label: lid_machine_stopped
+  description: lid_machine is stopped — possible actuator override
+- tag: base_machine
+  operator: ==
+  value: 0
+  severity: medium
+  label: base_machine_stopped
+  description: base_machine is stopped — possible actuator override

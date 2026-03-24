@@ -1,0 +1,16 @@
+# =============================================================================
+# CPSForge Defender — Invariant (Production Line)
+# =============================================================================
+name: invariant_production_line
+detector_type: invariant
+scene_name: production_line
+enabled: true
+invariant_rules:
+- rule_id: PL-INV-001
+  description: 'Baseline: at least one writable tag should be active'
+  condition: NOT (lid_machine == False AND base_machine == False)
+  tags:
+  - lid_machine
+  - base_machine
+  severity: medium
+  label: all_actuators_off

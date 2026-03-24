@@ -1,0 +1,80 @@
+# =============================================================================
+# CPSForge Defender — Threshold (Palletizer)
+# =============================================================================
+name: threshold_palletizer
+detector_type: threshold
+scene_name: palletizer
+enabled: true
+thresholds:
+- tag: pos_x
+  operator: '>'
+  value: 900.0
+  severity: high
+  label: pos_x_high
+  description: pos_x exceeds 90% of max (1000.0)
+- tag: pos_x
+  operator: <
+  value: 50.0
+  severity: high
+  label: pos_x_low
+  description: pos_x below safe minimum
+- tag: pos_z
+  operator: '>'
+  value: 450.0
+  severity: high
+  label: pos_z_high
+  description: pos_z exceeds 90% of max (500.0)
+- tag: pos_z
+  operator: <
+  value: 25.0
+  severity: high
+  label: pos_z_low
+  description: pos_z below safe minimum
+- tag: move_x
+  operator: '>'
+  value: 900.0
+  severity: medium
+  label: move_x_high
+  description: Setpoint move_x near maximum
+- tag: move_x
+  operator: <
+  value: 100.0
+  severity: medium
+  label: move_x_low
+  description: Setpoint move_x near minimum
+- tag: move_z
+  operator: '>'
+  value: 450.0
+  severity: medium
+  label: move_z_high
+  description: Setpoint move_z near maximum
+- tag: move_z
+  operator: <
+  value: 50.0
+  severity: medium
+  label: move_z_low
+  description: Setpoint move_z near minimum
+- tag: state
+  operator: '>'
+  value: 6
+  severity: high
+  label: invalid_state_high
+  description: State machine value exceeds max (6)
+- tag: state
+  operator: <
+  value: 0
+  severity: high
+  label: invalid_state_low
+  description: State machine value below min (0)
+- tag: conveyor_in
+  operator: ==
+  value: 0
+  severity: medium
+  label: conveyor_in_stopped
+  description: conveyor_in is stopped — possible actuator override
+- tag: clamp
+  operator: ==
+  value: 0
+  severity: medium
+  label: clamp_stopped
+  description: clamp is stopped — possible actuator override

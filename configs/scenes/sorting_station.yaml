@@ -1,0 +1,181 @@
+# =============================================================================
+# CPSForge Scene Configuration — Sorting Station
+# =============================================================================
+# Factory I/O scene: Sorting Station
+# DB30: Instance DB for FB_SortingStation (non-optimized)
+#
+# Physical setup:
+#   - Siemens S7 PLC at 192.168.0.1, TIA Portal v17
+#   - Vision sensor detects color: 0=none, 1=green, 2=blue
+#   - Diverter routes: green straight, blue diverted
+#   - Simple stateless detection logic
+#
+# Attack surface: Diverter, Conveyors
+# =============================================================================
+
+scene_name: sorting_station
+scene_id: 21  # OB_Main CASE 21 — DB23
+
+description: >
+  Vision-based item sorting station. Green and blue items detected by
+  vision sensor and routed by diverter. Green goes straight, blue diverted.
+  Continuous stateless operation with emitters and removers.
+
+sampling_interval_ms: 500
+
+tags:
+  - name: item_at_entry
+    address: "DB23,BOOL0.0"
+    data_type: bool
+    access: read
+    description: "Item at entry"
+    category: sensor
+    scene_name: sorting_station
+
+  - name: vision_color
+    address: "DB23,INT2"
+    data_type: int
+    access: read
+    min_value: 0
+    max_value: 2
+    description: "Vision color: 0=none, 1=green, 2=blue"
+    category: sensor
+    scene_name: sorting_station
+
+  - name: at_diverter
+    address: "DB23,BOOL4.0"
+    data_type: bool
+    access: read
+    description: "Item at diverter"
+    category: sensor
+    scene_name: sorting_station
+
+  - name: at_exit_green
+    address: "DB23,BOOL6.0"
+    data_type: bool
+    access: read
+    description: "Item at green exit"
+    category: sensor
+    scene_name: sorting_station
+
+  - name: at_exit_blue
+    address: "DB23,BOOL8.0"
+    data_type: bool
+    access: read
+    description: "Item at blue exit"
+    category: sensor
+    scene_name: sorting_station
+
+  - name: conveyor_in
+    address: "DB23,BOOL10.0"
+    data_type: bool
+    access: read_write
+    description: "Input conveyor"
+    category: actuator
+    scene_name: sorting_station
+
+  - name: conveyor_green
+    address: "DB23,BOOL12.0"
+    data_type: bool
+    access: read_write
+    description: "Green exit conveyor"
+    category: actuator
+    scene_name: sorting_station
+
+  - name: conveyor_blue
+    address: "DB23,BOOL14.0"
+    data_type: bool
+    access: read_write
+    description: "Blue exit conveyor"
+    category: actuator
+    scene_name: sorting_station
+
+  - name: diverter
+    address: "DB23,BOOL16.0"
+    data_type: bool
+    access: read_write
+    description: "Diverter: FALSE=green, TRUE=blue"
+    category: actuator
+    scene_name: sorting_station
+
+  - name: emitter
+    address: "DB23,BOOL18.0"
+    data_type: bool
+    access: read_write
+    description: "Item emitter"
+    category: actuator
+    scene_name: sorting_station
+
+  - name: remover_green
+    address: "DB23,BOOL20.0"
+    data_type: bool
+    access: read_write
+    description: "Green exit remover"
+    category: actuator
+    scene_name: sorting_station
+
+  - name: remover_blue
+    address: "DB23,BOOL22.0"
+    data_type: bool
+    access: read_write
+    description: "Blue exit remover"
+    category: actuator
+    scene_name: sorting_station
+
+  - name: detected_color
+    address: "DB23,INT24"
+    data_type: int
+    access: read
+    description: "Last detected color (internal latch)"
+    category: internal
+    scene_name: sorting_station
+
+writable_tags:
+  - conveyor_in
+  - conveyor_green
+  - conveyor_blue
+  - diverter
+  - emitter
+  - remover_green
+  - remover_blue
+
+attack_surface:
+  - diverter
+  - conveyor_in
+  - conveyor_green
+  - conveyor_blue
+
+safety_rules:
+  - rule_id: SORT-SR-001
+    description: "Diverter override capped at 20 seconds"
+    rule_type: duration
+    tags: [diverter]
+    parameters:
+      max_duration_ms: 20000
+    enabled: true
+    priority: 60
+
+  - rule_id: SORT-SR-002
+    description: "Input conveyor override capped at 20 seconds"
+    rule_type: duration
+    tags: [conveyor_in]
+    parameters:
+      max_duration_ms: 20000
+    enabled: true
+    priority: 50
+
+reset_procedure:
+  - tag: conveyor_in
+    value: true
+  - tag: conveyor_green
+    value: true
+  - tag: conveyor_blue
+    value: true
+  - tag: diverter
+    value: false
+  - tag: emitter
+    value: true
+  - tag: remover_green
+    value: true
+  - tag: remover_blue
+    value: true

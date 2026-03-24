@@ -1,0 +1,19 @@
+# =============================================================================
+# CPSForge Defender — CUSUM Detector (Level Control)
+# =============================================================================
+name: cusum_level_control
+detector_type: cusum
+scene_name: level_control
+enabled: true
+
+parameters:
+  target_tags:
+    - level_meter
+    - flow_meter
+    - fill_valve
+    - discharge_valve
+    - setpoint_in
+  slack: 0.3
+  threshold: 4.0
+  warmup_steps: 30
+  reset_on_alarm: true

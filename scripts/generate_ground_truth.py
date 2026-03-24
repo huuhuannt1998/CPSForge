@@ -41,7 +41,29 @@ logger = logging.getLogger(__name__)
 DATA_RAW = Path("data/raw")
 DATA_OUT = Path("data/processed/ground_truth")
 
-SCENES = ["from_a_to_b", "level_control", "sorting_height_basic"]
+SCENES = [
+    "from_a_to_b",
+    "from_a_to_b_sr",
+    "filling_tank",
+    "queue_items",
+    "assembler",
+    "assembler_analog",
+    "warehouse",
+    "buffer_station",
+    "converge_station",
+    "elevator_advanced",
+    "elevator_basic",
+    "level_control",
+    "palletizer",
+    "pick_place_basic",
+    "pick_place_xyz",
+    "production_line",
+    "separating_station",
+    "sorting_height_advanced",
+    "sorting_height_basic",
+    "sorting_weight",
+    "sorting_station",
+]
 
 
 def load_run_metadata(run_dir: Path) -> dict[str, Any] | None:

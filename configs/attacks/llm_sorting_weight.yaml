@@ -1,0 +1,37 @@
+# =============================================================================
+# CPSForge Attack Policy — LLM (Sorting Weight)
+# =============================================================================
+# 3-way weight sorter: light→left, medium→forward, heavy→right
+name: llm_sorting_weight
+attacker_type: llm
+scene_name: sorting_weight
+llm_provider: local_openai_compatible
+llm_model: null
+llm_max_retries: 3
+multi_step: false
+max_actions: 3
+inter_attack_delay_ms: 3000
+attack_types:
+  - actuator_override
+  - setpoint_shift
+  - sequence_perturbation
+parameters:
+  attacker_objective: >
+    Disrupt the 3-way weight sorting process. Boxes are weighed on a
+    conveyor scale: light (<2 kg) → LEFT, medium → FORWARD, heavy
+    (≥5 kg) → RIGHT. State machine: 0=Idle, 1=Weighed, 2=SendLeft,
+    4=SendRight, 6=SendForward.
+    Two REAL setpoints (light_thresh, heavy_thresh) control sort
+    boundaries — subtle shifts cause persistent mis-sorting.
+    Diverter actuators (send_left, send_right, send_forward) are
+    mutual-exclusive — forcing two simultaneously violates interlocks.
+    The defender uses threshold and invariant checks.
+  prompt_notes: >
+    Attack surface: light_thresh, heavy_thresh, send_left, send_right,
+    send_forward, entry_conveyor, load_scale, enable.
+    Setpoints: light_thresh (REAL, default 2.0), heavy_thresh (REAL, default 5.0).
+    Sensors (read-only): at_scale_entry, at_scale, at_scale_exit,
+    at_left_entry, at_exit_left, at_forward_entry, at_exit_front,
+    at_right_entry, at_exit_right, weight (REAL).
+    Actuators: entry_conveyor, load_scale, send_left, left_conveyor,
+    send_right, right_conveyor, send_forward, front_conveyor.

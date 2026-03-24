@@ -1,0 +1,181 @@
+# =============================================================================
+# CPSForge Scene Configuration — Separating Station
+# =============================================================================
+# Factory I/O scene: Separating Station
+# DB26: Instance DB for FB_SeparatingStation (non-optimized)
+#
+# Physical setup:
+#   - Siemens S7 PLC at 192.168.0.1, TIA Portal v17
+#   - Vision sensor detects color (INT: 0=none, 1=green, 2=blue)
+#   - Diverter routes parts: green straight, blue diverted
+#   - Input conveyor and two exit conveyors (left/right)
+#
+# Attack surface: Diverter, Conveyors, VisionSensor value
+# =============================================================================
+
+scene_name: separating_station
+scene_id: 17  # OB_Main CASE 17 — DB19
+
+description: >
+  Color-based separation. Vision sensor detects green (1) or blue (2)
+  parts. Diverter routes blue parts to one conveyor, green to the other.
+  Simple stateless detection-and-route logic.
+
+sampling_interval_ms: 500
+
+tags:
+  - name: part_at_entry
+    address: "DB19,BOOL0.0"
+    data_type: bool
+    access: read
+    description: "Part at entry sensor"
+    category: sensor
+    scene_name: separating_station
+
+  - name: vision_sensor
+    address: "DB19,INT2"
+    data_type: int
+    access: read
+    min_value: 0
+    max_value: 2
+    description: "Vision sensor color: 0=none, 1=green, 2=blue"
+    category: sensor
+    scene_name: separating_station
+
+  - name: at_diverter
+    address: "DB19,BOOL4.0"
+    data_type: bool
+    access: read
+    description: "Part at diverter position"
+    category: sensor
+    scene_name: separating_station
+
+  - name: at_exit_left
+    address: "DB19,BOOL6.0"
+    data_type: bool
+    access: read
+    description: "Part at left exit"
+    category: sensor
+    scene_name: separating_station
+
+  - name: at_exit_right
+    address: "DB19,BOOL8.0"
+    data_type: bool
+    access: read
+    description: "Part at right exit"
+    category: sensor
+    scene_name: separating_station
+
+  - name: conveyor_in
+    address: "DB19,BOOL10.0"
+    data_type: bool
+    access: read_write
+    description: "Input conveyor"
+    category: actuator
+    scene_name: separating_station
+
+  - name: conveyor_left
+    address: "DB19,BOOL12.0"
+    data_type: bool
+    access: read_write
+    description: "Left exit conveyor (green)"
+    category: actuator
+    scene_name: separating_station
+
+  - name: conveyor_right
+    address: "DB19,BOOL14.0"
+    data_type: bool
+    access: read_write
+    description: "Right exit conveyor (blue)"
+    category: actuator
+    scene_name: separating_station
+
+  - name: diverter
+    address: "DB19,BOOL16.0"
+    data_type: bool
+    access: read_write
+    description: "Diverter: FALSE=straight(green), TRUE=diverted(blue)"
+    category: actuator
+    scene_name: separating_station
+
+  - name: emitter
+    address: "DB19,BOOL18.0"
+    data_type: bool
+    access: read_write
+    description: "Part emitter"
+    category: actuator
+    scene_name: separating_station
+
+  - name: remover_left
+    address: "DB19,BOOL20.0"
+    data_type: bool
+    access: read_write
+    description: "Left exit remover"
+    category: actuator
+    scene_name: separating_station
+
+  - name: remover_right
+    address: "DB19,BOOL22.0"
+    data_type: bool
+    access: read_write
+    description: "Right exit remover"
+    category: actuator
+    scene_name: separating_station
+
+  - name: detected_color
+    address: "DB19,INT24"
+    data_type: int
+    access: read
+    description: "Last detected color (internal latch)"
+    category: internal
+    scene_name: separating_station
+
+writable_tags:
+  - conveyor_in
+  - conveyor_left
+  - conveyor_right
+  - diverter
+  - emitter
+  - remover_left
+  - remover_right
+
+attack_surface:
+  - diverter
+  - conveyor_in
+  - conveyor_left
+  - conveyor_right
+
+safety_rules:
+  - rule_id: SS-SR-001
+    description: "Diverter override capped at 20 seconds"
+    rule_type: duration
+    tags: [diverter]
+    parameters:
+      max_duration_ms: 20000
+    enabled: true
+    priority: 60
+
+  - rule_id: SS-SR-002
+    description: "Conveyor override capped at 20 seconds"
+    rule_type: duration
+    tags: [conveyor_in]
+    parameters:
+      max_duration_ms: 20000
+    enabled: true
+    priority: 50
+
+reset_procedure:
+  - tag: conveyor_in
+    value: true
+  - tag: conveyor_left
+    value: true
+  - tag: conveyor_right
+    value: true
+  - tag: diverter
+    value: false
+  - tag: emitter
+    value: true
+  - tag: remover_left
+    value: true
+  - tag: remover_right
+    value: true

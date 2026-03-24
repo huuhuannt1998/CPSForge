@@ -1,0 +1,32 @@
+# =============================================================================
+# CPSForge Defender — Threshold (Buffer Station)
+# =============================================================================
+name: threshold_buffer_station
+detector_type: threshold
+scene_name: buffer_station
+enabled: true
+thresholds:
+- tag: state
+  operator: '>'
+  value: 2
+  severity: high
+  label: invalid_state_high
+  description: State machine value exceeds max (2)
+- tag: state
+  operator: <
+  value: 0
+  severity: high
+  label: invalid_state_low
+  description: State machine value below min (0)
+- tag: conveyor
+  operator: ==
+  value: 0
+  severity: medium
+  label: conveyor_stopped
+  description: conveyor is stopped — possible actuator override
+- tag: stopper1
+  operator: ==
+  value: 0
+  severity: medium
+  label: stopper1_stopped
+  description: stopper1 is stopped — possible actuator override

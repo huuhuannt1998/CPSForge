@@ -1,0 +1,21 @@
+# =============================================================================
+# CPSForge Live Eval — LLM (Separating Station)
+# =============================================================================
+name: live_llm_separating_station
+description: 'Live eval run: LLM batch attacker vs threshold + invariant detectors
+  on separating station.'
+scene_config: scenes/separating_station.yaml
+plc_config: system/plc.yaml
+attackers:
+- llm_separating_station
+defenders:
+- threshold_separating_station
+- invariant_separating_station
+live_writes_enabled: true
+dry_run: false
+eval_run: true
+max_steps: 150
+run_duration_s: 150.0
+save_trace: true
+save_metrics: true
+reset_after_run: true

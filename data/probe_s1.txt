@@ -1,0 +1,248 @@
+Probe log started at 2026-03-18 13:56:49
+Connected to PLC at 192.168.0.1
+
+============================================================
+  Scene 1: From A to B
+  DB3, 6 bytes
+============================================================
+
+  --- Sample 0 ---
+    Sensor               = True      (byte 0)
+    Conveyor             = True      (byte 2)
+    Enable               = True      (byte 4)
+    --- Physical I/O ---
+    IB10               = 00000001
+    QB 0                = 00000001
+
+  --- Sample 1 ---
+    Sensor               = True      (byte 0)
+    Conveyor             = True      (byte 2)
+    Enable               = True      (byte 4)
+    --- Physical I/O ---
+    IB10               = 00000001
+    QB 0                = 00000001
+
+  --- Sample 2 ---
+    Sensor               = True      (byte 0)
+    Conveyor             = True      (byte 2)
+    Enable               = True      (byte 4)
+    --- Physical I/O ---
+    IB10               = 00000001
+    QB 0                = 00000001
+
+  --- Sample 3 ---
+    Sensor               = True      (byte 0)
+    Conveyor             = True      (byte 2)
+    Enable               = True      (byte 4)
+    --- Physical I/O ---
+    IB10               = 00000001
+    QB 0                = 00000001
+
+  --- Sample 4 ---
+    Sensor               = True      (byte 0)
+    Conveyor             = True      (byte 2)
+    Enable               = True      (byte 4)
+    --- Physical I/O ---
+    IB10               = 00000001
+    QB 0                = 00000001
+
+  --- Sample 5 ---
+    Sensor               = True      (byte 0)
+    Conveyor             = True      (byte 2)
+    Enable               = True      (byte 4)
+    --- Physical I/O ---
+    IB10               = 00000001
+    QB 0                = 00000001
+
+  --- Sample 6 ---
+    Sensor               = True      (byte 0)
+    Conveyor             = True      (byte 2)
+    Enable               = True      (byte 4)
+    --- Physical I/O ---
+    IB10               = 00000001
+    QB 0                = 00000001
+
+  --- Sample 7 ---
+    Sensor               = True      (byte 0)
+    Conveyor             = True      (byte 2)
+    Enable               = True      (byte 4)
+    --- Physical I/O ---
+    IB10               = 00000001
+    QB 0                = 00000001
+
+  --- Sample 8 ---
+    Sensor               = True      (byte 0)
+    Conveyor             = True      (byte 2)
+    Enable               = True      (byte 4)
+    --- Physical I/O ---
+    IB10               = 00000001
+    QB 0                = 00000001
+
+  --- Sample 9 ---
+    Sensor               = False     (byte 0)
+    Conveyor             = False     (byte 2)
+    Enable               = True      (byte 4)
+    --- Physical I/O ---
+    IB10               = 00000000
+    QB 0                = 00000000
+
+  --- Sample 10 ---
+    Sensor               = False     (byte 0)
+    Conveyor             = False     (byte 2)
+    Enable               = True      (byte 4)
+    --- Physical I/O ---
+    IB10               = 00000000
+    QB 0                = 00000000
+
+  --- Sample 11 ---
+    Sensor               = False     (byte 0)
+    Conveyor             = False     (byte 2)
+    Enable               = True      (byte 4)
+    --- Physical I/O ---
+    IB10               = 00000000
+    QB 0                = 00000000
+
+  --- Sample 12 ---
+    Sensor               = False     (byte 0)
+    Conveyor             = False     (byte 2)
+    Enable               = True      (byte 4)
+    --- Physical I/O ---
+    IB10               = 00000000
+    QB 0                = 00000000
+
+  --- Sample 13 ---
+    Sensor               = False     (byte 0)
+    Conveyor             = False     (byte 2)
+    Enable               = True      (byte 4)
+    --- Physical I/O ---
+    IB10               = 00000000
+    QB 0                = 00000000
+
+  --- Sample 14 ---
+    Sensor               = False     (byte 0)
+    Conveyor             = False     (byte 2)
+    Enable               = True      (byte 4)
+    --- Physical I/O ---
+    IB10               = 00000000
+    QB 0                = 00000000
+
+  --- Sample 15 ---
+    Sensor               = False     (byte 0)
+    Conveyor             = False     (byte 2)
+    Enable               = True      (byte 4)
+    --- Physical I/O ---
+    IB10               = 00000000
+    QB 0                = 00000000
+
+  --- Sample 16 ---
+    Sensor               = False     (byte 0)
+    Conveyor             = False     (byte 2)
+    Enable               = True      (byte 4)
+    --- Physical I/O ---
+    IB10               = 00000000
+    QB 0                = 00000000
+
+  --- Sample 17 ---
+    Sensor               = False     (byte 0)
+    Conveyor             = False     (byte 2)
+    Enable               = True      (byte 4)
+    --- Physical I/O ---
+    IB10               = 00000000
+    QB 0                = 00000000
+
+  --- Sample 18 ---
+    Sensor               = False     (byte 0)
+    Conveyor             = False     (byte 2)
+    Enable               = True      (byte 4)
+    --- Physical I/O ---
+    IB10               = 00000000
+    QB 0                = 00000000
+
+  --- Sample 19 ---
+    Sensor               = False     (byte 0)
+    Conveyor             = False     (byte 2)
+    Enable               = True      (byte 4)
+    --- Physical I/O ---
+    IB10               = 00000000
+    QB 0                = 00000000
+
+  --- Sample 20 ---
+    Sensor               = False     (byte 0)
+    Conveyor             = False     (byte 2)
+    Enable               = True      (byte 4)
+    --- Physical I/O ---
+    IB10               = 00000000
+    QB 0                = 00000000
+
+  --- Sample 21 ---
+    Sensor               = False     (byte 0)
+    Conveyor             = False     (byte 2)
+    Enable               = True      (byte 4)
+    --- Physical I/O ---
+    IB10               = 00000000
+    QB 0                = 00000000
+
+  --- Sample 22 ---
+    Sensor               = False     (byte 0)
+    Conveyor             = False     (byte 2)
+    Enable               = True      (byte 4)
+    --- Physical I/O ---
+    IB10               = 00000000
+    QB 0                = 00000000
+
+  --- Sample 23 ---
+    Sensor               = False     (byte 0)
+    Conveyor             = False     (byte 2)
+    Enable               = True      (byte 4)
+    --- Physical I/O ---
+    IB10               = 00000000
+    QB 0                = 00000000
+
+  --- Sample 24 ---
+    Sensor               = False     (byte 0)
+    Conveyor             = False     (byte 2)
+    Enable               = True      (byte 4)
+    --- Physical I/O ---
+    IB10               = 00000000
+    QB 0                = 00000000
+
+  --- Sample 25 ---
+    Sensor               = False     (byte 0)
+    Conveyor             = False     (byte 2)
+    Enable               = True      (byte 4)
+    --- Physical I/O ---
+    IB10               = 00000000
+    QB 0                = 00000000
+
+  --- Sample 26 ---
+    Sensor               = False     (byte 0)
+    Conveyor             = False     (byte 2)
+    Enable               = True      (byte 4)
+    --- Physical I/O ---
+    IB10               = 00000000
+    QB 0                = 00000000
+
+  --- Sample 27 ---
+    Sensor               = False     (byte 0)
+    Conveyor             = False     (byte 2)
+    Enable               = True      (byte 4)
+    --- Physical I/O ---
+    IB10               = 00000000
+    QB 0                = 00000000
+
+  --- Sample 28 ---
+    Sensor               = False     (byte 0)
+    Conveyor             = False     (byte 2)
+    Enable               = True      (byte 4)
+    --- Physical I/O ---
+    IB10               = 00000000
+    QB 0                = 00000000
+
+  --- Sample 29 ---
+    Sensor               = False     (byte 0)
+    Conveyor             = False     (byte 2)
+    Enable               = True      (byte 4)
+    --- Physical I/O ---
+    IB10               = 00000000
+    QB 0                = 00000000
+Disconnected.

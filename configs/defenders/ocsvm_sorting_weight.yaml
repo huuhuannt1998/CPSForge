@@ -1,0 +1,12 @@
+name: ocsvm_sorting_weight
+detector_type: ocsvm
+scene_name: sorting_weight
+enabled: true
+model_path: data/models/sorting_weight/ocsvm_sorting_weight.pkl
+window_size: 20
+anomaly_threshold: 0.5
+parameters:
+  kernel: rbf
+  nu: 0.05
+  gamma: scale
+  use_window: false

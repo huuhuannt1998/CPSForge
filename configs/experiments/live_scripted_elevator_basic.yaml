@@ -1,0 +1,21 @@
+# =============================================================================
+# CPSForge Live Eval — Scripted (Elevator Basic)
+# =============================================================================
+name: live_scripted_elevator_basic
+description: 'Live eval run: scripted attacker vs threshold + invariant detectors
+  on elevator basic.'
+scene_config: scenes/elevator_basic.yaml
+plc_config: system/plc.yaml
+attackers:
+- scripted_elevator_basic
+defenders:
+- threshold_elevator_basic
+- invariant_elevator_basic
+live_writes_enabled: true
+dry_run: false
+eval_run: true
+max_steps: 120
+run_duration_s: 120.0
+save_trace: true
+save_metrics: true
+reset_after_run: true

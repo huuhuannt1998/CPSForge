@@ -1,0 +1,11 @@
+# =============================================================================
+# CPSForge Attack Policy — Scripted (Elevator Basic)
+# =============================================================================
+name: scripted_elevator_basic
+attacker_type: scripted
+scene_name: elevator_basic
+max_actions: 5
+inter_attack_delay_ms: 3000
+attack_types:
+- actuator_override
+- sequence_perturbation

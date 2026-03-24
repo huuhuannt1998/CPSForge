@@ -1,0 +1,25 @@
+# =============================================================================
+# CPSForge Attack Policy — LLM (Sorting Station)
+# =============================================================================
+name: llm_sorting_station
+attacker_type: llm
+scene_name: sorting_station
+llm_provider: local_openai_compatible
+llm_model: null
+llm_max_retries: 3
+multi_step: false
+max_actions: 2
+inter_attack_delay_ms: 2000
+attack_types:
+- actuator_override
+- sequence_perturbation
+parameters:
+  attacker_objective: 'Disrupt the sorting station process. Vision-based item sorting
+    station. Green and blue items detected by vision sensor and routed by diverter.
+    Green goes straight, blue diverted. Continuous stateless operation with emitters
+    and removers. Writable targets: diverter, conveyor_in, conveyor_green, conveyor_blue.
+    The defender uses threshold and invariant checks.'
+  prompt_notes: 'Attack surface: diverter, conveyor_in, conveyor_green, conveyor_blue.
+    Sensors (read-only): item_at_entry, vision_color, at_diverter, at_exit_green,
+    at_exit_blue. Actuators: conveyor_in, conveyor_green, conveyor_blue, diverter,
+    emitter, remover_green.'

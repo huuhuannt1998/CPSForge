@@ -1,0 +1,149 @@
+# =============================================================================
+# CPSForge Scene Configuration — Queue of Items
+# =============================================================================
+# Factory I/O scene: Queue of Items (Counters)
+# DB13: Instance DB for FB_QueueItems (non-optimized)
+#
+# Physical setup:
+#   - Siemens S7 PLC at 192.168.0.1, TIA Portal v17
+#   - Emitter creates boxes, AtEntry sensor counts arrivals
+#   - Loading: emit 3 boxes (TARGET_COUNT), then Unloading: remove via AtExit
+#
+# Attack surface: Conveyor, Emitter, Remover
+# =============================================================================
+
+scene_name: queue_items
+scene_id: 4  # OB_Main CASE 4 — DB6
+
+description: >
+  Counter-based queue: load 3 boxes onto conveyor (counted by AtEntry
+  rising edge), then unload via AtExit sensor. Two states: Loading
+  and Unloading.
+
+sampling_interval_ms: 500
+
+tags:
+  - name: at_entry
+    address: "DB6,BOOL0.0"
+    data_type: bool
+    access: read
+    description: "Entry sensor — TRUE when box enters"
+    category: sensor
+    scene_name: queue_items
+
+  - name: at_exit
+    address: "DB6,BOOL2.0"
+    data_type: bool
+    access: read
+    description: "Exit sensor — TRUE when box at exit"
+    category: sensor
+    scene_name: queue_items
+
+  - name: conveyor
+    address: "DB6,BOOL4.0"
+    data_type: bool
+    access: read_write
+    description: "Conveyor motor"
+    category: actuator
+    scene_name: queue_items
+
+  - name: emitter
+    address: "DB6,BOOL6.0"
+    data_type: bool
+    access: read_write
+    description: "Box emitter — TRUE=create box"
+    category: actuator
+    scene_name: queue_items
+
+  - name: remover
+    address: "DB6,BOOL8.0"
+    data_type: bool
+    access: read_write
+    description: "Box remover — TRUE=remove box"
+    category: actuator
+    scene_name: queue_items
+
+  - name: box_counter
+    address: "DB6,INT10"
+    data_type: int
+    access: read
+    description: "Internal box count"
+    category: internal
+    scene_name: queue_items
+
+  - name: state
+    address: "DB6,INT12"
+    data_type: int
+    access: read
+    min_value: 0
+    max_value: 1
+    description: "State: 0=Loading, 1=Unloading"
+    category: internal
+    scene_name: queue_items
+
+  - name: box_count
+    address: "DB6,INT14"
+    data_type: int
+    access: read
+    description: "Total boxes loaded"
+    category: internal
+    scene_name: queue_items
+
+  - name: target_count
+    address: "DB6,INT16"
+    data_type: int
+    access: read_write
+    min_value: 1
+    max_value: 10
+    description: "Target number of boxes to load (default 3)"
+    category: setpoint
+    scene_name: queue_items
+
+writable_tags:
+  - conveyor
+  - emitter
+  - remover
+  - target_count
+
+attack_surface:
+  - conveyor
+  - emitter
+  - remover
+  - target_count
+
+safety_rules:
+  - rule_id: QI-SR-001
+    description: "Emitter and remover must not both be active simultaneously"
+    rule_type: mutual_exclusion
+    tags: [emitter, remover]
+    parameters:
+      forbidden_pairs: [[true, true]]
+    enabled: true
+    priority: 100
+
+  - rule_id: QI-SR-002
+    description: "Target count must stay between 1 and 10"
+    rule_type: range
+    tags: [target_count]
+    parameters:
+      min: 1
+      max: 10
+    enabled: true
+    priority: 80
+
+  - rule_id: QI-SR-003
+    description: "Conveyor override capped at 20 seconds"
+    rule_type: duration
+    tags: [conveyor]
+    parameters:
+      max_duration_ms: 20000
+    enabled: true
+    priority: 50
+
+reset_procedure:
+  - tag: conveyor
+    value: false
+  - tag: emitter
+    value: false
+  - tag: remover
+    value: false

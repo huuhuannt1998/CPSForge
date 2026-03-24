@@ -1,0 +1,23 @@
+# =============================================================================
+# CPSForge Attack Policy — LLM (Converge Station)
+# =============================================================================
+name: llm_converge_station
+attacker_type: llm
+scene_name: converge_station
+llm_provider: local_openai_compatible
+llm_model: null
+llm_max_retries: 3
+multi_step: false
+max_actions: 2
+inter_attack_delay_ms: 2000
+attack_types:
+- actuator_override
+- sequence_perturbation
+parameters:
+  attacker_objective: 'Disrupt the converge station process. Merge two conveyor paths
+    into one output path. Alternating priority ensures both sides get service. When
+    merge point is occupied, the active side waits. Writable targets: conveyor_left,
+    conveyor_right, conveyor_out. The defender uses threshold and invariant checks.'
+  prompt_notes: 'Attack surface: conveyor_left, conveyor_right, conveyor_out. Sensors
+    (read-only): sensor_left, sensor_right, sensor_merge, at_exit. Actuators: conveyor_left,
+    conveyor_right, conveyor_out, emitter1, emitter2, remover.'

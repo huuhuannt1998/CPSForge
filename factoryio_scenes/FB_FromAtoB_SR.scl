@@ -1,77 +1,73 @@
 // MANTIS — Scene 2: From A to B (Set and Reset)
 // Transport a box from sensor A to sensor B using set/reset logic.
-// DB11: Instance DB for FB_FromAtoB_SR (non-optimized access)
+// DB4: Instance DB for FB_FromAtoB_SR (non-optimized access)
 //
-// Factory I/O layout:
-//   - Emitter automatically creates boxes (not PLC-controlled)
-//   - Conveyor moves box LEFT → RIGHT  (%Q0.0)
-//   - Sensor A (diffuse) at left/entry detects box  (%I0.0)
-//   - Sensor B (diffuse) at right/exit detects box  (%I0.1)
-//   - Remover is automatic (not PLC-controlled)
+// Factory I/O connections (ComDrvS7, Bool Inputs Offset=10):
+//   Sensor A            → %I10.0
+//   Sensor B            → %I10.1
+//   FACTORY I/O Running → %I10.2   (always TRUE while FIO is running)
+//   Conveyor            → %Q0.0
 //
-// Driver mapping (from Factory I/O):
-//   Sensor A → %I0.0
-//   Sensor B → %I0.1
-//   Conveyor → %Q0.0
-//
-// DB11 byte layout (non-optimized):
-//   Byte 0   : SensorA  (BOOL)   — copied from %I0.0
+// DB4 byte layout (non-optimized, 12 bytes):
+//   Byte 0   : SensorA     (BOOL)  — box at entry
 //   Byte 1   : padding
-//   Byte 2   : SensorB  (BOOL)   — copied from %I0.1
+//   Byte 2   : SensorB     (BOOL)  — box at exit
 //   Byte 3   : padding
-//   Byte 4   : Conveyor (BOOL)   — copied to  %Q0.0
+//   Byte 4   : FIO_Running (BOOL)  — Factory I/O alive signal
 //   Byte 5   : padding
-//   Byte 6   : ConveyorRunning (BOOL) — internal latch (SET/RESET)
+//   Byte 6   : Conveyor    (BOOL)  — conveyor motor output
 //   Byte 7   : padding
-//   Byte 8   : Enable   (BOOL)   — system enable flag (default TRUE)
+//   Byte 8   : ConveyorRunning (BOOL) — SR latch state
 //   Byte 9   : padding
-//   Total = 10 bytes
+//   Byte 10  : Enable      (BOOL)  — system enable (attack target)
+//   Byte 11  : padding
+//   Total = 12 bytes
 //
 // Normal cycle:
-//   Idle: conveyor OFF, waiting for box at SensorA
-//   SensorA triggers → SET conveyor ON → box moves right
-//   SensorB triggers → RESET conveyor OFF → box at exit
-//   Remover clears box automatically → cycle repeats
+//   FIO starts  → FIO_Running=TRUE, waiting for box
+//   Box at A    → SensorA=TRUE, SensorB=FALSE → SET  conveyor ON
+//   Box at B    → SensorB=TRUE               → RESET conveyor OFF
+//   Auto-remover clears box → SensorB=FALSE  → next box triggers A
 //
-// Vulnerability: Enable flag is read by logic but NEVER written.
-//   Setting Enable=FALSE stops the conveyor permanently.
+// Attack surface:
+//   Enable=FALSE    → full DoS (conveyor locked off)
+//   SensorB spoof=TRUE  → premature stop before box reaches exit
+//   SensorB spoof=FALSE → conveyor never stops (box overshoots)
 
 FUNCTION_BLOCK "FB_FromAtoB_SR"
 { S7_Optimized_Access := 'FALSE' }
-VERSION : 0.4
+VERSION : 1.0
 
 VAR
-    // Mapped to DB11 — order determines byte offsets (non-optimized)
-    SensorA         : BOOL;         // byte 0.0 — Sensor A: box at entry
-    _pad0           : BYTE;         // byte 1   — padding
-    SensorB         : BOOL;         // byte 2.0 — Sensor B: box at exit
-    _pad1           : BYTE;         // byte 3   — padding
-    Conveyor        : BOOL;         // byte 4.0 — Actuator: conveyor motor
-    _pad2           : BYTE;         // byte 5   — padding
-    ConveyorRunning : BOOL := FALSE; // byte 6.0 — Internal: SET/RESET latch
-    _pad3           : BYTE;         // byte 7   — padding
-    Enable          : BOOL := TRUE; // byte 8.0 — System enable (default ON)
-    _pad4           : BYTE;         // byte 9   — padding
+    SensorA         : BOOL;          // byte 0.0  — Sensor A: box at entry
+    _pad0           : BYTE;          // byte 1    — padding
+    SensorB         : BOOL;          // byte 2.0  — Sensor B: box at exit
+    _pad1           : BYTE;          // byte 3    — padding
+    FIO_Running     : BOOL;          // byte 4.0  — Factory I/O alive (always TRUE when running)
+    _pad2           : BYTE;          // byte 5    — padding
+    Conveyor        : BOOL;          // byte 6.0  — Actuator: conveyor motor
+    _pad3           : BYTE;          // byte 7    — padding
+    ConveyorRunning : BOOL := FALSE; // byte 8.0  — SR latch state
+    _pad4           : BYTE;          // byte 9    — padding
+    Enable          : BOOL := TRUE;  // byte 10.0 — System enable (attack/DoS target)
+    _pad5           : BYTE;          // byte 11   — padding
+    // Total DB size: 12 bytes
 END_VAR
 
 BEGIN
-    // ── Safety gate: if Enable is FALSE, shut everything down ──
-    IF NOT Enable THEN
-        Conveyor := FALSE;
-        ConveyorRunning := FALSE;
-        RETURN;
+    // SR latch gated on FIO_Running
+    //   FIO down            → RESET (safe state: conveyor off)
+    //   SensorB TRUE        → RESET (box arrived at exit: stop)
+    //   SensorA TRUE, B off → SET   (box at entry, exit clear: start)
+    //   otherwise           → hold latch
+    IF NOT FIO_Running THEN
+        ConveyorRunning := FALSE;        // simulation not running → stop
+    ELSIF SensorB THEN
+        ConveyorRunning := FALSE;        // RESET: box reached exit
+    ELSIF SensorA AND NOT SensorB THEN
+        ConveyorRunning := TRUE;         // SET: box at entry, exit clear
     END_IF;
 
-    // ── Set/Reset logic ──
-    // SET: SensorA detects box and conveyor is idle → start moving
-    IF SensorA AND NOT ConveyorRunning THEN
-        ConveyorRunning := TRUE;
-    END_IF;
-
-    // RESET: SensorB detects box arrived at exit → stop
-    IF SensorB AND ConveyorRunning THEN
-        ConveyorRunning := FALSE;
-    END_IF;
-
-    Conveyor := ConveyorRunning;
+    // Gate final output on Enable (primary attack target)
+    Conveyor := ConveyorRunning AND Enable;
 END_FUNCTION_BLOCK

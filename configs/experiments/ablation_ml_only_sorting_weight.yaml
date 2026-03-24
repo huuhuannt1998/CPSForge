@@ -1,0 +1,27 @@
+# =============================================================================
+# CPSForge Ablation — ML Detectors Only (Sorting by Weight)
+# =============================================================================
+name: ablation_ml_only_sorting_weight
+description: >
+  Ablation study: ML detectors only (OCSVM + Isolation Forest) on Sorting by Weight.
+
+scene_config: "scenes/sorting_weight.yaml"
+plc_config: "system/plc.yaml"
+
+attackers:
+  - scripted_sorting_weight
+
+defenders:
+  - ocsvm_sorting_weight
+  - iforest_sorting_weight
+
+live_writes_enabled: true
+dry_run: false
+eval_run: true
+
+max_steps: 150
+run_duration_s: 150.0
+
+save_trace: true
+save_metrics: true
+reset_after_run: true

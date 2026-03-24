@@ -1,0 +1,31 @@
+# =============================================================================
+# CPSForge Defender — Invariant (Sorting Height Advanced)
+# =============================================================================
+name: invariant_sorting_height_advanced
+detector_type: invariant
+scene_name: sorting_height_advanced
+enabled: true
+invariant_rules:
+- rule_id: SHA-INV-001
+  description: Load and unload must not be active simultaneously
+  condition: NOT (load_act == True AND unload_act == True)
+  tags:
+  - load_act
+  - unload_act
+  severity: critical
+  label: load_act_unload_act_conflict
+- rule_id: SHA-INV-002
+  description: Enable must be on when feeder_conveyor is active
+  condition: NOT (enable == False AND feeder_conveyor == True)
+  tags:
+  - enable
+  - feeder_conveyor
+  severity: high
+  label: enable_off_with_feeder_conveyor
+- rule_id: SHA-INV-003
+  description: State must be within valid range [0, 90]
+  condition: NOT (state < 0 OR state > 90)
+  tags:
+  - state
+  severity: high
+  label: invalid_state_range

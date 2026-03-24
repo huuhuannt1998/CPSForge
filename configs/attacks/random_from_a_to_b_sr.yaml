@@ -1,0 +1,13 @@
+# =============================================================================
+# CPSForge Attack Policy — Random (From A To B Sr)
+# =============================================================================
+name: random_from_a_to_b_sr
+attacker_type: random
+scene_name: from_a_to_b_sr
+max_actions: 10
+inter_attack_delay_ms: 2000
+attack_types:
+- actuator_override
+- sequence_perturbation
+random_seed: 42
+value_noise_std: 0.1

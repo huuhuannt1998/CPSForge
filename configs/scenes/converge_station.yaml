@@ -1,0 +1,158 @@
+# =============================================================================
+# CPSForge Scene Configuration — Converge Station
+# =============================================================================
+# Factory I/O scene: Converge Station
+# DB18: Instance DB for FB_ConvergeStation (non-optimized)
+#
+# Physical setup:
+#   - Siemens S7 PLC at 192.168.0.1, TIA Portal v17
+#   - Two input paths (left, right) merge into one output
+#   - Alternating priority prevents deadlock
+#
+# Attack surface: Conveyors
+# =============================================================================
+
+scene_name: converge_station
+scene_id: 9  # OB_Main CASE 9 — DB11
+
+description: >
+  Merge two conveyor paths into one output path. Alternating priority
+  ensures both sides get service. When merge point is occupied, the
+  active side waits.
+
+sampling_interval_ms: 500
+
+tags:
+  - name: sensor_left
+    address: "DB11,BOOL0.0"
+    data_type: bool
+    access: read
+    description: "Box on left input path"
+    category: sensor
+    scene_name: converge_station
+
+  - name: sensor_right
+    address: "DB11,BOOL2.0"
+    data_type: bool
+    access: read
+    description: "Box on right input path"
+    category: sensor
+    scene_name: converge_station
+
+  - name: sensor_merge
+    address: "DB11,BOOL4.0"
+    data_type: bool
+    access: read
+    description: "Box at merge point"
+    category: sensor
+    scene_name: converge_station
+
+  - name: at_exit
+    address: "DB11,BOOL6.0"
+    data_type: bool
+    access: read
+    description: "Box at exit"
+    category: sensor
+    scene_name: converge_station
+
+  - name: conveyor_left
+    address: "DB11,BOOL8.0"
+    data_type: bool
+    access: read_write
+    description: "Left input conveyor"
+    category: actuator
+    scene_name: converge_station
+
+  - name: conveyor_right
+    address: "DB11,BOOL10.0"
+    data_type: bool
+    access: read_write
+    description: "Right input conveyor"
+    category: actuator
+    scene_name: converge_station
+
+  - name: conveyor_out
+    address: "DB11,BOOL12.0"
+    data_type: bool
+    access: read_write
+    description: "Output conveyor"
+    category: actuator
+    scene_name: converge_station
+
+  - name: emitter1
+    address: "DB11,BOOL14.0"
+    data_type: bool
+    access: read_write
+    description: "Left path emitter"
+    category: actuator
+    scene_name: converge_station
+
+  - name: emitter2
+    address: "DB11,BOOL16.0"
+    data_type: bool
+    access: read_write
+    description: "Right path emitter"
+    category: actuator
+    scene_name: converge_station
+
+  - name: remover
+    address: "DB11,BOOL18.0"
+    data_type: bool
+    access: read_write
+    description: "Output path remover"
+    category: actuator
+    scene_name: converge_station
+
+  - name: priority_left
+    address: "DB11,BOOL20.0"
+    data_type: bool
+    access: read
+    description: "TRUE when left path has priority"
+    category: internal
+    scene_name: converge_station
+
+writable_tags:
+  - conveyor_left
+  - conveyor_right
+  - conveyor_out
+  - emitter1
+  - emitter2
+  - remover
+
+attack_surface:
+  - conveyor_left
+  - conveyor_right
+  - conveyor_out
+
+safety_rules:
+  - rule_id: CS-SR-001
+    description: "Conveyor override capped at 20 seconds"
+    rule_type: duration
+    tags: [conveyor_left]
+    parameters:
+      max_duration_ms: 20000
+    enabled: true
+    priority: 50
+
+  - rule_id: CS-SR-002
+    description: "Right conveyor override capped at 20 seconds"
+    rule_type: duration
+    tags: [conveyor_right]
+    parameters:
+      max_duration_ms: 20000
+    enabled: true
+    priority: 50
+
+reset_procedure:
+  - tag: conveyor_left
+    value: false
+  - tag: conveyor_right
+    value: false
+  - tag: conveyor_out
+    value: false
+  - tag: emitter1
+    value: false
+  - tag: emitter2
+    value: false
+  - tag: remover
+    value: false

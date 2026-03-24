@@ -1,0 +1,32 @@
+# =============================================================================
+# CPSForge Defender — Threshold (Pick Place Basic)
+# =============================================================================
+name: threshold_pick_place_basic
+detector_type: threshold
+scene_name: pick_place_basic
+enabled: true
+thresholds:
+- tag: state
+  operator: '>'
+  value: 7
+  severity: high
+  label: invalid_state_high
+  description: State machine value exceeds max (7)
+- tag: state
+  operator: <
+  value: 0
+  severity: high
+  label: invalid_state_low
+  description: State machine value below min (0)
+- tag: conveyor_in
+  operator: ==
+  value: 0
+  severity: medium
+  label: conveyor_in_stopped
+  description: conveyor_in is stopped — possible actuator override
+- tag: conveyor_out
+  operator: ==
+  value: 0
+  severity: medium
+  label: conveyor_out_stopped
+  description: conveyor_out is stopped — possible actuator override

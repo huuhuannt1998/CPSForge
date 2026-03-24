@@ -1,0 +1,144 @@
+# =============================================================================
+# CPSForge Scene Configuration — Filling Tank
+# =============================================================================
+# Factory I/O scene: Filling Tank
+# DB5: Instance DB for FB_FillingTank (non-optimized, 18 bytes)
+#
+# Factory I/O connections (ComDrvS7, Bool Inputs Offset=10):
+#   Fill (high-level sensor)       → %I10.0   TRUE = tank full
+#   Discharge (low-level sensor)   → %I10.1   TRUE = tank empty
+#   FACTORY I/O (Running)          → %I10.2   TRUE = simulation active
+#   Fill valve                     → %Q0.0
+#   Filling (indicator)            → %Q0.1
+#   Discharge valve                → %Q0.2
+#   Discharging (indicator)        → %Q0.3
+#
+# Attack surface: FillValve, DrainValve, Enable
+# =============================================================================
+
+scene_name: filling_tank
+scene_id: 3  # OB_Main CASE 3 — DB5
+
+description: >
+  Tank fill/drain cycle. Fill valve opens until Fill sensor triggers (tank full),
+  then drain valve opens until Discharge sensor triggers (tank empty). Filling
+  and Discharging indicators mirror current phase. Enable flag gates all outputs.
+
+sampling_interval_ms: 500
+
+tags:
+  - name: sensor_fill
+    address: "DB5,BOOL0.0"
+    data_type: bool
+    access: read
+    description: "Fill sensor — TRUE when tank is full"
+    category: sensor
+    scene_name: filling_tank
+
+  - name: sensor_drain
+    address: "DB5,BOOL2.0"
+    data_type: bool
+    access: read
+    description: "Discharge sensor — TRUE when tank is empty"
+    category: sensor
+    scene_name: filling_tank
+
+  - name: fio_running
+    address: "DB5,BOOL4.0"
+    data_type: bool
+    access: read
+    description: "Factory I/O Running — always TRUE while simulation active"
+    category: sensor
+    scene_name: filling_tank
+
+  - name: fill_valve
+    address: "DB5,BOOL6.0"
+    data_type: bool
+    access: read_write
+    description: "Fill valve — TRUE=open"
+    category: actuator
+    scene_name: filling_tank
+
+  - name: filling
+    address: "DB5,BOOL8.0"
+    data_type: bool
+    access: read_write
+    description: "Filling indicator light — mirrors fill phase"
+    category: actuator
+    scene_name: filling_tank
+
+  - name: drain_valve
+    address: "DB5,BOOL10.0"
+    data_type: bool
+    access: read_write
+    description: "Discharge valve — TRUE=open"
+    category: actuator
+    scene_name: filling_tank
+
+  - name: discharging
+    address: "DB5,BOOL12.0"
+    data_type: bool
+    access: read_write
+    description: "Discharging indicator light — mirrors drain phase"
+    category: actuator
+    scene_name: filling_tank
+
+  - name: is_filling
+    address: "DB5,BOOL14.0"
+    data_type: bool
+    access: read
+    description: "Internal state — TRUE=filling phase, FALSE=draining phase"
+    category: internal
+    scene_name: filling_tank
+
+  - name: enable
+    address: "DB5,BOOL16.0"
+    data_type: bool
+    access: read_write
+    description: "System enable — gates all outputs (attack/DoS target)"
+    category: mode_bit
+    scene_name: filling_tank
+
+writable_tags:
+  - fill_valve
+  - drain_valve
+  - enable
+
+attack_surface:
+  - fill_valve
+  - drain_valve
+  - enable
+
+safety_rules:
+  - rule_id: FT-SR-001
+    description: "Fill and drain valves must not both be open simultaneously"
+    rule_type: mutual_exclusion
+    tags: [fill_valve, drain_valve]
+    parameters:
+      forbidden_pairs: [[true, true]]
+    enabled: true
+    priority: 100
+
+  - rule_id: FT-SR-002
+    description: "Valve override duration capped at 30 seconds"
+    rule_type: duration
+    tags: [fill_valve]
+    parameters:
+      max_duration_ms: 30000
+    enabled: true
+    priority: 50
+
+  - rule_id: FT-SR-003
+    description: "Drain valve override duration capped at 30 seconds"
+    rule_type: duration
+    tags: [drain_valve]
+    parameters:
+      max_duration_ms: 30000
+    enabled: true
+    priority: 50
+
+reset_procedure:
+  - tag: fill_valve
+    value: false
+  - tag: drain_valve
+    value: false

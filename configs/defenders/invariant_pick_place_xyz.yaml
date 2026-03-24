@@ -1,0 +1,36 @@
+# =============================================================================
+# CPSForge Defender — Invariant (Pick Place Xyz)
+# =============================================================================
+name: invariant_pick_place_xyz
+detector_type: invariant
+scene_name: pick_place_xyz
+enabled: true
+invariant_rules:
+- rule_id: PPX-INV-001
+  description: State must be within valid range [0, 6]
+  condition: NOT (state < 0 OR state > 6)
+  tags:
+  - state
+  severity: high
+  label: invalid_state_range
+- rule_id: PPX-INV-002
+  description: setpoint_x must be in [0.0, 1000.0]
+  condition: NOT (setpoint_x < 0.0 OR setpoint_x > 1000.0)
+  tags:
+  - setpoint_x
+  severity: high
+  label: setpoint_x_out_of_range
+- rule_id: PPX-INV-003
+  description: setpoint_y must be in [0.0, 1000.0]
+  condition: NOT (setpoint_y < 0.0 OR setpoint_y > 1000.0)
+  tags:
+  - setpoint_y
+  severity: high
+  label: setpoint_y_out_of_range
+- rule_id: PPX-INV-004
+  description: setpoint_z must be in [0.0, 500.0]
+  condition: NOT (setpoint_z < 0.0 OR setpoint_z > 500.0)
+  tags:
+  - setpoint_z
+  severity: high
+  label: setpoint_z_out_of_range

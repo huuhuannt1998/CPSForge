@@ -173,7 +173,7 @@ class RunReplayLoader:
                     ev.run_id = self._run_id
                     events.append(ev)
         logger.info(
-            "Replay %s: %d detectors × %d steps → %d events.",
+            "Replay %s: %d detectors x %d steps -> %d events.",
             self._run_id,
             len(detectors),
             len(snapshots),

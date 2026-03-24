@@ -1,0 +1,32 @@
+# =============================================================================
+# CPSForge Defender — Threshold (Assembler)
+# =============================================================================
+name: threshold_assembler
+detector_type: threshold
+scene_name: assembler
+enabled: true
+thresholds:
+- tag: state
+  operator: '>'
+  value: 6
+  severity: high
+  label: invalid_state_high
+  description: State machine value exceeds max (6)
+- tag: state
+  operator: <
+  value: 0
+  severity: high
+  label: invalid_state_low
+  description: State machine value below min (0)
+- tag: conveyor_base
+  operator: ==
+  value: 0
+  severity: medium
+  label: conveyor_base_stopped
+  description: conveyor_base is stopped — possible actuator override
+- tag: conveyor_lid
+  operator: ==
+  value: 0
+  severity: medium
+  label: conveyor_lid_stopped
+  description: conveyor_lid is stopped — possible actuator override

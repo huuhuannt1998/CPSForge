@@ -66,6 +66,10 @@ class LevelControlScene(BaseScene):
             dt = ts_s - self._prev_ts_s
             if dt > 0:
                 features["level_rate"] = (float(level) - float(self._prev_level)) / dt
+            else:
+                features["level_rate"] = 0.0
+        else:
+            features["level_rate"] = 0.0
         self._prev_level = float(level) if level is not None else self._prev_level
         self._prev_ts_s = ts_s
 

@@ -1,0 +1,16 @@
+# =============================================================================
+# CPSForge Defender — One-Class SVM Detector (From A to B)
+# =============================================================================
+name: ocsvm_from_a_to_b
+detector_type: ocsvm
+scene_name: from_a_to_b
+enabled: true
+model_path: null
+window_size: 20
+anomaly_threshold: 0.5
+
+parameters:
+  kernel: rbf
+  nu: 0.05
+  gamma: scale
+  use_window: true

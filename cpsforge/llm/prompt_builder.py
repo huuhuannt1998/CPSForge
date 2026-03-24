@@ -422,6 +422,7 @@ class PromptBuilder:
         prior_actions: Optional[List[Dict[str, Any]]] = None,
         attacker_objective: str = "",
         notes: str = "",
+        attack_surface: str = "",
     ) -> str:
         """Render the per-cycle user prompt for the live attacker agent."""
         step_id = snapshot.step_id if snapshot else 0
@@ -440,6 +441,7 @@ class PromptBuilder:
             "prior_actions": prior_str,
             "attacker_objective": attacker_objective,
             "notes": "\n".join(parts),
+            "attack_surface": attack_surface or "(see system prompt)",
         }
         return self._render(self._attacker_agent_user, context)
 

@@ -1,0 +1,30 @@
+# =============================================================================
+# CPSForge Attack Policy — LLM (Warehouse)
+# =============================================================================
+name: llm_warehouse
+attacker_type: llm
+scene_name: warehouse
+llm_provider: local_openai_compatible
+llm_model: null
+llm_max_retries: 3
+multi_step: false
+max_actions: 3
+inter_attack_delay_ms: 3000
+attack_types:
+- actuator_override
+- setpoint_shift
+- sensor_spoof
+- sequence_perturbation
+- timing_delay
+parameters:
+  attacker_objective: 'Disrupt the warehouse process. Automated warehouse with 5x5
+    rack storage. Crane moves on X/Z axes to store boxes sequentially. Fork extends/retracts
+    for pickup/place. Attack targets include crane setpoints and target slot. Writable
+    targets: crane_move_x, crane_move_z, fork_extend, fork_retract, target_slot. This
+    scene has analog (REAL) values — gradual shifts may evade threshold detectors.
+    Try to cause state machine inconsistencies or stuck states. The defender uses
+    threshold and invariant checks.'
+  prompt_notes: 'Attack surface: crane_move_x, crane_move_z, fork_extend, fork_retract,
+    target_slot. Setpoints: crane_move_x, crane_move_z, target_slot. Sensors (read-only):
+    at_entry, at_exit, crane_x, crane_z, crane_fork. Actuators: conveyor_in, conveyor_out,
+    fork_extend, fork_retract, emitter.'

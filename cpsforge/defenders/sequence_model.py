@@ -63,22 +63,29 @@ def _snapshot_to_vector(snapshot: PlantSnapshot) -> Optional[np.ndarray]:
     """
     Convert a PlantSnapshot to a flat numpy feature vector.
 
-    Extracts all numeric values from sensors, actuators, setpoints, and
-    derived_features dicts.  Returns ``None`` if no numeric values are
-    found (e.g. completely empty snapshot).
+    Extracts all numeric values from sensors, actuators, controller_state,
+    setpoints, and derived_features dicts — matching the column order written
+    by :class:`~cpsforge.logging.artifacts.TraceRecorder` so that the feature
+    dimension is consistent between offline training and online inference.
+
+    Returns ``None`` if no numeric values are found.
     """
     values: List[float] = []
     for d in (
         snapshot.sensors,
         snapshot.actuators,
+        snapshot.controller_state,
         snapshot.setpoints,
         snapshot.derived_features,
     ):
         for v in d.values():
-            try:
-                values.append(float(v))
-            except (TypeError, ValueError):
+            if v is None:
                 values.append(0.0)
+            else:
+                try:
+                    values.append(float(v))
+                except (TypeError, ValueError):
+                    values.append(0.0)
     if not values:
         return None
     return np.array(values, dtype=np.float32)
@@ -227,10 +234,39 @@ class SequenceModelDetector(BaseDetector):
         *lower* means *more anomalous*.  We negate and normalise to produce
         a score where *higher = more anomalous*.
         """
-        window = np.stack(list(self._buffer))     # (window_size, n_features)
+        buf = list(self._buffer)
+
+        # Ensure all vectors in the buffer share the same dimensionality.
+        # If a PLC read partially failed, some snapshots may yield vectors
+        # of a different length.  Pad/truncate to the mode dimension.
+        if buf:
+            target_dim = buf[0].shape[0]
+            aligned: List[np.ndarray] = []
+            for v in buf:
+                if v.shape[0] == target_dim:
+                    aligned.append(v)
+                elif v.shape[0] < target_dim:
+                    aligned.append(np.pad(v, (0, target_dim - v.shape[0])))
+                else:
+                    aligned.append(v[:target_dim])
+            buf = aligned
+
+        window = np.stack(buf)                    # (window_size, n_features)
         feature_vec = _window_to_feature(window)  # (2 * n_features,)
 
         X = feature_vec.reshape(1, -1)
+
+        # Guard against dimension mismatch with the trained model
+        expected_dim = getattr(self._model, "n_features_in_", None)
+        if self._scaler is not None:
+            expected_dim = expected_dim or getattr(self._scaler, "n_features_in_", None)
+        if expected_dim is not None and X.shape[1] != expected_dim:
+            # Pad or truncate to match the model's expected input
+            if X.shape[1] < expected_dim:
+                X = np.pad(X, ((0, 0), (0, expected_dim - X.shape[1])))
+            else:
+                X = X[:, :expected_dim]
+
         if self._scaler is not None:
             X = self._scaler.transform(X)
 

@@ -1,0 +1,15 @@
+# =============================================================================
+# CPSForge Defender — LSTM Autoencoder Detector (Sorting Height Basic)
+# =============================================================================
+name: lstm_ad_sorting_height_basic
+detector_type: lstm_ad
+scene_name: sorting_height_basic
+enabled: true
+model_path: null
+window_size: 20
+anomaly_threshold: 0.01
+
+parameters:
+  hidden_dim: 16
+  num_layers: 1
+  reconstruction_threshold: null

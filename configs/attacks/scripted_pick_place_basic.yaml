@@ -1,0 +1,12 @@
+# =============================================================================
+# CPSForge Attack Policy — Scripted (Pick Place Basic)
+# =============================================================================
+name: scripted_pick_place_basic
+attacker_type: scripted
+scene_name: pick_place_basic
+max_actions: 5
+inter_attack_delay_ms: 3000
+attack_types:
+- actuator_override
+- sequence_perturbation
+- timing_delay

@@ -1,0 +1,50 @@
+# =============================================================================
+# CPSForge Defender — Threshold (Elevator Advanced)
+# =============================================================================
+name: threshold_elevator_advanced
+detector_type: threshold
+scene_name: elevator_advanced
+enabled: true
+thresholds:
+- tag: state
+  operator: '>'
+  value: 5
+  severity: high
+  label: invalid_state_high
+  description: State machine value exceeds max (5)
+- tag: state
+  operator: <
+  value: 0
+  severity: high
+  label: invalid_state_low
+  description: State machine value below min (0)
+- tag: enable
+  operator: ==
+  value: 0
+  severity: high
+  label: enable_off
+  description: System enable flag is FALSE — process halted
+- tag: item_count
+  operator: '>'
+  value: 10
+  severity: high
+  label: item_count_exceeds_max
+  description: item_count exceeds max (10)
+- tag: max_items
+  operator: '>'
+  value: 10
+  severity: high
+  label: max_items_exceeds_max
+  description: max_items exceeds max (10)
+- tag: conveyor_0
+  operator: ==
+  value: 0
+  severity: medium
+  label: conveyor_0_stopped
+  description: conveyor_0 is stopped — possible actuator override
+- tag: conveyor_1
+  operator: ==
+  value: 0
+  severity: medium
+  label: conveyor_1_stopped
+  description: conveyor_1 is stopped — possible actuator override

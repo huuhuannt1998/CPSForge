@@ -1,0 +1,174 @@
+# =============================================================================
+# CPSForge Scene Configuration — Buffer Station
+# =============================================================================
+# Factory I/O scene: Buffer Station
+# DB17: Instance DB for FB_BufferStation (non-optimized)
+#
+# Physical setup:
+#   - Siemens S7 PLC at 192.168.0.1, TIA Portal v17
+#   - 5 position sensors detect buffered boxes
+#   - 2 stoppers control flow
+#   - 3-state release logic
+#
+# Attack surface: Conveyor, Stoppers, Emitter, Remover
+# =============================================================================
+
+scene_name: buffer_station
+scene_id: 8  # OB_Main CASE 8 — DB10
+
+description: >
+  Buffer station that holds up to 5 boxes. Boxes arrive and are held by
+  stoppers. Release logic uses a 3-state cycle to separate boxes one at a
+  time onto the output conveyor.
+
+sampling_interval_ms: 500
+
+tags:
+  - name: sensor1
+    address: "DB10,BOOL0.0"
+    data_type: bool
+    access: read
+    description: "Position 1 sensor"
+    category: sensor
+    scene_name: buffer_station
+
+  - name: sensor2
+    address: "DB10,BOOL2.0"
+    data_type: bool
+    access: read
+    description: "Position 2 sensor"
+    category: sensor
+    scene_name: buffer_station
+
+  - name: sensor3
+    address: "DB10,BOOL4.0"
+    data_type: bool
+    access: read
+    description: "Position 3 sensor"
+    category: sensor
+    scene_name: buffer_station
+
+  - name: sensor4
+    address: "DB10,BOOL6.0"
+    data_type: bool
+    access: read
+    description: "Position 4 sensor"
+    category: sensor
+    scene_name: buffer_station
+
+  - name: sensor5
+    address: "DB10,BOOL8.0"
+    data_type: bool
+    access: read
+    description: "Position 5 sensor"
+    category: sensor
+    scene_name: buffer_station
+
+  - name: at_exit
+    address: "DB10,BOOL10.0"
+    data_type: bool
+    access: read
+    description: "Box at exit position"
+    category: sensor
+    scene_name: buffer_station
+
+  - name: conveyor
+    address: "DB10,BOOL12.0"
+    data_type: bool
+    access: read_write
+    description: "Main conveyor motor"
+    category: actuator
+    scene_name: buffer_station
+
+  - name: stopper1
+    address: "DB10,BOOL14.0"
+    data_type: bool
+    access: read_write
+    description: "Stopper 1 — blocks/releases boxes"
+    category: actuator
+    scene_name: buffer_station
+
+  - name: stopper2
+    address: "DB10,BOOL16.0"
+    data_type: bool
+    access: read_write
+    description: "Stopper 2 — blocks/releases boxes"
+    category: actuator
+    scene_name: buffer_station
+
+  - name: emitter
+    address: "DB10,BOOL18.0"
+    data_type: bool
+    access: read_write
+    description: "Box emitter"
+    category: actuator
+    scene_name: buffer_station
+
+  - name: remover
+    address: "DB10,BOOL20.0"
+    data_type: bool
+    access: read_write
+    description: "Box remover"
+    category: actuator
+    scene_name: buffer_station
+
+  - name: state
+    address: "DB10,INT22"
+    data_type: int
+    access: read
+    min_value: 0
+    max_value: 2
+    description: "Release state: 0=Fill, 1=Release, 2=Clear"
+    category: internal
+    scene_name: buffer_station
+
+  - name: box_count
+    address: "DB10,INT24"
+    data_type: int
+    access: read
+    description: "Boxes currently buffered"
+    category: internal
+    scene_name: buffer_station
+
+writable_tags:
+  - conveyor
+  - stopper1
+  - stopper2
+  - emitter
+  - remover
+
+attack_surface:
+  - conveyor
+  - stopper1
+  - stopper2
+
+safety_rules:
+  - rule_id: BS-SR-001
+    description: "Conveyor override capped at 20 seconds"
+    rule_type: duration
+    tags: [conveyor]
+    parameters:
+      max_duration_ms: 20000
+    enabled: true
+    priority: 50
+
+  - rule_id: BS-SR-002
+    description: "Both stoppers must not be released simultaneously during fill"
+    rule_type: mutual_exclusion
+    tags: [stopper1, stopper2]
+    parameters:
+      forbidden_pairs: [[false, false]]
+    enabled: true
+    priority: 80
+
+reset_procedure:
+  - tag: conveyor
+    value: false
+  - tag: stopper1
+    value: true
+  - tag: stopper2
+    value: true
+  - tag: emitter
+    value: false
+  - tag: remover
+    value: false

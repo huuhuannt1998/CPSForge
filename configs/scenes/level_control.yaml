@@ -18,6 +18,7 @@
 # =============================================================================
 
 scene_name: level_control
+scene_id: 12  # OB_Main CASE 12 — DB14
 
 description: >
   Tank level control process with proportional controller. Fill valve opens
@@ -29,13 +30,13 @@ description: >
 sampling_interval_ms: 500
 
 # ---------------------------------------------------------------------------
-# Tag Definitions (DB21, 44 bytes total)
+# Tag Definitions (DB14, 44 bytes total)
 # ---------------------------------------------------------------------------
 tags:
 
   # --- Buttons (sensors) ---
   - name: start_button
-    address: "DB21,BOOL0.0"
+    address: "DB14,BOOL0.0"
     data_type: bool
     access: read
     unit: null
@@ -46,7 +47,7 @@ tags:
     scene_name: level_control
 
   - name: reset_button
-    address: "DB21,BOOL2.0"
+    address: "DB14,BOOL2.0"
     data_type: bool
     access: read
     unit: null
@@ -57,7 +58,7 @@ tags:
     scene_name: level_control
 
   - name: stop_button
-    address: "DB21,BOOL4.0"
+    address: "DB14,BOOL4.0"
     data_type: bool
     access: read
     unit: null
@@ -69,7 +70,7 @@ tags:
 
   # --- Indicator lights (actuators) ---
   - name: start_light
-    address: "DB21,BOOL6.0"
+    address: "DB14,BOOL6.0"
     data_type: bool
     access: read
     unit: null
@@ -80,7 +81,7 @@ tags:
     scene_name: level_control
 
   - name: reset_light
-    address: "DB21,BOOL8.0"
+    address: "DB14,BOOL8.0"
     data_type: bool
     access: read
     unit: null
@@ -91,7 +92,7 @@ tags:
     scene_name: level_control
 
   - name: stop_light
-    address: "DB21,BOOL10.0"
+    address: "DB14,BOOL10.0"
     data_type: bool
     access: read
     unit: null
@@ -103,7 +104,7 @@ tags:
 
   # --- Analog sensors ---
   - name: level_meter
-    address: "DB21,REAL12"
+    address: "DB14,REAL12"
     data_type: real
     access: read
     unit: "V"
@@ -114,7 +115,7 @@ tags:
     scene_name: level_control
 
   - name: flow_meter
-    address: "DB21,REAL16"
+    address: "DB14,REAL16"
     data_type: real
     access: read
     unit: "V"
@@ -126,7 +127,7 @@ tags:
 
   # --- Setpoint ---
   - name: setpoint_in
-    address: "DB21,REAL20"
+    address: "DB14,REAL20"
     data_type: real
     access: read_write
     unit: "V"
@@ -138,7 +139,7 @@ tags:
 
   # --- Analog actuators ---
   - name: fill_valve
-    address: "DB21,REAL24"
+    address: "DB14,REAL24"
     data_type: real
     access: read_write
     unit: "V"
@@ -149,7 +150,7 @@ tags:
     scene_name: level_control
 
   - name: discharge_valve
-    address: "DB21,REAL28"
+    address: "DB14,REAL28"
     data_type: real
     access: read_write
     unit: "V"
@@ -161,7 +162,7 @@ tags:
 
   # --- Display outputs ---
   - name: sp_display
-    address: "DB21,DINT32"
+    address: "DB14,DINT32"
     data_type: dint
     access: read
     unit: null
@@ -172,7 +173,7 @@ tags:
     scene_name: level_control
 
   - name: pv_display
-    address: "DB21,DINT36"
+    address: "DB14,DINT36"
     data_type: dint
     access: read
     unit: null
@@ -184,7 +185,7 @@ tags:
 
   # --- Internal state ---
   - name: running
-    address: "DB21,BOOL40.0"
+    address: "DB14,BOOL40.0"
     data_type: bool
     access: read
     unit: null
@@ -195,7 +196,7 @@ tags:
     scene_name: level_control
 
   - name: enable
-    address: "DB21,BOOL42.0"
+    address: "DB14,BOOL42.0"
     data_type: bool
     access: read_write
     unit: null
@@ -222,9 +223,6 @@ attack_surface:
   - fill_valve
   - discharge_valve
   - enable
-  - water_level
-  - flow_in
-  - flow_out
 
 # ---------------------------------------------------------------------------
 # Safety Rules

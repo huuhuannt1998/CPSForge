@@ -1,0 +1,20 @@
+# =============================================================================
+# CPSForge Defender — Threshold (Filling Tank)
+# =============================================================================
+name: threshold_filling_tank
+detector_type: threshold
+scene_name: filling_tank
+enabled: true
+thresholds:
+- tag: fill_valve
+  operator: ==
+  value: 0
+  severity: medium
+  label: fill_valve_stopped
+  description: fill_valve is stopped — possible actuator override
+- tag: drain_valve
+  operator: ==
+  value: 0
+  severity: medium
+  label: drain_valve_stopped
+  description: drain_valve is stopped — possible actuator override

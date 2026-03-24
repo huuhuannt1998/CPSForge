@@ -15,6 +15,7 @@
 # =============================================================================
 
 scene_name: from_a_to_b
+scene_id: 1  # OB_Main CASE 1 — DB3
 
 description: >
   Simple conveyor transport scene. A box is emitted, conveyed from left to
@@ -25,12 +26,12 @@ description: >
 sampling_interval_ms: 500
 
 # ---------------------------------------------------------------------------
-# Tag Definitions (DB10, 8 bytes total)
+# Tag Definitions (DB3, 8 bytes total)
 # ---------------------------------------------------------------------------
 tags:
 
   - name: sensor
-    address: "DB10,BOOL0.0"
+    address: "DB3,BOOL0.0"
     data_type: bool
     access: read
     unit: null
@@ -41,7 +42,7 @@ tags:
     scene_name: from_a_to_b
 
   - name: conveyor
-    address: "DB10,BOOL2.0"
+    address: "DB3,BOOL2.0"
     data_type: bool
     access: read_write
     unit: null
@@ -51,19 +52,8 @@ tags:
     category: actuator
     scene_name: from_a_to_b
 
-  - name: state
-    address: "DB10,INT4"
-    data_type: int
-    access: read
-    unit: null
-    min_value: 0
-    max_value: 1
-    description: "State machine: 0=Transport, 1=Arrived"
-    category: internal
-    scene_name: from_a_to_b
-
   - name: enable
-    address: "DB10,BOOL6.0"
+    address: "DB3,BOOL4.0"
     data_type: bool
     access: read_write
     unit: null

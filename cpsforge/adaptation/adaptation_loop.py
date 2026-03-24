@@ -481,7 +481,7 @@ class AdaptationLoop:
                     yaml.safe_dump(data, fh, default_flow_style=False)
 
                 logger.info(
-                    "AdaptationLoop: patched '%s' model_path → %s.",
+                    "AdaptationLoop: patched '%s' model_path -> %s.",
                     defender_name,
                     self._current_model_path,
                 )

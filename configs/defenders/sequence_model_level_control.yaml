@@ -1,0 +1,7 @@
+anomaly_threshold: 0.6
+detector_type: sequence_model
+enabled: true
+model_path: data\models\closed_loop_level_control\round_2\sequence_model.pkl
+name: sequence_model_level_control
+scene_name: level_control
+window_size: 20

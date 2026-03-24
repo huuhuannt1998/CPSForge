@@ -1,0 +1,34 @@
+# =============================================================================
+# CPSForge Ablation — Invariant Detector Only (Level Control)
+# =============================================================================
+# Tests invariant detector alone without threshold detector.
+# Part of the defense ablation study.
+#
+# Usage:
+#   cpsforge run attack --scene level_control --experiment ablation_invariant_only_level_control --no-dry-run --eval-run
+# =============================================================================
+
+name: ablation_invariant_only_level_control
+description: >
+  Ablation study: invariant detector only on Level Control.
+  Isolates the contribution of process-invariant rule checking.
+
+scene_config: "scenes/level_control.yaml"
+plc_config: "system/plc.yaml"
+
+attackers:
+  - scripted_level_control
+
+defenders:
+  - invariant_level_control
+
+live_writes_enabled: true
+dry_run: false
+eval_run: true
+
+max_steps: 150
+run_duration_s: 150.0
+
+save_trace: true
+save_metrics: true
+reset_after_run: true

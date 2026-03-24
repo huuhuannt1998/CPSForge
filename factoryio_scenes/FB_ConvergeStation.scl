@@ -4,7 +4,7 @@
 
 FUNCTION_BLOCK "FB_ConvergeStation"
 { S7_Optimized_Access := 'FALSE' }
-VERSION : 0.1
+VERSION : 0.2
 
 VAR
     SensorLeft    : BOOL;  // 0.0
@@ -32,36 +32,28 @@ VAR
 END_VAR
 
 BEGIN
+    // Always-on infrastructure
     ConveyorOut := TRUE;
     Remover := TRUE;
     Emitter1 := TRUE;
     Emitter2 := TRUE;
     
-    // Alternate priority to prevent starvation
-    IF NOT SensorMerge THEN
-        IF Priority THEN
-            // Right has priority
-            IF SensorRight THEN
-                ConveyorRight := TRUE;
-                ConveyorLeft := FALSE;
-            ELSIF SensorLeft THEN
-                ConveyorLeft := TRUE;
-                ConveyorRight := FALSE;
-            END_IF;
-        ELSE
-            // Left has priority
-            IF SensorLeft THEN
-                ConveyorLeft := TRUE;
-                ConveyorRight := FALSE;
-            ELSIF SensorRight THEN
-                ConveyorRight := TRUE;
-                ConveyorLeft := FALSE;
-            END_IF;
-        END_IF;
-    ELSE
-        // Merge point occupied — stop both inputs
+    // Default: run BOTH input conveyors so boxes reach sensors
+    ConveyorLeft := TRUE;
+    ConveyorRight := TRUE;
+    
+    IF SensorMerge THEN
+        // Merge point occupied — stop both inputs, toggle priority for next
         ConveyorLeft := FALSE;
         ConveyorRight := FALSE;
-        Priority := NOT Priority;  // Toggle for next
+        Priority := NOT Priority;
+    ELSIF SensorLeft AND SensorRight THEN
+        // Both sides have a box — let priority side through, hold the other
+        IF Priority THEN
+            ConveyorLeft := FALSE;   // Hold left, let right advance
+        ELSE
+            ConveyorRight := FALSE;  // Hold right, let left advance
+        END_IF;
     END_IF;
+    // If only one side has a box, both conveyors stay on → box advances freely
 END_FUNCTION_BLOCK

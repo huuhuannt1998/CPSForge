@@ -1,0 +1,23 @@
+# =============================================================================
+# CPSForge Defender — Invariant (Queue Items)
+# =============================================================================
+name: invariant_queue_items
+detector_type: invariant
+scene_name: queue_items
+enabled: true
+invariant_rules:
+- rule_id: QI-INV-001
+  description: Emitter and remover must not both be active simultaneously
+  condition: NOT (emitter == True AND remover == True)
+  tags:
+  - emitter
+  - remover
+  severity: critical
+  label: emitter_remover_conflict
+- rule_id: QI-INV-002
+  description: State must be within valid range [0, 1]
+  condition: NOT (state < 0 OR state > 1)
+  tags:
+  - state
+  severity: high
+  label: invalid_state_range

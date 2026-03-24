@@ -299,6 +299,115 @@ def export_all(
     console.print(f"[bold green]All paper artifacts exported to {out}[/bold green]")
 
 
+@app.command("compare-detectors")
+def compare_detectors(
+    run_dir: Path = typer.Option(..., "--run-dir", "-r", help="Path to run directory with trace.parquet"),
+    detectors: str = typer.Option(
+        ..., "--detectors", "-d",
+        help="Comma-separated detector config names (e.g. threshold_level_control,cusum_level_control)"
+    ),
+    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output CSV path"),
+) -> None:
+    """
+    Compare multiple detectors on the same saved trace.
+
+    Replays a saved experiment run through each detector and produces a
+    side-by-side comparison of precision, recall, F1, and latency.
+    """
+    import pandas as pd
+    from cpsforge.analysis.detector_comparison import DetectorComparison
+
+    detector_names = [d.strip() for d in detectors.split(",") if d.strip()]
+    if not detector_names:
+        console.print("[red]No detectors specified.[/red]")
+        raise typer.Exit(code=1)
+
+    if not run_dir.exists():
+        console.print(f"[red]Run directory not found:[/red] {run_dir}")
+        raise typer.Exit(code=1)
+
+    comp = DetectorComparison(run_dir, detector_names)
+    results = comp.run()
+
+    if not results:
+        console.print("[yellow]No results produced.[/yellow]")
+        raise typer.Exit(code=0)
+
+    df = comp.to_dataframe()
+
+    # Display as Rich table
+    table = Table(title="Detector Comparison", show_lines=True)
+    for col in df.columns:
+        table.add_column(str(col))
+    for _, row in df.iterrows():
+        vals = []
+        for v in row.values:
+            if isinstance(v, float):
+                vals.append(f"{v:.4f}")
+            else:
+                vals.append(str(v))
+        table.add_row(*vals)
+    console.print(table)
+
+    if output:
+        comp.save_results(output)
+        console.print(f"[bold green]Results saved to {output}[/bold green]")
+
+
+@app.command("compare-detectors-experiment")
+def compare_detectors_experiment(
+    experiment: str = typer.Option(..., "--experiment", "-e"),
+    detectors: str = typer.Option(
+        ..., "--detectors", "-d",
+        help="Comma-separated detector config names"
+    ),
+    data_dir: Path = typer.Option(Path("data"), "--data-dir"),
+    output: Optional[Path] = typer.Option(None, "--output", "-o"),
+) -> None:
+    """
+    Compare detectors across all runs in an experiment.
+
+    Produces per-detector aggregated metrics (mean +/- std) across runs.
+    """
+    from cpsforge.analysis.detector_comparison import (
+        aggregate_comparison,
+        compare_detectors_across_runs,
+    )
+
+    detector_names = [d.strip() for d in detectors.split(",") if d.strip()]
+    exp_dir = data_dir / "raw" / experiment
+
+    if not exp_dir.exists():
+        console.print(f"[red]Experiment directory not found:[/red] {exp_dir}")
+        raise typer.Exit(code=1)
+
+    df = compare_detectors_across_runs(exp_dir, detector_names)
+    if df.empty:
+        console.print("[yellow]No results produced.[/yellow]")
+        raise typer.Exit(code=0)
+
+    agg = aggregate_comparison(df)
+
+    # Display
+    table = Table(title=f"Detector Comparison — {experiment} (aggregated)", show_lines=True)
+    for col in agg.columns:
+        table.add_column(str(col))
+    for _, row in agg.iterrows():
+        vals = []
+        for v in row.values:
+            if isinstance(v, float):
+                vals.append(f"{v:.4f}")
+            else:
+                vals.append(str(v))
+        table.add_row(*vals)
+    console.print(table)
+
+    if output:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        agg.to_csv(output, index=False)
+        console.print(f"[bold green]Aggregated results saved to {output}[/bold green]")
+
+
 # ---------------------------------------------------------------------------
 # Helper: render dataframe as Rich table
 # ---------------------------------------------------------------------------

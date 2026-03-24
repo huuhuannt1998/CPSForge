@@ -1,0 +1,548 @@
+Probe log started at 2026-03-18 14:04:16
+Connected to PLC at 192.168.0.1
+
+============================================================
+  Scene 12: Level Control
+  DB14, 44 bytes
+============================================================
+
+  --- Sample 0 ---
+    Start                = False     (byte 0)
+    Reset                = False     (byte 2)
+    Stop                 = True      (byte 4)
+    LevelMeter           =     0.00  (byte 6)
+    FlowMeter            =     0.00  (byte 10)
+    SetpointIn           =     0.00  (byte 14)
+    Running              = False     (byte 18)
+    FillValve            =     5.61  (byte 20)
+    DischargeValve       =     5.61  (byte 24)
+    Setpoint             =     0.00  (byte 28)
+    Error                =     0.00  (byte 32)
+    SP_Display           = 0         (byte 36)
+    PV_Display           = 256       (byte 40)
+    --- Physical I/O ---
+    IB10               = 00001100
+    QB 0                = 11101001
+
+  --- Sample 1 ---
+    Start                = False     (byte 0)
+    Reset                = False     (byte 2)
+    Stop                 = True      (byte 4)
+    LevelMeter           =     0.00  (byte 6)
+    FlowMeter            =     0.00  (byte 10)
+    SetpointIn           =     0.00  (byte 14)
+    Running              = False     (byte 18)
+    FillValve            =     5.61  (byte 20)
+    DischargeValve       =     5.61  (byte 24)
+    Setpoint             =     0.00  (byte 28)
+    Error                =     0.00  (byte 32)
+    SP_Display           = 0         (byte 36)
+    PV_Display           = 256       (byte 40)
+    --- Physical I/O ---
+    IB10               = 00001100
+    QB 0                = 11101001
+
+  --- Sample 2 ---
+    Start                = False     (byte 0)
+    Reset                = False     (byte 2)
+    Stop                 = True      (byte 4)
+    LevelMeter           =     0.00  (byte 6)
+    FlowMeter            =     0.00  (byte 10)
+    SetpointIn           = 28233114168283125230134573790134272.00  (byte 14)
+    Running              = False     (byte 18)
+    FillValve            =     5.61  (byte 20)
+    DischargeValve       =     5.46  (byte 24)
+    Setpoint             =     0.00  (byte 28)
+    Error                =     0.00  (byte 32)
+    SP_Display           = 0         (byte 36)
+    PV_Display           = 256       (byte 40)
+    --- Physical I/O ---
+    IB10               = 00001100
+    QB 0                = 11101001
+
+  --- Sample 3 ---
+    Start                = False     (byte 0)
+    Reset                = False     (byte 2)
+    Stop                 = True      (byte 4)
+    LevelMeter           =     0.00  (byte 6)
+    FlowMeter            =     0.00  (byte 10)
+    SetpointIn           = 5799936.00  (byte 14)
+    Running              = False     (byte 18)
+    FillValve            =     5.61  (byte 20)
+    DischargeValve       =     5.32  (byte 24)
+    Setpoint             =     0.00  (byte 28)
+    Error                =     0.00  (byte 32)
+    SP_Display           = 0         (byte 36)
+    PV_Display           = 256       (byte 40)
+    --- Physical I/O ---
+    IB10               = 00001100
+    QB 0                = 11101001
+
+  --- Sample 4 ---
+    Start                = False     (byte 0)
+    Reset                = False     (byte 2)
+    Stop                 = True      (byte 4)
+    LevelMeter           =     0.00  (byte 6)
+    FlowMeter            =     0.00  (byte 10)
+    SetpointIn           =     3.16  (byte 14)
+    Running              = False     (byte 18)
+    FillValve            =     5.61  (byte 20)
+    DischargeValve       =     5.16  (byte 24)
+    Setpoint             =     0.00  (byte 28)
+    Error                =     0.00  (byte 32)
+    SP_Display           = 0         (byte 36)
+    PV_Display           = 256       (byte 40)
+    --- Physical I/O ---
+    IB10               = 00001100
+    QB 0                = 11101001
+
+  --- Sample 5 ---
+    Start                = False     (byte 0)
+    Reset                = False     (byte 2)
+    Stop                 = True      (byte 4)
+    LevelMeter           =     0.00  (byte 6)
+    FlowMeter            =     0.00  (byte 10)
+    SetpointIn           = 941181953376256.00  (byte 14)
+    Running              = False     (byte 18)
+    FillValve            =     5.61  (byte 20)
+    DischargeValve       =     5.03  (byte 24)
+    Setpoint             =     0.00  (byte 28)
+    Error                =     0.00  (byte 32)
+    SP_Display           = 0         (byte 36)
+    PV_Display           = 256       (byte 40)
+    --- Physical I/O ---
+    IB10               = 00001100
+    QB 0                = 11101001
+
+  --- Sample 6 ---
+    Start                = False     (byte 0)
+    Reset                = False     (byte 2)
+    Stop                 = True      (byte 4)
+    LevelMeter           =     0.00  (byte 6)
+    FlowMeter            =     0.00  (byte 10)
+    SetpointIn           =    -0.00  (byte 14)
+    Running              = False     (byte 18)
+    FillValve            =     5.61  (byte 20)
+    DischargeValve       =     4.90  (byte 24)
+    Setpoint             =     0.00  (byte 28)
+    Error                =     0.00  (byte 32)
+    SP_Display           = 0         (byte 36)
+    PV_Display           = 256       (byte 40)
+    --- Physical I/O ---
+    IB10               = 00001100
+    QB 0                = 11101001
+
+  --- Sample 7 ---
+    Start                = False     (byte 0)
+    Reset                = False     (byte 2)
+    Stop                 = True      (byte 4)
+    LevelMeter           =     0.00  (byte 6)
+    FlowMeter            =     0.00  (byte 10)
+    SetpointIn           =    -0.00  (byte 14)
+    Running              = False     (byte 18)
+    FillValve            =     5.61  (byte 20)
+    DischargeValve       =     4.77  (byte 24)
+    Setpoint             =     0.00  (byte 28)
+    Error                =     0.00  (byte 32)
+    SP_Display           = 0         (byte 36)
+    PV_Display           = 256       (byte 40)
+    --- Physical I/O ---
+    IB10               = 00001100
+    QB 0                = 11101001
+
+  --- Sample 8 ---
+    Start                = False     (byte 0)
+    Reset                = False     (byte 2)
+    Stop                 = True      (byte 4)
+    LevelMeter           =     0.00  (byte 6)
+    FlowMeter            =     0.00  (byte 10)
+    SetpointIn           =    -0.00  (byte 14)
+    Running              = False     (byte 18)
+    FillValve            =     5.61  (byte 20)
+    DischargeValve       =     4.63  (byte 24)
+    Setpoint             =     0.00  (byte 28)
+    Error                =     0.00  (byte 32)
+    SP_Display           = 0         (byte 36)
+    PV_Display           = 256       (byte 40)
+    --- Physical I/O ---
+    IB10               = 00001100
+    QB 0                = 11101001
+
+  --- Sample 9 ---
+    Start                = False     (byte 0)
+    Reset                = False     (byte 2)
+    Stop                 = True      (byte 4)
+    LevelMeter           =     0.00  (byte 6)
+    FlowMeter            =     0.00  (byte 10)
+    SetpointIn           =    -0.00  (byte 14)
+    Running              = False     (byte 18)
+    FillValve            =     5.61  (byte 20)
+    DischargeValve       =     4.51  (byte 24)
+    Setpoint             =     0.00  (byte 28)
+    Error                =     0.00  (byte 32)
+    SP_Display           = 0         (byte 36)
+    PV_Display           = 256       (byte 40)
+    --- Physical I/O ---
+    IB10               = 00001100
+    QB 0                = 11101001
+
+  --- Sample 10 ---
+    Start                = False     (byte 0)
+    Reset                = False     (byte 2)
+    Stop                 = True      (byte 4)
+    LevelMeter           =     0.00  (byte 6)
+    FlowMeter            =     0.00  (byte 10)
+    SetpointIn           =    -0.03  (byte 14)
+    Running              = False     (byte 18)
+    FillValve            =     5.61  (byte 20)
+    DischargeValve       =     4.40  (byte 24)
+    Setpoint             =     0.00  (byte 28)
+    Error                =     0.00  (byte 32)
+    SP_Display           = 0         (byte 36)
+    PV_Display           = 256       (byte 40)
+    --- Physical I/O ---
+    IB10               = 00001100
+    QB 0                = 11101001
+
+  --- Sample 11 ---
+    Start                = False     (byte 0)
+    Reset                = False     (byte 2)
+    Stop                 = True      (byte 4)
+    LevelMeter           =     0.00  (byte 6)
+    FlowMeter            =     0.00  (byte 10)
+    SetpointIn           =    -0.00  (byte 14)
+    Running              = False     (byte 18)
+    FillValve            =     5.61  (byte 20)
+    DischargeValve       =     4.27  (byte 24)
+    Setpoint             =     0.00  (byte 28)
+    Error                =     0.00  (byte 32)
+    SP_Display           = 0         (byte 36)
+    PV_Display           = 256       (byte 40)
+    --- Physical I/O ---
+    IB10               = 00001100
+    QB 0                = 11101001
+
+  --- Sample 12 ---
+    Start                = False     (byte 0)
+    Reset                = False     (byte 2)
+    Stop                 = True      (byte 4)
+    LevelMeter           =     0.00  (byte 6)
+    FlowMeter            =     0.00  (byte 10)
+    SetpointIn           = 54498347827181550789056089471494127616.00  (byte 14)
+    Running              = False     (byte 18)
+    FillValve            =     5.61  (byte 20)
+    DischargeValve       =     4.16  (byte 24)
+    Setpoint             =     0.00  (byte 28)
+    Error                =     0.00  (byte 32)
+    SP_Display           = 0         (byte 36)
+    PV_Display           = 256       (byte 40)
+    --- Physical I/O ---
+    IB10               = 00001100
+    QB 0                = 11101001
+
+  --- Sample 13 ---
+    Start                = False     (byte 0)
+    Reset                = False     (byte 2)
+    Stop                 = True      (byte 4)
+    LevelMeter           =     0.00  (byte 6)
+    FlowMeter            =     0.00  (byte 10)
+    SetpointIn           = 1861861819085211933448282832896.00  (byte 14)
+    Running              = False     (byte 18)
+    FillValve            =     5.61  (byte 20)
+    DischargeValve       =     4.05  (byte 24)
+    Setpoint             =     0.00  (byte 28)
+    Error                =     0.00  (byte 32)
+    SP_Display           = 0         (byte 36)
+    PV_Display           = 256       (byte 40)
+    --- Physical I/O ---
+    IB10               = 00001100
+    QB 0                = 11101001
+
+  --- Sample 14 ---
+    Start                = False     (byte 0)
+    Reset                = False     (byte 2)
+    Stop                 = True      (byte 4)
+    LevelMeter           =     0.00  (byte 6)
+    FlowMeter            =     0.00  (byte 10)
+    SetpointIn           = -17831655839315780326916096.00  (byte 14)
+    Running              = False     (byte 18)
+    FillValve            =     5.61  (byte 20)
+    DischargeValve       =     3.94  (byte 24)
+    Setpoint             =     0.00  (byte 28)
+    Error                =     0.00  (byte 32)
+    SP_Display           = 0         (byte 36)
+    PV_Display           = 256       (byte 40)
+    --- Physical I/O ---
+    IB10               = 00001100
+    QB 0                = 11101001
+
+  --- Sample 15 ---
+    Start                = False     (byte 0)
+    Reset                = False     (byte 2)
+    Stop                 = True      (byte 4)
+    LevelMeter           =     0.00  (byte 6)
+    FlowMeter            =     0.00  (byte 10)
+    SetpointIn           =    -0.00  (byte 14)
+    Running              = False     (byte 18)
+    FillValve            =     5.61  (byte 20)
+    DischargeValve       =     3.83  (byte 24)
+    Setpoint             =     0.00  (byte 28)
+    Error                =     0.00  (byte 32)
+    SP_Display           = 0         (byte 36)
+    PV_Display           = 256       (byte 40)
+    --- Physical I/O ---
+    IB10               = 00001100
+    QB 0                = 11101001
+
+  --- Sample 16 ---
+    Start                = False     (byte 0)
+    Reset                = False     (byte 2)
+    Stop                 = True      (byte 4)
+    LevelMeter           =     0.00  (byte 6)
+    FlowMeter            =     0.00  (byte 10)
+    SetpointIn           =    -0.00  (byte 14)
+    Running              = False     (byte 18)
+    FillValve            =     5.61  (byte 20)
+    DischargeValve       =     3.73  (byte 24)
+    Setpoint             =     0.00  (byte 28)
+    Error                =     0.00  (byte 32)
+    SP_Display           = 0         (byte 36)
+    PV_Display           = 256       (byte 40)
+    --- Physical I/O ---
+    IB10               = 00001100
+    QB 0                = 11101001
+
+  --- Sample 17 ---
+    Start                = False     (byte 0)
+    Reset                = False     (byte 2)
+    Stop                 = True      (byte 4)
+    LevelMeter           =     0.00  (byte 6)
+    FlowMeter            =     0.00  (byte 10)
+    SetpointIn           =     0.00  (byte 14)
+    Running              = False     (byte 18)
+    FillValve            =     5.61  (byte 20)
+    DischargeValve       =     3.63  (byte 24)
+    Setpoint             =     0.00  (byte 28)
+    Error                =     0.00  (byte 32)
+    SP_Display           = 0         (byte 36)
+    PV_Display           = 256       (byte 40)
+    --- Physical I/O ---
+    IB10               = 00001100
+    QB 0                = 11101001
+
+  --- Sample 18 ---
+    Start                = False     (byte 0)
+    Reset                = False     (byte 2)
+    Stop                 = True      (byte 4)
+    LevelMeter           =     0.00  (byte 6)
+    FlowMeter            =     0.00  (byte 10)
+    SetpointIn           = -25828380979650174055495327809536.00  (byte 14)
+    Running              = False     (byte 18)
+    FillValve            =     5.61  (byte 20)
+    DischargeValve       =     3.54  (byte 24)
+    Setpoint             =     0.00  (byte 28)
+    Error                =     0.00  (byte 32)
+    SP_Display           = 0         (byte 36)
+    PV_Display           = 256       (byte 40)
+    --- Physical I/O ---
+    IB10               = 00001100
+    QB 0                = 11101001
+
+  --- Sample 19 ---
+    Start                = False     (byte 0)
+    Reset                = False     (byte 2)
+    Stop                 = True      (byte 4)
+    LevelMeter           =     0.00  (byte 6)
+    FlowMeter            =     0.00  (byte 10)
+    SetpointIn           =     0.00  (byte 14)
+    Running              = False     (byte 18)
+    FillValve            =     5.61  (byte 20)
+    DischargeValve       =     3.44  (byte 24)
+    Setpoint             =     0.00  (byte 28)
+    Error                =     0.00  (byte 32)
+    SP_Display           = 0         (byte 36)
+    PV_Display           = 256       (byte 40)
+    --- Physical I/O ---
+    IB10               = 00001100
+    QB 0                = 11101001
+
+  --- Sample 20 ---
+    Start                = False     (byte 0)
+    Reset                = False     (byte 2)
+    Stop                 = True      (byte 4)
+    LevelMeter           =     0.00  (byte 6)
+    FlowMeter            =     0.00  (byte 10)
+    SetpointIn           = -6184752906240.00  (byte 14)
+    Running              = False     (byte 18)
+    FillValve            =     5.61  (byte 20)
+    DischargeValve       =     3.35  (byte 24)
+    Setpoint             =     0.00  (byte 28)
+    Error                =     0.00  (byte 32)
+    SP_Display           = 0         (byte 36)
+    PV_Display           = 256       (byte 40)
+    --- Physical I/O ---
+    IB10               = 00001100
+    QB 0                = 11101001
+
+  --- Sample 21 ---
+    Start                = False     (byte 0)
+    Reset                = False     (byte 2)
+    Stop                 = True      (byte 4)
+    LevelMeter           =     0.00  (byte 6)
+    FlowMeter            =     0.00  (byte 10)
+    SetpointIn           =    -0.00  (byte 14)
+    Running              = False     (byte 18)
+    FillValve            =     5.61  (byte 20)
+    DischargeValve       =     3.26  (byte 24)
+    Setpoint             =     0.00  (byte 28)
+    Error                =     0.00  (byte 32)
+    SP_Display           = 0         (byte 36)
+    PV_Display           = 256       (byte 40)
+    --- Physical I/O ---
+    IB10               = 00001100
+    QB 0                = 11101001
+
+  --- Sample 22 ---
+    Start                = False     (byte 0)
+    Reset                = False     (byte 2)
+    Stop                 = True      (byte 4)
+    LevelMeter           =     0.00  (byte 6)
+    FlowMeter            =     0.00  (byte 10)
+    SetpointIn           =    -0.00  (byte 14)
+    Running              = False     (byte 18)
+    FillValve            =     5.61  (byte 20)
+    DischargeValve       =     3.17  (byte 24)
+    Setpoint             =     0.00  (byte 28)
+    Error                =     0.00  (byte 32)
+    SP_Display           = 0         (byte 36)
+    PV_Display           = 256       (byte 40)
+    --- Physical I/O ---
+    IB10               = 00001100
+    QB 0                = 11101001
+
+  --- Sample 23 ---
+    Start                = False     (byte 0)
+    Reset                = False     (byte 2)
+    Stop                 = True      (byte 4)
+    LevelMeter           =     0.00  (byte 6)
+    FlowMeter            =     0.00  (byte 10)
+    SetpointIn           = -5242880.00  (byte 14)
+    Running              = False     (byte 18)
+    FillValve            =     5.61  (byte 20)
+    DischargeValve       =     3.09  (byte 24)
+    Setpoint             =     0.00  (byte 28)
+    Error                =     0.00  (byte 32)
+    SP_Display           = 0         (byte 36)
+    PV_Display           = 256       (byte 40)
+    --- Physical I/O ---
+    IB10               = 00001100
+    QB 0                = 11101001
+
+  --- Sample 24 ---
+    Start                = False     (byte 0)
+    Reset                = False     (byte 2)
+    Stop                 = True      (byte 4)
+    LevelMeter           =     0.00  (byte 6)
+    FlowMeter            =     0.00  (byte 10)
+    SetpointIn           = -323992119656720618821255168.00  (byte 14)
+    Running              = False     (byte 18)
+    FillValve            =     5.61  (byte 20)
+    DischargeValve       =     3.01  (byte 24)
+    Setpoint             =     0.00  (byte 28)
+    Error                =     0.00  (byte 32)
+    SP_Display           = 0         (byte 36)
+    PV_Display           = 256       (byte 40)
+    --- Physical I/O ---
+    IB10               = 00001100
+    QB 0                = 11101001
+
+  --- Sample 25 ---
+    Start                = False     (byte 0)
+    Reset                = False     (byte 2)
+    Stop                 = True      (byte 4)
+    LevelMeter           =     0.00  (byte 6)
+    FlowMeter            =     0.00  (byte 10)
+    SetpointIn           =     0.00  (byte 14)
+    Running              = False     (byte 18)
+    FillValve            =     5.61  (byte 20)
+    DischargeValve       =     2.92  (byte 24)
+    Setpoint             =     0.00  (byte 28)
+    Error                =     0.00  (byte 32)
+    SP_Display           = 0         (byte 36)
+    PV_Display           = 256       (byte 40)
+    --- Physical I/O ---
+    IB10               = 00001100
+    QB 0                = 11101001
+
+  --- Sample 26 ---
+    Start                = False     (byte 0)
+    Reset                = False     (byte 2)
+    Stop                 = True      (byte 4)
+    LevelMeter           =     0.00  (byte 6)
+    FlowMeter            =     0.00  (byte 10)
+    SetpointIn           = 14980845928448.00  (byte 14)
+    Running              = False     (byte 18)
+    FillValve            =     5.61  (byte 20)
+    DischargeValve       =     2.84  (byte 24)
+    Setpoint             =     0.00  (byte 28)
+    Error                =     0.00  (byte 32)
+    SP_Display           = 0         (byte 36)
+    PV_Display           = 256       (byte 40)
+    --- Physical I/O ---
+    IB10               = 00001100
+    QB 0                = 11101001
+
+  --- Sample 27 ---
+    Start                = False     (byte 0)
+    Reset                = False     (byte 2)
+    Stop                 = True      (byte 4)
+    LevelMeter           =     0.00  (byte 6)
+    FlowMeter            =     0.00  (byte 10)
+    SetpointIn           =     0.43  (byte 14)
+    Running              = False     (byte 18)
+    FillValve            =     5.61  (byte 20)
+    DischargeValve       =     2.77  (byte 24)
+    Setpoint             =     0.00  (byte 28)
+    Error                =     0.00  (byte 32)
+    SP_Display           = 0         (byte 36)
+    PV_Display           = 256       (byte 40)
+    --- Physical I/O ---
+    IB10               = 00001100
+    QB 0                = 11101001
+
+  --- Sample 28 ---
+    Start                = False     (byte 0)
+    Reset                = False     (byte 2)
+    Stop                 = True      (byte 4)
+    LevelMeter           =     0.00  (byte 6)
+    FlowMeter            =     0.00  (byte 10)
+    SetpointIn           = -9728.00  (byte 14)
+    Running              = False     (byte 18)
+    FillValve            =     5.61  (byte 20)
+    DischargeValve       =     2.70  (byte 24)
+    Setpoint             =     0.00  (byte 28)
+    Error                =     0.00  (byte 32)
+    SP_Display           = 0         (byte 36)
+    PV_Display           = 256       (byte 40)
+    --- Physical I/O ---
+    IB10               = 00001100
+    QB 0                = 11101001
+
+  --- Sample 29 ---
+    Start                = False     (byte 0)
+    Reset                = False     (byte 2)
+    Stop                 = True      (byte 4)
+    LevelMeter           =     0.00  (byte 6)
+    FlowMeter            =     0.00  (byte 10)
+    SetpointIn           = 32451855365842672678315602057625600.00  (byte 14)
+    Running              = False     (byte 18)
+    FillValve            =     5.61  (byte 20)
+    DischargeValve       =     2.62  (byte 24)
+    Setpoint             =     0.00  (byte 28)
+    Error                =     0.00  (byte 32)
+    SP_Display           = 0         (byte 36)
+    PV_Display           = 256       (byte 40)
+    --- Physical I/O ---
+    IB10               = 00001100
+    QB 0                = 11101001
+Disconnected.

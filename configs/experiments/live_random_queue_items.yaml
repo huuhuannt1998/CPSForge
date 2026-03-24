@@ -1,0 +1,21 @@
+# =============================================================================
+# CPSForge Live Eval — Random (Queue Items)
+# =============================================================================
+name: live_random_queue_items
+description: 'Live eval run: random attacker vs threshold + invariant detectors on
+  queue items.'
+scene_config: scenes/queue_items.yaml
+plc_config: system/plc.yaml
+attackers:
+- random_queue_items
+defenders:
+- threshold_queue_items
+- invariant_queue_items
+live_writes_enabled: true
+dry_run: false
+eval_run: true
+max_steps: 200
+run_duration_s: 180.0
+save_trace: true
+save_metrics: true
+reset_after_run: true

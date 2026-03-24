@@ -1,0 +1,394 @@
+# =============================================================================
+# CPSForge Scene Configuration — Sorting by Height (Advanced)
+# =============================================================================
+# Factory I/O scene: Sorting by Height (Advanced)
+# DB27: Instance DB for FB_SortingHeightAdvanced (non-optimized, 76 bytes)
+#
+# Physical setup:
+#   - Siemens S7 PLC at 192.168.0.1, TIA Portal v17
+#   - Turntable-based sorting: tall → LEFT (270° CW), short → RIGHT (90° CW)
+#   - Height sensors (HighBox, LowBox) detect size
+#   - Turntable rotates CW, snaps to 90° detents
+#   - AtFront sensor detects 0° position
+#   - Full panel: Start/Stop/Reset/E-Stop/Auto
+#   - Enable flag never written by PLC
+#
+# Attack surface: Turntable, Load/Unload, Conveyors, Enable
+# =============================================================================
+
+scene_name: sorting_height_advanced
+scene_id: 18  # OB_Main CASE 18 — DB20
+
+description: >
+  Advanced turntable-based height sorting. Items are detected by
+  HighBox/LowBox sensors, loaded onto turntable, rotated to the
+  correct exit (tall→LEFT 270°CW, short→RIGHT 90°CW), and unloaded.
+  11-state machine with timer-based 270° rotation for LEFT.
+
+sampling_interval_ms: 500
+
+tags:
+  # --- Sensors ---
+  - name: at_entry
+    address: "DB20,BOOL0.0"
+    data_type: bool
+    access: read
+    description: "Item at entry conveyor"
+    category: sensor
+    scene_name: sorting_height_advanced
+
+  - name: low_box
+    address: "DB20,BOOL2.0"
+    data_type: bool
+    access: read
+    description: "Low height sensor"
+    category: sensor
+    scene_name: sorting_height_advanced
+
+  - name: high_box
+    address: "DB20,BOOL4.0"
+    data_type: bool
+    access: read
+    description: "High height sensor"
+    category: sensor
+    scene_name: sorting_height_advanced
+
+  - name: at_turntable_entry
+    address: "DB20,BOOL6.0"
+    data_type: bool
+    access: read
+    description: "Item at turntable entry area"
+    category: sensor
+    scene_name: sorting_height_advanced
+
+  - name: at_load_position
+    address: "DB20,BOOL8.0"
+    data_type: bool
+    access: read
+    description: "Item centered on turntable"
+    category: sensor
+    scene_name: sorting_height_advanced
+
+  - name: at_unload_position
+    address: "DB20,BOOL10.0"
+    data_type: bool
+    access: read
+    description: "Item at turntable unload edge"
+    category: sensor
+    scene_name: sorting_height_advanced
+
+  - name: at_front
+    address: "DB20,BOOL12.0"
+    data_type: bool
+    access: read
+    description: "Turntable facing front (entry)"
+    category: sensor
+    scene_name: sorting_height_advanced
+
+  - name: at_right_entry
+    address: "DB20,BOOL14.0"
+    data_type: bool
+    access: read
+    description: "Item entering right conveyor"
+    category: sensor
+    scene_name: sorting_height_advanced
+
+  - name: at_left_entry
+    address: "DB20,BOOL16.0"
+    data_type: bool
+    access: read
+    description: "Item entering left conveyor"
+    category: sensor
+    scene_name: sorting_height_advanced
+
+  - name: at_right_exit
+    address: "DB20,BOOL18.0"
+    data_type: bool
+    access: read
+    description: "Item at right conveyor exit"
+    category: sensor
+    scene_name: sorting_height_advanced
+
+  - name: at_left_exit
+    address: "DB20,BOOL20.0"
+    data_type: bool
+    access: read
+    description: "Item at left conveyor exit"
+    category: sensor
+    scene_name: sorting_height_advanced
+
+  - name: btn_start
+    address: "DB20,BOOL22.0"
+    data_type: bool
+    access: read
+    description: "Start button"
+    category: sensor
+    scene_name: sorting_height_advanced
+
+  - name: btn_reset
+    address: "DB20,BOOL24.0"
+    data_type: bool
+    access: read
+    description: "Reset button"
+    category: sensor
+    scene_name: sorting_height_advanced
+
+  - name: btn_stop
+    address: "DB20,BOOL26.0"
+    data_type: bool
+    access: read
+    description: "Stop button (NC)"
+    category: sensor
+    scene_name: sorting_height_advanced
+
+  - name: emergency_stop
+    address: "DB20,BOOL28.0"
+    data_type: bool
+    access: read
+    description: "Emergency stop"
+    category: alarm
+    scene_name: sorting_height_advanced
+
+  - name: btn_auto
+    address: "DB20,BOOL30.0"
+    data_type: bool
+    access: read
+    description: "Auto mode selector"
+    category: sensor
+    scene_name: sorting_height_advanced
+
+  # --- Actuators ---
+  - name: feeder_conveyor
+    address: "DB20,BOOL32.0"
+    data_type: bool
+    access: read_write
+    description: "Feeder conveyor"
+    category: actuator
+    scene_name: sorting_height_advanced
+
+  - name: entry_conveyor
+    address: "DB20,BOOL34.0"
+    data_type: bool
+    access: read_write
+    description: "Entry conveyor"
+    category: actuator
+    scene_name: sorting_height_advanced
+
+  - name: load_act
+    address: "DB20,BOOL36.0"
+    data_type: bool
+    access: read_write
+    description: "Turntable rollers inward (load)"
+    category: actuator
+    scene_name: sorting_height_advanced
+
+  - name: unload_act
+    address: "DB20,BOOL38.0"
+    data_type: bool
+    access: read_write
+    description: "Turntable rollers outward (unload)"
+    category: actuator
+    scene_name: sorting_height_advanced
+
+  - name: turn_act
+    address: "DB20,BOOL40.0"
+    data_type: bool
+    access: read_write
+    description: "Turntable rotate CW"
+    category: actuator
+    scene_name: sorting_height_advanced
+
+  - name: left_conveyor
+    address: "DB20,BOOL42.0"
+    data_type: bool
+    access: read_write
+    description: "Left exit conveyor"
+    category: actuator
+    scene_name: sorting_height_advanced
+
+  - name: right_conveyor
+    address: "DB20,BOOL44.0"
+    data_type: bool
+    access: read_write
+    description: "Right exit conveyor"
+    category: actuator
+    scene_name: sorting_height_advanced
+
+  # --- Indicators ---
+  - name: green_indicator
+    address: "DB20,BOOL46.0"
+    data_type: bool
+    access: read
+    description: "Green indicator"
+    category: actuator
+    scene_name: sorting_height_advanced
+
+  - name: yellow_indicator
+    address: "DB20,BOOL48.0"
+    data_type: bool
+    access: read
+    description: "Yellow indicator"
+    category: actuator
+    scene_name: sorting_height_advanced
+
+  - name: red_indicator
+    address: "DB20,BOOL50.0"
+    data_type: bool
+    access: read
+    description: "Red indicator"
+    category: actuator
+    scene_name: sorting_height_advanced
+
+  - name: start_light
+    address: "DB20,BOOL52.0"
+    data_type: bool
+    access: read
+    description: "Start light"
+    category: actuator
+    scene_name: sorting_height_advanced
+
+  - name: reset_light
+    address: "DB20,BOOL54.0"
+    data_type: bool
+    access: read
+    description: "Reset light"
+    category: actuator
+    scene_name: sorting_height_advanced
+
+  - name: stop_light
+    address: "DB20,BOOL56.0"
+    data_type: bool
+    access: read
+    description: "Stop light"
+    category: actuator
+    scene_name: sorting_height_advanced
+
+  - name: counter_out
+    address: "DB20,DINT58"
+    data_type: dint
+    access: read
+    description: "Item counter display"
+    category: internal
+    scene_name: sorting_height_advanced
+
+  # --- Internal ---
+  - name: state
+    address: "DB20,INT62"
+    data_type: int
+    access: read
+    min_value: 0
+    max_value: 90
+    description: "State machine (0=Idle, 10=Feed, 20=Load, 40-45=TurnRight, 50-55=TurnLeft, 60=Unload, 70=ExitConv, 80-85=ReturnFront, 90=Count)"
+    category: internal
+    scene_name: sorting_height_advanced
+
+  - name: item_count
+    address: "DB20,INT64"
+    data_type: int
+    access: read
+    description: "Internal item count"
+    category: internal
+    scene_name: sorting_height_advanced
+
+  - name: is_tall
+    address: "DB20,BOOL66.0"
+    data_type: bool
+    access: read
+    description: "TRUE=tall, FALSE=short"
+    category: internal
+    scene_name: sorting_height_advanced
+
+  - name: turn_timer
+    address: "DB20,INT68"
+    data_type: int
+    access: read
+    description: "Timer for 270° CW rotation"
+    category: internal
+    scene_name: sorting_height_advanced
+
+  - name: dwell_timer
+    address: "DB20,INT70"
+    data_type: int
+    access: read
+    description: "General delay timer"
+    category: internal
+    scene_name: sorting_height_advanced
+
+  - name: running
+    address: "DB20,BOOL72.0"
+    data_type: bool
+    access: read
+    description: "System running"
+    category: internal
+    scene_name: sorting_height_advanced
+
+  - name: enable
+    address: "DB20,BOOL74.0"
+    data_type: bool
+    access: read_write
+    description: "System enable — never written by PLC (attack target)"
+    category: mode_bit
+    scene_name: sorting_height_advanced
+
+writable_tags:
+  - feeder_conveyor
+  - entry_conveyor
+  - load_act
+  - unload_act
+  - turn_act
+  - left_conveyor
+  - right_conveyor
+  - enable
+
+attack_surface:
+  - load_act
+  - unload_act
+  - turn_act
+  - enable
+
+safety_rules:
+  - rule_id: SHA-SR-001
+    description: "Load and unload must not be active simultaneously"
+    rule_type: mutual_exclusion
+    tags: [load_act, unload_act]
+    parameters:
+      forbidden_pairs: [[true, true]]
+    enabled: true
+    priority: 100
+
+  - rule_id: SHA-SR-002
+    description: "Enable must not be held FALSE for more than 30 seconds"
+    rule_type: duration
+    tags: [enable]
+    parameters:
+      max_duration_ms: 30000
+      forbidden_value: false
+    enabled: true
+    priority: 100
+
+  - rule_id: SHA-SR-003
+    description: "Turn override capped at 30 seconds"
+    rule_type: duration
+    tags: [turn_act]
+    parameters:
+      max_duration_ms: 30000
+    enabled: true
+    priority: 60
+
+reset_procedure:
+  - tag: enable
+    value: true
+  - tag: feeder_conveyor
+    value: false
+  - tag: entry_conveyor
+    value: false
+  - tag: load_act
+    value: false
+  - tag: unload_act
+    value: false
+  - tag: turn_act
+    value: false
+  - tag: left_conveyor
+    value: false
+  - tag: right_conveyor
+    value: false

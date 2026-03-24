@@ -1,0 +1,16 @@
+# =============================================================================
+# CPSForge Defender — Invariant (Separating Station)
+# =============================================================================
+name: invariant_separating_station
+detector_type: invariant
+scene_name: separating_station
+enabled: true
+invariant_rules:
+- rule_id: SS-INV-001
+  description: 'Baseline: at least one writable tag should be active'
+  condition: NOT (conveyor_in == False AND conveyor_left == False)
+  tags:
+  - conveyor_in
+  - conveyor_left
+  severity: medium
+  label: all_actuators_off

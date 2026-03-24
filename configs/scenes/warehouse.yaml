@@ -1,0 +1,235 @@
+# =============================================================================
+# CPSForge Scene Configuration — Automated Warehouse
+# =============================================================================
+# Factory I/O scene: Automated Warehouse
+# DB16: Instance DB for FB_Warehouse (non-optimized)
+#
+# Physical setup:
+#   - Siemens S7 PLC at 192.168.0.1, TIA Portal v17
+#   - 5×5 rack (25 slots) with XZ crane and fork
+#   - Conveyor in/out for box handling
+#   - 4-state: Wait → Pick → Move → Place
+#   - REAL analog crane positioning (CraneX, CraneZ)
+#
+# Attack surface: CraneMoveX/Z, ForkExtend/Retract, Conveyors, TargetSlot
+# =============================================================================
+
+scene_name: warehouse
+scene_id: 7  # OB_Main CASE 7 — DB9
+
+description: >
+  Automated warehouse with 5x5 rack storage. Crane moves on X/Z axes
+  to store boxes sequentially. Fork extends/retracts for pickup/place.
+  Attack targets include crane setpoints and target slot.
+
+sampling_interval_ms: 500
+
+tags:
+  - name: at_entry
+    address: "DB9,BOOL0.0"
+    data_type: bool
+    access: read
+    description: "Box at entry conveyor"
+    category: sensor
+    scene_name: warehouse
+
+  - name: at_exit
+    address: "DB9,BOOL2.0"
+    data_type: bool
+    access: read
+    description: "Box at exit conveyor"
+    category: sensor
+    scene_name: warehouse
+
+  - name: crane_x
+    address: "DB9,REAL4"
+    data_type: real
+    access: read
+    unit: "mm"
+    min_value: 0.0
+    max_value: 1500.0
+    description: "Crane X position feedback"
+    category: sensor
+    scene_name: warehouse
+
+  - name: crane_z
+    address: "DB9,REAL8"
+    data_type: real
+    access: read
+    unit: "mm"
+    min_value: 0.0
+    max_value: 1000.0
+    description: "Crane Z position feedback"
+    category: sensor
+    scene_name: warehouse
+
+  - name: crane_fork
+    address: "DB9,BOOL12.0"
+    data_type: bool
+    access: read
+    description: "Fork sensor — TRUE when fork extended"
+    category: sensor
+    scene_name: warehouse
+
+  - name: conveyor_in
+    address: "DB9,BOOL14.0"
+    data_type: bool
+    access: read_write
+    description: "Input conveyor motor"
+    category: actuator
+    scene_name: warehouse
+
+  - name: conveyor_out
+    address: "DB9,BOOL16.0"
+    data_type: bool
+    access: read_write
+    description: "Output conveyor motor"
+    category: actuator
+    scene_name: warehouse
+
+  - name: crane_move_x
+    address: "DB9,REAL18"
+    data_type: real
+    access: read_write
+    unit: "mm"
+    min_value: 0.0
+    max_value: 1500.0
+    description: "Crane X setpoint"
+    category: setpoint
+    scene_name: warehouse
+
+  - name: crane_move_z
+    address: "DB9,REAL22"
+    data_type: real
+    access: read_write
+    unit: "mm"
+    min_value: 0.0
+    max_value: 1000.0
+    description: "Crane Z setpoint"
+    category: setpoint
+    scene_name: warehouse
+
+  - name: fork_extend
+    address: "DB9,BOOL26.0"
+    data_type: bool
+    access: read_write
+    description: "Fork extend command"
+    category: actuator
+    scene_name: warehouse
+
+  - name: fork_retract
+    address: "DB9,BOOL28.0"
+    data_type: bool
+    access: read_write
+    description: "Fork retract command"
+    category: actuator
+    scene_name: warehouse
+
+  - name: emitter
+    address: "DB9,BOOL30.0"
+    data_type: bool
+    access: read_write
+    description: "Box emitter"
+    category: actuator
+    scene_name: warehouse
+
+  - name: target_slot
+    address: "DB9,INT32"
+    data_type: int
+    access: read_write
+    min_value: 0
+    max_value: 24
+    description: "Target storage slot (0-24)"
+    category: setpoint
+    scene_name: warehouse
+
+  - name: state
+    address: "DB9,INT34"
+    data_type: int
+    access: read
+    min_value: 0
+    max_value: 3
+    description: "State: 0=WaitEntry, 1=Pick, 2=MoveToSlot, 3=Place"
+    category: internal
+    scene_name: warehouse
+
+  - name: current_slot
+    address: "DB9,INT36"
+    data_type: int
+    access: read
+    description: "Current slot being filled"
+    category: internal
+    scene_name: warehouse
+
+writable_tags:
+  - conveyor_in
+  - conveyor_out
+  - crane_move_x
+  - crane_move_z
+  - fork_extend
+  - fork_retract
+  - emitter
+  - target_slot
+
+attack_surface:
+  - crane_move_x
+  - crane_move_z
+  - fork_extend
+  - fork_retract
+  - target_slot
+
+safety_rules:
+  - rule_id: WH-SR-001
+    description: "Crane X setpoint must stay within rack bounds"
+    rule_type: range
+    tags: [crane_move_x]
+    parameters:
+      min: 0.0
+      max: 1500.0
+    enabled: true
+    priority: 100
+
+  - rule_id: WH-SR-002
+    description: "Crane Z setpoint must stay within rack bounds"
+    rule_type: range
+    tags: [crane_move_z]
+    parameters:
+      min: 0.0
+      max: 1000.0
+    enabled: true
+    priority: 100
+
+  - rule_id: WH-SR-003
+    description: "Fork extend and retract must not be active simultaneously"
+    rule_type: mutual_exclusion
+    tags: [fork_extend, fork_retract]
+    parameters:
+      forbidden_pairs: [[true, true]]
+    enabled: true
+    priority: 100
+
+  - rule_id: WH-SR-004
+    description: "Target slot must be within valid range"
+    rule_type: range
+    tags: [target_slot]
+    parameters:
+      min: 0
+      max: 24
+    enabled: true
+    priority: 80
+
+reset_procedure:
+  - tag: conveyor_in
+    value: false
+  - tag: conveyor_out
+    value: false
+  - tag: crane_move_x
+    value: 0.0
+  - tag: crane_move_z
+    value: 0.0
+  - tag: fork_extend
+    value: false
+  - tag: fork_retract
+    value: false
+  - tag: emitter
+    value: false

@@ -2,7 +2,7 @@
 # CPSForge Scene Configuration — Sorting by Height (Basic)
 # =============================================================================
 # Factory I/O scene: Sorting by Height (Basic)
-# DB28: Instance DB for FB_SortingHeightBasic (non-optimized, 62 bytes)
+# DB21: Instance DB for FB_SortingHeightBasic (non-optimized, 62 bytes)
 #
 # Physical setup:
 #   - Siemens S7 PLC at 192.168.0.1, TIA Portal v17
@@ -17,6 +17,7 @@
 # =============================================================================
 
 scene_name: sorting_height_basic
+scene_id: 19  # OB_Main CASE 19 — DB21
 
 description: >
   Sorting by height scene with 5-state machine. Items arrive on entry
@@ -27,13 +28,13 @@ description: >
 sampling_interval_ms: 500
 
 # ---------------------------------------------------------------------------
-# Tag Definitions (DB28, 62 bytes total)
+# Tag Definitions (DB21, 62 bytes total)
 # ---------------------------------------------------------------------------
 tags:
 
   # --- Sensors ---
   - name: high_sensor
-    address: "DB28,BOOL0.0"
+    address: "DB21,BOOL0.0"
     data_type: bool
     access: read
     unit: null
@@ -44,7 +45,7 @@ tags:
     scene_name: sorting_height_basic
 
   - name: low_sensor
-    address: "DB28,BOOL2.0"
+    address: "DB21,BOOL2.0"
     data_type: bool
     access: read
     unit: null
@@ -55,7 +56,7 @@ tags:
     scene_name: sorting_height_basic
 
   - name: pallet_sensor
-    address: "DB28,BOOL4.0"
+    address: "DB21,BOOL4.0"
     data_type: bool
     access: read
     unit: null
@@ -66,7 +67,7 @@ tags:
     scene_name: sorting_height_basic
 
   - name: loaded
-    address: "DB28,BOOL6.0"
+    address: "DB21,BOOL6.0"
     data_type: bool
     access: read
     unit: null
@@ -77,7 +78,7 @@ tags:
     scene_name: sorting_height_basic
 
   - name: at_left_entry
-    address: "DB28,BOOL8.0"
+    address: "DB21,BOOL8.0"
     data_type: bool
     access: read
     unit: null
@@ -88,7 +89,7 @@ tags:
     scene_name: sorting_height_basic
 
   - name: at_left_exit
-    address: "DB28,BOOL10.0"
+    address: "DB21,BOOL10.0"
     data_type: bool
     access: read
     unit: null
@@ -99,7 +100,7 @@ tags:
     scene_name: sorting_height_basic
 
   - name: at_right_entry
-    address: "DB28,BOOL12.0"
+    address: "DB21,BOOL12.0"
     data_type: bool
     access: read
     unit: null
@@ -110,7 +111,7 @@ tags:
     scene_name: sorting_height_basic
 
   - name: at_right_exit
-    address: "DB28,BOOL14.0"
+    address: "DB21,BOOL14.0"
     data_type: bool
     access: read
     unit: null
@@ -121,7 +122,7 @@ tags:
     scene_name: sorting_height_basic
 
   - name: btn_start
-    address: "DB28,BOOL16.0"
+    address: "DB21,BOOL16.0"
     data_type: bool
     access: read
     unit: null
@@ -132,7 +133,7 @@ tags:
     scene_name: sorting_height_basic
 
   - name: btn_reset
-    address: "DB28,BOOL18.0"
+    address: "DB21,BOOL18.0"
     data_type: bool
     access: read
     unit: null
@@ -143,7 +144,7 @@ tags:
     scene_name: sorting_height_basic
 
   - name: btn_stop
-    address: "DB28,BOOL20.0"
+    address: "DB21,BOOL20.0"
     data_type: bool
     access: read
     unit: null
@@ -154,7 +155,7 @@ tags:
     scene_name: sorting_height_basic
 
   - name: emergency_stop
-    address: "DB28,BOOL22.0"
+    address: "DB21,BOOL22.0"
     data_type: bool
     access: read
     unit: null
@@ -165,7 +166,7 @@ tags:
     scene_name: sorting_height_basic
 
   - name: btn_auto
-    address: "DB28,BOOL24.0"
+    address: "DB21,BOOL24.0"
     data_type: bool
     access: read
     unit: null
@@ -177,7 +178,7 @@ tags:
 
   # --- Actuators ---
   - name: conveyor_entry
-    address: "DB28,BOOL26.0"
+    address: "DB21,BOOL26.0"
     data_type: bool
     access: read_write
     unit: null
@@ -188,7 +189,7 @@ tags:
     scene_name: sorting_height_basic
 
   - name: load_act
-    address: "DB28,BOOL28.0"
+    address: "DB21,BOOL28.0"
     data_type: bool
     access: read_write
     unit: null
@@ -199,7 +200,7 @@ tags:
     scene_name: sorting_height_basic
 
   - name: unload_act
-    address: "DB28,BOOL30.0"
+    address: "DB21,BOOL30.0"
     data_type: bool
     access: read_write
     unit: null
@@ -210,7 +211,7 @@ tags:
     scene_name: sorting_height_basic
 
   - name: transf_left
-    address: "DB28,BOOL32.0"
+    address: "DB21,BOOL32.0"
     data_type: bool
     access: read_write
     unit: null
@@ -221,7 +222,7 @@ tags:
     scene_name: sorting_height_basic
 
   - name: transf_right
-    address: "DB28,BOOL34.0"
+    address: "DB21,BOOL34.0"
     data_type: bool
     access: read_write
     unit: null
@@ -232,7 +233,7 @@ tags:
     scene_name: sorting_height_basic
 
   - name: conveyor_left
-    address: "DB28,BOOL36.0"
+    address: "DB21,BOOL36.0"
     data_type: bool
     access: read_write
     unit: null
@@ -243,7 +244,7 @@ tags:
     scene_name: sorting_height_basic
 
   - name: conveyor_right
-    address: "DB28,BOOL38.0"
+    address: "DB21,BOOL38.0"
     data_type: bool
     access: read_write
     unit: null
@@ -254,7 +255,7 @@ tags:
     scene_name: sorting_height_basic
 
   - name: start_light
-    address: "DB28,BOOL40.0"
+    address: "DB21,BOOL40.0"
     data_type: bool
     access: read
     unit: null
@@ -265,7 +266,7 @@ tags:
     scene_name: sorting_height_basic
 
   - name: reset_light
-    address: "DB28,BOOL42.0"
+    address: "DB21,BOOL42.0"
     data_type: bool
     access: read
     unit: null
@@ -276,7 +277,7 @@ tags:
     scene_name: sorting_height_basic
 
   - name: stop_light
-    address: "DB28,BOOL44.0"
+    address: "DB21,BOOL44.0"
     data_type: bool
     access: read
     unit: null
@@ -287,7 +288,7 @@ tags:
     scene_name: sorting_height_basic
 
   - name: counter_out
-    address: "DB28,DINT46"
+    address: "DB21,DINT46"
     data_type: dint
     access: read
     unit: null
@@ -299,7 +300,7 @@ tags:
 
   # --- Internal state ---
   - name: state
-    address: "DB28,INT50"
+    address: "DB21,INT50"
     data_type: int
     access: read
     unit: null
@@ -310,7 +311,7 @@ tags:
     scene_name: sorting_height_basic
 
   - name: item_count
-    address: "DB28,INT52"
+    address: "DB21,INT52"
     data_type: int
     access: read
     unit: null
@@ -321,7 +322,7 @@ tags:
     scene_name: sorting_height_basic
 
   - name: is_tall
-    address: "DB28,BOOL54.0"
+    address: "DB21,BOOL54.0"
     data_type: bool
     access: read
     unit: null
@@ -332,7 +333,7 @@ tags:
     scene_name: sorting_height_basic
 
   - name: dwell_timer
-    address: "DB28,INT56"
+    address: "DB21,INT56"
     data_type: int
     access: read
     unit: "cycles"
@@ -343,7 +344,7 @@ tags:
     scene_name: sorting_height_basic
 
   - name: running
-    address: "DB28,BOOL58.0"
+    address: "DB21,BOOL58.0"
     data_type: bool
     access: read
     unit: null
@@ -354,7 +355,7 @@ tags:
     scene_name: sorting_height_basic
 
   - name: enable
-    address: "DB28,BOOL60.0"
+    address: "DB21,BOOL60.0"
     data_type: bool
     access: read_write
     unit: null
@@ -386,6 +387,8 @@ attack_surface:
   - unload_act
   - transf_left
   - transf_right
+  - conveyor_left
+  - conveyor_right
   - enable
 
 # ---------------------------------------------------------------------------

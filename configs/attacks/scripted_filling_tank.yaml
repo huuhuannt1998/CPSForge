@@ -1,0 +1,11 @@
+# =============================================================================
+# CPSForge Attack Policy — Scripted (Filling Tank)
+# =============================================================================
+name: scripted_filling_tank
+attacker_type: scripted
+scene_name: filling_tank
+max_actions: 5
+inter_attack_delay_ms: 3000
+attack_types:
+- actuator_override
+- sequence_perturbation

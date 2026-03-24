@@ -180,12 +180,14 @@ class DefenderConfig(BaseModel):
     thresholds: List[Dict[str, Any]] = Field(default_factory=list)
     # Invariant detector
     invariant_rules: List[Dict[str, Any]] = Field(default_factory=list)
-    # Sequence model detector
+    # Sequence model detector / ML detectors
     model_path: Optional[str] = None
     window_size: int = Field(20, ge=1)
     anomaly_threshold: float = Field(0.5, ge=0.0, le=1.0)
     # LLM explainer
     llm_provider: Optional[str] = None
+    # Freeform parameters for extensible detectors (CUSUM, OCSVM, IForest, LSTM-AD, etc.)
+    parameters: Dict[str, Any] = Field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------

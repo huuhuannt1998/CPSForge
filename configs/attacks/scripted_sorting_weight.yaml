@@ -1,0 +1,15 @@
+# =============================================================================
+# CPSForge Attack Policy — Scripted (Sorting Weight)
+# =============================================================================
+# 3-way weight sorter: light→left, medium→forward, heavy→right
+# Attack surface: light_thresh, heavy_thresh, send_left, send_right,
+#                 send_forward, entry_conveyor, load_scale, enable
+name: scripted_sorting_weight
+attacker_type: scripted
+scene_name: sorting_weight
+max_actions: 5
+inter_attack_delay_ms: 3000
+attack_types:
+  - actuator_override
+  - setpoint_shift
+  - sequence_perturbation

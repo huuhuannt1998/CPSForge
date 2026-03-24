@@ -2,7 +2,7 @@ name: attacker_agent_default
 role: attacker
 scene_name: level_control
 llm_provider: local
-llm_model: phi-3-mini-4k-instruct
+llm_model: qwen2-7b-instruct
 max_history: 100
 write_timeout_s: 10.0
 enabled: true

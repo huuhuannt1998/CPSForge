@@ -1,0 +1,30 @@
+# =============================================================================
+# CPSForge Ablation — Full Ensemble (Sorting by Weight)
+# =============================================================================
+name: ablation_full_ensemble_sorting_weight
+description: >
+  Ablation study: full detector ensemble on Sorting by Weight.
+
+scene_config: "scenes/sorting_weight.yaml"
+plc_config: "system/plc.yaml"
+
+attackers:
+  - scripted_sorting_weight
+
+defenders:
+  - threshold_sorting_weight
+  - invariant_sorting_weight
+  - ocsvm_sorting_weight
+  - iforest_sorting_weight
+  - cusum_sorting_weight
+
+live_writes_enabled: true
+dry_run: false
+eval_run: true
+
+max_steps: 150
+run_duration_s: 150.0
+
+save_trace: true
+save_metrics: true
+reset_after_run: true

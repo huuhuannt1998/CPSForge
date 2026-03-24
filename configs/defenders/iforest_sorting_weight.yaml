@@ -1,0 +1,11 @@
+name: iforest_sorting_weight
+detector_type: isolation_forest
+scene_name: sorting_weight
+enabled: true
+model_path: data/models/sorting_weight/iforest_sorting_weight.pkl
+window_size: 20
+anomaly_threshold: 0.5
+parameters:
+  n_estimators: 100
+  contamination: auto
+  point_wise: true

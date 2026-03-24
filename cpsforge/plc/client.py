@@ -218,6 +218,59 @@ class PlcClient:
             self.connect()
 
     # ------------------------------------------------------------------
+    # Scene selector -- infrastructure write (bypasses live_writes_enabled)
+    # ------------------------------------------------------------------
+
+    def switch_active_scene(self, scene_id: int) -> bool:
+        """
+        Write the active scene ID to DB_Config.ActiveScene (DB2, INT at byte 0).
+
+        This is a PLC infrastructure write, not an attack write.  It is exempt
+        from the ``live_writes_enabled`` safety gate because:
+          - It must succeed for ANY scene to produce meaningful I/O data.
+          - It is always an intentional, operator-driven action.
+          - The scene selector does not actuate physical plant equipment; it only
+            controls which FB logic block the OB1 scan cycle delegates to.
+
+        Parameters
+        ----------
+        scene_id:
+            Integer 1-21 matching the CASE selector values defined in OB_Main.scl.
+
+        Returns
+        -------
+        bool
+            True on success, False on PLC communication error.
+        """
+        self._ensure_connected()
+        if not (1 <= scene_id <= 21):
+            logger.error("switch_active_scene: scene_id %d out of range [1,21].", scene_id)
+            return False
+        raw = struct.pack(">h", scene_id)  # big-endian signed INT (S7 INT = 2 bytes)
+        with self._lock:
+            try:
+                self._client.write_area(
+                    self._to_snap7_area(S7Area.DB),
+                    2,          # DB_Config = DB2 (TIA Portal-assigned number)
+                    0,          # byte offset for ActiveScene
+                    bytearray(raw),
+                )
+                logger.info(
+                    "DB_Config.ActiveScene set to %d — OB_Main will now run scene %d FB.",
+                    scene_id,
+                    scene_id,
+                )
+                return True
+            except Exception as exc:
+                logger.error(
+                    "Failed to write ActiveScene=%d to DB1,INT0: %s. "
+                    "The PLC will continue running its previous scene.",
+                    scene_id,
+                    exc,
+                )
+                return False
+
+    # ------------------------------------------------------------------
     # Tag I/O -- internal raw read/write
     # ------------------------------------------------------------------
 

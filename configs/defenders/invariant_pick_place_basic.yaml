@@ -1,0 +1,23 @@
+# =============================================================================
+# CPSForge Defender — Invariant (Pick Place Basic)
+# =============================================================================
+name: invariant_pick_place_basic
+detector_type: invariant
+scene_name: pick_place_basic
+enabled: true
+invariant_rules:
+- rule_id: PPB-INV-001
+  description: ArmUp and ArmDown must not be active simultaneously
+  condition: NOT (arm_up == True AND arm_down == True)
+  tags:
+  - arm_up
+  - arm_down
+  severity: critical
+  label: arm_up_arm_down_conflict
+- rule_id: PPB-INV-002
+  description: State must be within valid range [0, 7]
+  condition: NOT (state < 0 OR state > 7)
+  tags:
+  - state
+  severity: high
+  label: invalid_state_range

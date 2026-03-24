@@ -1,0 +1,25 @@
+# =============================================================================
+# CPSForge Attack Policy — LLM (Pick Place Basic)
+# =============================================================================
+name: llm_pick_place_basic
+attacker_type: llm
+scene_name: pick_place_basic
+llm_provider: local_openai_compatible
+llm_model: null
+llm_max_retries: 3
+multi_step: false
+max_actions: 2
+inter_attack_delay_ms: 2000
+attack_types:
+- actuator_override
+- sequence_perturbation
+- timing_delay
+parameters:
+  attacker_objective: 'Disrupt the pick place basic process. Basic pick-and-place
+    with rotary arm. Items arrive on input conveyor, arm picks them up and rotates
+    to place on output conveyor. 8-state machine controls the full cycle. Writable
+    targets: gripper, arm_rotate, arm_up, arm_down. Try to cause state machine inconsistencies
+    or stuck states. The defender uses threshold and invariant checks.'
+  prompt_notes: 'Attack surface: gripper, arm_rotate, arm_up, arm_down. Sensors (read-only):
+    item_at_pick, item_at_place, gripper_closed, arm_at_pick, arm_at_place. Actuators:
+    conveyor_in, conveyor_out, gripper, arm_rotate, arm_up, arm_down.'

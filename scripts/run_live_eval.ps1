@@ -39,14 +39,37 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "[OK] PLC is reachable.`n" -ForegroundColor Green
 
 # Define experiment runs
-$experiments = @(
-    @{ scene = "from_a_to_b";          attacker = "scripted"; config = "live_scripted_from_a_to_b" },
-    @{ scene = "from_a_to_b";          attacker = "random";   config = "live_random_from_a_to_b" },
-    @{ scene = "level_control";        attacker = "scripted"; config = "live_scripted_level_control" },
-    @{ scene = "level_control";        attacker = "random";   config = "live_random_level_control" },
-    @{ scene = "sorting_height_basic"; attacker = "scripted"; config = "live_scripted_sorting_height_basic" },
-    @{ scene = "sorting_height_basic"; attacker = "random";   config = "live_random_sorting_height_basic" }
+# All 21 Factory I/O scenes
+$allScenes = @(
+    "from_a_to_b",
+    "from_a_to_b_sr",
+    "filling_tank",
+    "queue_items",
+    "assembler",
+    "assembler_analog",
+    "warehouse",
+    "buffer_station",
+    "converge_station",
+    "elevator_advanced",
+    "elevator_basic",
+    "level_control",
+    "palletizer",
+    "pick_place_basic",
+    "pick_place_xyz",
+    "production_line",
+    "separating_station",
+    "sorting_height_advanced",
+    "sorting_height_basic",
+    "sorting_weight",
+    "sorting_station"
 )
+
+# Build experiment list: scripted + random for every scene
+$experiments = @()
+foreach ($s in $allScenes) {
+    $experiments += @{ scene = $s; attacker = "scripted"; config = "live_scripted_$s" }
+    $experiments += @{ scene = $s; attacker = "random";   config = "live_random_$s" }
+}
 
 $total = $experiments.Count
 $idx = 0
@@ -87,14 +110,11 @@ foreach ($exp in $experiments) {
 # Generate experiment summaries
 Write-Host "`n[$($total+2)/$($total+2)] Generating experiment summaries..." -ForegroundColor Yellow
 
-$summaryExperiments = @(
-    "live_scripted_from_a_to_b",
-    "live_random_from_a_to_b",
-    "live_scripted_level_control",
-    "live_random_level_control",
-    "live_scripted_sorting_height_basic",
-    "live_random_sorting_height_basic"
-)
+$summaryExperiments = @()
+foreach ($s in $allScenes) {
+    $summaryExperiments += "live_scripted_$s"
+    $summaryExperiments += "live_random_$s"
+}
 
 foreach ($expName in $summaryExperiments) {
     if (Test-Path "data\raw\$expName") {

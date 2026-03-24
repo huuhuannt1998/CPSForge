@@ -1,0 +1,21 @@
+# =============================================================================
+# CPSForge Live Eval — Scripted (Filling Tank)
+# =============================================================================
+name: live_scripted_filling_tank
+description: 'Live eval run: scripted attacker vs threshold + invariant detectors
+  on filling tank.'
+scene_config: scenes/filling_tank.yaml
+plc_config: system/plc.yaml
+attackers:
+- scripted_filling_tank
+defenders:
+- threshold_filling_tank
+- invariant_filling_tank
+live_writes_enabled: true
+dry_run: false
+eval_run: true
+max_steps: 120
+run_duration_s: 120.0
+save_trace: true
+save_metrics: true
+reset_after_run: true

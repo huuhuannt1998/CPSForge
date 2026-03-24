@@ -1,0 +1,16 @@
+# =============================================================================
+# CPSForge Defender — Invariant (Filling Tank)
+# =============================================================================
+name: invariant_filling_tank
+detector_type: invariant
+scene_name: filling_tank
+enabled: true
+invariant_rules:
+- rule_id: FT-INV-001
+  description: Fill and drain valves must not both be open simultaneously
+  condition: NOT (fill_valve == True AND drain_valve == True)
+  tags:
+  - fill_valve
+  - drain_valve
+  severity: critical
+  label: fill_valve_drain_valve_conflict

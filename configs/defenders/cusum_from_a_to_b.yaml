@@ -1,0 +1,17 @@
+# =============================================================================
+# CPSForge Defender — CUSUM Detector (From A to B)
+# =============================================================================
+# Note: S1 has only boolean tags. CUSUM operates on the 'state' integer tag
+# and derived features if available. Limited effectiveness on discrete scenes.
+name: cusum_from_a_to_b
+detector_type: cusum
+scene_name: from_a_to_b
+enabled: true
+
+parameters:
+  target_tags:
+    - state
+  slack: 0.2
+  threshold: 3.0
+  warmup_steps: 20
+  reset_on_alarm: true

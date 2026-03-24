@@ -1,0 +1,16 @@
+# =============================================================================
+# CPSForge Defender — Invariant (Sorting Station)
+# =============================================================================
+name: invariant_sorting_station
+detector_type: invariant
+scene_name: sorting_station
+enabled: true
+invariant_rules:
+- rule_id: SS-INV-001
+  description: 'Baseline: at least one writable tag should be active'
+  condition: NOT (conveyor_in == False AND conveyor_green == False)
+  tags:
+  - conveyor_in
+  - conveyor_green
+  severity: medium
+  label: all_actuators_off

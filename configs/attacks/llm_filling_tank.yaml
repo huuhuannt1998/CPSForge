@@ -1,0 +1,28 @@
+# =============================================================================
+# CPSForge Attack Policy — LLM (Filling Tank)
+# =============================================================================
+name: llm_filling_tank
+attacker_type: llm
+scene_name: filling_tank
+llm_provider: local_openai_compatible
+llm_model: null
+llm_max_retries: 3
+multi_step: false
+max_actions: 2
+inter_attack_delay_ms: 2000
+attack_types:
+  - actuator_override
+  - sequence_perturbation
+parameters:
+  attacker_objective: >
+    Disrupt the filling tank process. Fill valve opens until the Fill sensor
+    (tank full) triggers, then drain valve opens until the Discharge sensor
+    (tank empty) triggers. Cycle repeats. Writable targets: fill_valve,
+    drain_valve, enable. Opening both valves simultaneously violates the
+    mutual-exclusion safety rule. Disabling enable stops all outputs.
+    The defender uses threshold and invariant checks.
+  prompt_notes: >
+    Attack surface: fill_valve, drain_valve, enable.
+    Sensors (read-only): sensor_fill, sensor_drain, fio_running.
+    Actuators: fill_valve, filling (indicator), drain_valve, discharging (indicator).
+    Internal: is_filling (state flag).

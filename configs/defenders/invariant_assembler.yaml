@@ -1,0 +1,23 @@
+# =============================================================================
+# CPSForge Defender — Invariant (Assembler)
+# =============================================================================
+name: invariant_assembler
+detector_type: invariant
+scene_name: assembler
+enabled: true
+invariant_rules:
+- rule_id: A-INV-001
+  description: MoveX and MoveZ should not both be active simultaneously
+  condition: NOT (move_x == True AND move_z == True)
+  tags:
+  - move_x
+  - move_z
+  severity: critical
+  label: move_x_move_z_conflict
+- rule_id: A-INV-002
+  description: State must be within valid range [0, 6]
+  condition: NOT (state < 0 OR state > 6)
+  tags:
+  - state
+  severity: high
+  label: invalid_state_range

@@ -1,0 +1,11 @@
+name: iforest_level_control
+detector_type: isolation_forest
+scene_name: level_control
+enabled: true
+model_path: data/models/level_control/iforest_level_control.pkl
+window_size: 20
+anomaly_threshold: 0.5
+parameters:
+  n_estimators: 100
+  contamination: auto
+  point_wise: true

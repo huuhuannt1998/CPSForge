@@ -1,0 +1,56 @@
+# =============================================================================
+# CPSForge Defender — Invariant (Sorting Weight — 3-Way Sorter)
+# =============================================================================
+name: invariant_sorting_weight
+detector_type: invariant
+scene_name: sorting_weight
+enabled: true
+invariant_rules:
+  - rule_id: SW-INV-001
+    description: State must be in valid set {0,1,2,3,4,5,6,7}
+    condition: NOT (i_state < 0 OR i_state > 7)
+    tags: [i_state]
+    severity: high
+    label: invalid_state_range
+
+  - rule_id: SW-INV-002
+    description: Light threshold must be in [0.5, 10.0]
+    condition: NOT (light_thresh < 0.5 OR light_thresh > 10.0)
+    tags: [light_thresh]
+    severity: high
+    label: light_thresh_out_of_range
+
+  - rule_id: SW-INV-003
+    description: Heavy threshold must be in [1.0, 15.0]
+    condition: NOT (heavy_thresh < 1.0 OR heavy_thresh > 15.0)
+    tags: [heavy_thresh]
+    severity: high
+    label: heavy_thresh_out_of_range
+
+  - rule_id: SW-INV-004
+    description: Light threshold must be less than heavy threshold
+    condition: light_thresh < heavy_thresh
+    tags: [light_thresh, heavy_thresh]
+    severity: critical
+    label: threshold_inversion
+
+  - rule_id: SW-INV-005
+    description: SendLeft and SendRight must not both be active
+    condition: NOT (send_left == True AND send_right == True)
+    tags: [send_left, send_right]
+    severity: critical
+    label: diverter_conflict_left_right
+
+  - rule_id: SW-INV-006
+    description: SendLeft and SendForward must not both be active
+    condition: NOT (send_left == True AND send_forward == True)
+    tags: [send_left, send_forward]
+    severity: critical
+    label: diverter_conflict_left_forward
+
+  - rule_id: SW-INV-007
+    description: SendRight and SendForward must not both be active
+    condition: NOT (send_right == True AND send_forward == True)
+    tags: [send_right, send_forward]
+    severity: critical
+    label: diverter_conflict_right_forward

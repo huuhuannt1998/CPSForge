@@ -1,0 +1,236 @@
+# =============================================================================
+# CPSForge Scene Configuration — Pick & Place XYZ
+# =============================================================================
+# Factory I/O scene: Pick & Place XYZ
+# DB24: Instance DB for FB_PickPlaceXYZ (non-optimized)
+#
+# Physical setup:
+#   - Siemens S7 PLC at 192.168.0.1, TIA Portal v17
+#   - 3-axis manipulator (X, Y, Z) with gripper
+#   - Places boxes onto pallets in 3x3 grid (9 per pallet)
+#   - REAL analog positions and setpoints
+#
+# Attack surface: SetpointX/Y/Z, Gripper
+# =============================================================================
+
+scene_name: pick_place_xyz
+scene_id: 15  # OB_Main CASE 15 — DB17
+
+description: >
+  Three-axis manipulator places boxes onto pallets in a 3x3 grid pattern
+  (9 boxes per pallet). REAL analog setpoints control arm position.
+  7-state machine manages the pick-move-place cycle.
+
+sampling_interval_ms: 500
+
+tags:
+  - name: box_at_pick
+    address: "DB17,BOOL0.0"
+    data_type: bool
+    access: read
+    description: "Box at pick position"
+    category: sensor
+    scene_name: pick_place_xyz
+
+  - name: pallet_ready
+    address: "DB17,BOOL2.0"
+    data_type: bool
+    access: read
+    description: "Pallet in place"
+    category: sensor
+    scene_name: pick_place_xyz
+
+  - name: gripper_closed
+    address: "DB17,BOOL4.0"
+    data_type: bool
+    access: read
+    description: "Gripper closed sensor"
+    category: sensor
+    scene_name: pick_place_xyz
+
+  - name: pos_x
+    address: "DB17,REAL6"
+    data_type: real
+    access: read
+    unit: "mm"
+    min_value: 0.0
+    max_value: 1000.0
+    description: "X-axis position"
+    category: sensor
+    scene_name: pick_place_xyz
+
+  - name: pos_y
+    address: "DB17,REAL10"
+    data_type: real
+    access: read
+    unit: "mm"
+    min_value: 0.0
+    max_value: 1000.0
+    description: "Y-axis position"
+    category: sensor
+    scene_name: pick_place_xyz
+
+  - name: pos_z
+    address: "DB17,REAL14"
+    data_type: real
+    access: read
+    unit: "mm"
+    min_value: 0.0
+    max_value: 500.0
+    description: "Z-axis position"
+    category: sensor
+    scene_name: pick_place_xyz
+
+  - name: gripper
+    address: "DB17,BOOL18.0"
+    data_type: bool
+    access: read_write
+    description: "Gripper actuator"
+    category: actuator
+    scene_name: pick_place_xyz
+
+  - name: conveyor_in
+    address: "DB17,BOOL20.0"
+    data_type: bool
+    access: read_write
+    description: "Input conveyor"
+    category: actuator
+    scene_name: pick_place_xyz
+
+  - name: conveyor_pallet
+    address: "DB17,BOOL22.0"
+    data_type: bool
+    access: read_write
+    description: "Pallet conveyor"
+    category: actuator
+    scene_name: pick_place_xyz
+
+  - name: emitter
+    address: "DB17,BOOL24.0"
+    data_type: bool
+    access: read_write
+    description: "Box emitter"
+    category: actuator
+    scene_name: pick_place_xyz
+
+  - name: setpoint_x
+    address: "DB17,REAL26"
+    data_type: real
+    access: read_write
+    unit: "mm"
+    min_value: 0.0
+    max_value: 1000.0
+    description: "X-axis setpoint"
+    category: setpoint
+    scene_name: pick_place_xyz
+
+  - name: setpoint_y
+    address: "DB17,REAL30"
+    data_type: real
+    access: read_write
+    unit: "mm"
+    min_value: 0.0
+    max_value: 1000.0
+    description: "Y-axis setpoint"
+    category: setpoint
+    scene_name: pick_place_xyz
+
+  - name: setpoint_z
+    address: "DB17,REAL34"
+    data_type: real
+    access: read_write
+    unit: "mm"
+    min_value: 0.0
+    max_value: 500.0
+    description: "Z-axis setpoint"
+    category: setpoint
+    scene_name: pick_place_xyz
+
+  - name: state
+    address: "DB17,INT38"
+    data_type: int
+    access: read
+    min_value: 0
+    max_value: 6
+    description: "State machine (0-6)"
+    category: internal
+    scene_name: pick_place_xyz
+
+  - name: box_index
+    address: "DB17,INT40"
+    data_type: int
+    access: read
+    description: "Box index on pallet (0-8)"
+    category: internal
+    scene_name: pick_place_xyz
+
+writable_tags:
+  - gripper
+  - conveyor_in
+  - conveyor_pallet
+  - emitter
+  - setpoint_x
+  - setpoint_y
+  - setpoint_z
+
+attack_surface:
+  - setpoint_x
+  - setpoint_y
+  - setpoint_z
+  - gripper
+
+safety_rules:
+  - rule_id: PPXYZ-SR-001
+    description: "SetpointX must stay within mechanical range"
+    rule_type: range
+    tags: [setpoint_x]
+    parameters:
+      min: 0.0
+      max: 1000.0
+    enabled: true
+    priority: 100
+
+  - rule_id: PPXYZ-SR-002
+    description: "SetpointY must stay within mechanical range"
+    rule_type: range
+    tags: [setpoint_y]
+    parameters:
+      min: 0.0
+      max: 1000.0
+    enabled: true
+    priority: 100
+
+  - rule_id: PPXYZ-SR-003
+    description: "SetpointZ must stay within mechanical range"
+    rule_type: range
+    tags: [setpoint_z]
+    parameters:
+      min: 0.0
+      max: 500.0
+    enabled: true
+    priority: 100
+
+  - rule_id: PPXYZ-SR-004
+    description: "Gripper override capped at 30 seconds"
+    rule_type: duration
+    tags: [gripper]
+    parameters:
+      max_duration_ms: 30000
+    enabled: true
+    priority: 50
+
+reset_procedure:
+  - tag: gripper
+    value: false
+  - tag: conveyor_in
+    value: false
+  - tag: conveyor_pallet
+    value: false
+  - tag: emitter
+    value: false
+  - tag: setpoint_x
+    value: 0.0
+  - tag: setpoint_y
+    value: 0.0
+  - tag: setpoint_z
+    value: 0.0

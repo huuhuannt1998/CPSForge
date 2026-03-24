@@ -1,7 +1,7 @@
 \section{Related Work}
 \label{sec:related}
 
-We situate CPSForge at the intersection of five active research areas: LLM-driven attack generation for industrial systems, autonomous cyber agents, hardware-in-the-loop CPS testbeds, runtime safety enforcement, and adaptive adversarial defense. Table~\ref{tab:comparison} summarises the positioning.
+We situate CPSForge at the intersection of five active research areas: LLM-driven attack generation for industrial systems, autonomous cyber agents, PLC-based CPS security testbeds, runtime safety enforcement, and adaptive adversarial defense. Table~\ref{tab:comparison} summarises the positioning.
 
 \subsection{LLM-Based Attack Generation for CPS}
 
@@ -11,9 +11,9 @@ The application of large language models to cyber-physical attack planning is na
 
 Autonomous penetration-testing agents represent a growing area. Deng et al.~\cite{deng2024pentestgpt} introduced PentestGPT, demonstrating that LLMs can guide multi-step penetration tests on IT targets, and Shen et al.~\cite{shen2025pentestagent} extended this paradigm with PentestAgent. Rigaki et al.~\cite{rigaki2024hackphyr} fine-tuned an LLM agent (Hackphyr) specifically for network security environments. Abuadbba et al.~\cite{abuadbba2025promise} survey the promises and perils of LLM-based red-blue teaming for cybersecurity. The survey by Xu et al.~\cite{xu2025forewarned} catalogues LLM-based agents for autonomous cyberattacks and identifies a significant gap in \emph{operational technology} (OT) and CPS-specific agents. All of the above target IT infrastructure---networks, web applications, and general-purpose operating systems---rather than the real-time, physics-constrained environments of industrial control systems. CPSForge fills this gap by instantiating LLM-driven attacker and defender agents that operate on physical process tags within a real Siemens S7 PLC loop.
 
-\subsection{Hardware-in-the-Loop CPS Security Testbeds}
+\subsection{PLC-Based CPS Security Testbeds}
 
-Hardware-in-the-loop (HIL) testbeds provide the realism necessary for credible CPS security evaluation. Mathur and Tippenhauer~\cite{mathur2016swat} established the SWaT testbed and its associated dataset~\cite{goh2017swat}, which remain the dominant benchmarks for ICS anomaly detection. Dehlaghi-Ghadim et al.~\cite{dehlaghi2023icssim} propose ICSSIM, a modular framework for building ICS security testbeds, and Garcia et al.~\cite{garcia2025sphere} describe the SPHERE CPS Enclave, a reconfigurable testbed for industrial experimentation. More recent efforts include SIMPLE-ICS~\cite{pramadi2026simpleics}, which enables end-to-end advanced persistent threat emulation, and domain-specific HIL platforms for nuclear~\cite{chen2024nuclear_hil, nam2025hintsec} and thermal~\cite{mathew2024hil_thermal} power plants. Factory~I/O has been used for penetration testing on Modbus/TCP~\cite{lazaridis2023factoryio_pentest} and digital-twin-based safety analysis~\cite{wang2024factoryio_dt}. None of these testbeds integrate LLM-driven attack or defense agents. CPSForge builds on the HIL tradition---using a real Siemens S7-1200 PLC with TIA Portal and Factory~I/O---while adding structured LLM attack planning, autonomous multi-agent operation, and systematic adaptation.
+Testbeds that include real controllers provide the realism needed for credible CPS security evaluation. Mathur and Tippenhauer~\cite{mathur2016swat} established the SWaT testbed and dataset~\cite{goh2017swat}, which remain dominant ICS anomaly-detection benchmarks. Dehlaghi-Ghadim et al.~\cite{dehlaghi2023icssim} propose ICSSIM, and Garcia et al.~\cite{garcia2025sphere} describe the SPHERE CPS Enclave. More recent efforts include SIMPLE-ICS~\cite{pramadi2026simpleics}, plus domain-specific HIL platforms for nuclear~\cite{chen2024nuclear_hil, nam2025hintsec} and thermal~\cite{mathew2024hil_thermal} power plants. Factory~I/O has also been used for Modbus/TCP penetration testing~\cite{lazaridis2023factoryio_pentest} and digital-twin safety analysis~\cite{wang2024factoryio_dt}. None of these testbeds integrate LLM-driven attack or defense agents. CPSForge builds on this tradition with a real Siemens S7-1200 PLC, TIA Portal, and Factory~I/O as a software-based process emulator, adding structured LLM attack planning, autonomous multi-agent operation, and systematic adaptation.
 
 \subsection{Runtime Safety Enforcement for Industrial Systems}
 
@@ -25,7 +25,7 @@ Hu et al.~\cite{hu2025evodefender} introduced Evo-Defender, which co-evolves att
 
 \subsection{Positioning}
 
-Table~\ref{tab:comparison} compares CPSForge to the most related systems. To the best of our knowledge, no prior work combines all of: (i) LLM-driven attack generation over physical process tags, (ii) an autonomous LLM defender operating in the same live loop, (iii) a configurable runtime safety shield mediating every write, (iv) closed-loop adaptation from hard cases, and (v) execution on a real PLC with hardware-in-the-loop plant simulation. The survey by Xu et al.~\cite{xu2024llm_cybersec_survey} confirms the absence of such integrated frameworks in the current literature.
+Table~\ref{tab:comparison} compares CPSForge to the most related systems. To the best of our knowledge, no prior work combines all of: (i) LLM-driven attack generation over physical process tags, (ii) an autonomous LLM defender operating in the same live loop, (iii) a configurable runtime safety shield mediating every write, (iv) closed-loop adaptation from hard cases, and (v) execution on a real PLC with software-emulated plant simulation. The survey by Xu et al.~\cite{xu2024llm_cybersec_survey} confirms the absence of such integrated frameworks in the current literature.
 
 \begin{table}[t]
 \centering
@@ -34,7 +34,7 @@ Table~\ref{tab:comparison} compares CPSForge to the most related systems. To the
 \resizebox{\columnwidth}{!}{%
 \begin{tabular}{lccccccc}
 \hline
-\textbf{System} & \rotatebox{70}{\textbf{LLM Attacker}} & \rotatebox{70}{\textbf{LLM Defender}} & \rotatebox{70}{\textbf{Safety Shield}} & \rotatebox{70}{\textbf{Real PLC}} & \rotatebox{70}{\textbf{HIL Plant}} & \rotatebox{70}{\textbf{Live Loop}} & \rotatebox{70}{\textbf{Adaptation}} \\
+\textbf{System} & \rotatebox{70}{\textbf{LLM Attacker}} & \rotatebox{70}{\textbf{LLM Defender}} & \rotatebox{70}{\textbf{Safety Shield}} & \rotatebox{70}{\textbf{Real PLC}} & \rotatebox{70}{\textbf{Plant Sim.}} & \rotatebox{70}{\textbf{Live Loop}} & \rotatebox{70}{\textbf{Adaptation}} \\
 \hline
 AttackLLM~\cite{ahmed2025attackllm}       & \checkmark &            &            &            & \checkmark &            &            \\
 Evo-Defender~\cite{hu2025evodefender}     &            &            &            &            & \checkmark & \checkmark & \checkmark \\

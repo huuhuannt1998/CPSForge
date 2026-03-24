@@ -1,37 +1,90 @@
-// MANTIS — Scene 3: Filling Tank (Timers)
-// Fill and empty a tank using timers with two discrete level sensors.
-// DB12: I/O mapping
+// MANTIS — Scene 3: Filling Tank
+// Fill and drain a tank using two discrete level sensors.
+// DB5: Instance DB for FB_FillingTank (non-optimized access)
+//
+// Factory I/O connections (ComDrvS7, Bool Inputs Offset=10):
+//   Fill (high-level sensor)       → %I10.0   TRUE = tank full
+//   Discharge (low-level sensor)   → %I10.1   TRUE = tank empty
+//   FACTORY I/O (Running)          → %I10.2   TRUE = simulation active
+//   Fill valve                     → %Q0.0
+//   Filling (status indicator)     → %Q0.1
+//   Discharge valve                → %Q0.2
+//   Discharging (status indicator) → %Q0.3
+//
+// DB5 byte layout (non-optimized, 18 bytes):
+//   Byte 0   : SensorFill    (BOOL) — high-level: TRUE = tank full
+//   Byte 2   : SensorDrain   (BOOL) — low-level:  TRUE = tank empty
+//   Byte 4   : FIO_Running   (BOOL) — Factory I/O alive
+//   Byte 6   : FillValve     (BOOL) — open fill valve
+//   Byte 8   : Filling       (BOOL) — filling status indicator light
+//   Byte 10  : DrainValve    (BOOL) — open drain valve
+//   Byte 12  : Discharging   (BOOL) — discharging status indicator light
+//   Byte 14  : IsFilling     (BOOL) — internal state: TRUE=filling, FALSE=draining
+//   Byte 16  : Enable        (BOOL) — system enable (attack target)
+//   Total = 18 bytes
+//
+// Normal cycle:
+//   Start: tank empty (SensorDrain=TRUE) → IsFilling=TRUE
+//   Filling: FillValve=TRUE, Filling=TRUE → tank rises
+//   SensorFill=TRUE → switch to drain: IsFilling=FALSE
+//   Draining: DrainValve=TRUE, Discharging=TRUE → tank empties
+//   SensorDrain=TRUE → switch to fill: IsFilling=TRUE → repeat
+//
+// Attack surface:
+//   Enable=FALSE     → all valves close (DoS)
+//   FillValve spoof  → overflow or starvation
+//   DrainValve spoof → overflow or stuck full
 
 FUNCTION_BLOCK "FB_FillingTank"
 { S7_Optimized_Access := 'FALSE' }
-VERSION : 0.1
+VERSION : 1.0
 
 VAR
-    LevelHigh  : BOOL;   // 0.0
-    _pad0      : BYTE;
-    LevelLow   : BOOL;   // 2.0
-    _pad1      : BYTE;
-    FillValve  : BOOL;   // 4.0
-    _pad2      : BYTE;
-    DrainValve : BOOL;   // 6.0
-    _pad3      : BYTE;
-    
-    Filling    : BOOL := TRUE;
+    SensorFill    : BOOL;          // byte 0.0  — Fill sensor (TRUE = tank full)
+    _pad0         : BYTE;          // byte 1
+    SensorDrain   : BOOL;          // byte 2.0  — Discharge sensor (TRUE = tank empty)
+    _pad1         : BYTE;          // byte 3
+    FIO_Running   : BOOL;          // byte 4.0  — Factory I/O alive
+    _pad2         : BYTE;          // byte 5
+    FillValve     : BOOL;          // byte 6.0  — Fill valve actuator
+    _pad3         : BYTE;          // byte 7
+    Filling       : BOOL;          // byte 8.0  — Filling indicator light
+    _pad4         : BYTE;          // byte 9
+    DrainValve    : BOOL;          // byte 10.0 — Drain valve actuator
+    _pad5         : BYTE;          // byte 11
+    Discharging   : BOOL;          // byte 12.0 — Discharging indicator light
+    _pad6         : BYTE;          // byte 13
+    IsFilling     : BOOL := TRUE;  // byte 14.0 — State: TRUE=filling, FALSE=draining
+    _pad7         : BYTE;          // byte 15
+    Enable        : BOOL := TRUE;  // byte 16.0 — System enable (attack target)
+    _pad8         : BYTE;          // byte 17
+    // Total DB size: 18 bytes
 END_VAR
 
 BEGIN
-    // Fill until high, then drain until low
-    IF Filling THEN
-        FillValve := TRUE;
-        DrainValve := FALSE;
-        IF LevelHigh THEN
-            Filling := FALSE;
+    IF NOT FIO_Running OR NOT Enable THEN
+        // Safe state: close everything
+        FillValve   := FALSE;
+        Filling     := FALSE;
+        DrainValve  := FALSE;
+        Discharging := FALSE;
+    ELSIF IsFilling THEN
+        // Filling mode
+        FillValve   := TRUE;
+        Filling     := TRUE;
+        DrainValve  := FALSE;
+        Discharging := FALSE;
+        IF SensorFill THEN
+            IsFilling := FALSE;    // Tank full → switch to drain
         END_IF;
     ELSE
-        FillValve := FALSE;
-        DrainValve := TRUE;
-        IF LevelLow THEN
-            Filling := TRUE;
+        // Draining mode
+        FillValve   := FALSE;
+        Filling     := FALSE;
+        DrainValve  := TRUE;
+        Discharging := TRUE;
+        IF SensorDrain THEN
+            IsFilling := TRUE;     // Tank empty → switch to fill
         END_IF;
     END_IF;
 END_FUNCTION_BLOCK

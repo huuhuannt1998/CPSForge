@@ -1,0 +1,20 @@
+# =============================================================================
+# CPSForge Defender — Threshold (Sorting Station)
+# =============================================================================
+name: threshold_sorting_station
+detector_type: threshold
+scene_name: sorting_station
+enabled: true
+thresholds:
+- tag: conveyor_in
+  operator: ==
+  value: 0
+  severity: medium
+  label: conveyor_in_stopped
+  description: conveyor_in is stopped — possible actuator override
+- tag: conveyor_green
+  operator: ==
+  value: 0
+  severity: medium
+  label: conveyor_green_stopped
+  description: conveyor_green is stopped — possible actuator override

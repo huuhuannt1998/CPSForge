@@ -1,0 +1,11 @@
+# =============================================================================
+# CPSForge Attack Policy — Scripted (Production Line)
+# =============================================================================
+name: scripted_production_line
+attacker_type: scripted
+scene_name: production_line
+max_actions: 5
+inter_attack_delay_ms: 3000
+attack_types:
+- actuator_override
+- sequence_perturbation

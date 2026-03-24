@@ -1,0 +1,22 @@
+# =============================================================================
+# CPSForge Agent Mode (Queue Items)
+# =============================================================================
+name: agent_queue_items
+description: Live attacker and defender agents on queue items.
+mode: agent
+scene_config: scenes/queue_items.yaml
+plc_config: system/plc.yaml
+attackers: []
+defenders:
+- threshold_queue_items
+- invariant_queue_items
+attacker_agent: attacker_agent
+defender_agent: defender_agent
+live_writes_enabled: true
+dry_run: false
+eval_run: true
+max_steps: 200
+run_duration_s: null
+save_trace: true
+save_metrics: true
+reset_after_run: true

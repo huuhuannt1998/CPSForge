@@ -1,11 +1,12 @@
 """
 CPSForge LLM Batch Evaluation Runner
 =====================================
-Runs LLM batch attacks on all 3 scenes and saves results.
+Runs LLM batch attacks on all 21 scenes and saves results.
 Must be run as a standalone script (not via CLI) to avoid SIGINT issues.
 
 Usage:
   python scripts/run_llm_eval.py
+  python scripts/run_llm_eval.py --scene level_control
 """
 
 import json
@@ -41,26 +42,35 @@ signal.signal(signal.SIGINT, _sigint_handler)
 
 EXPERIMENTS = [
     {
-        "name": "llm_level_control_eval",
-        "scene": "level_control",
-        "attacker": "llm_level_control",
-        "defenders": ["threshold_level_control", "invariant_level_control"],
+        "name": f"llm_{scene}_eval",
+        "scene": scene,
+        "attacker": f"llm_{scene}",
+        "defenders": [f"threshold_{scene}", f"invariant_{scene}"],
         "max_steps": 150,
-    },
-    {
-        "name": "llm_from_a_to_b_eval",
-        "scene": "from_a_to_b",
-        "attacker": "llm_from_a_to_b",
-        "defenders": ["threshold_from_a_to_b", "invariant_from_a_to_b"],
-        "max_steps": 150,
-    },
-    {
-        "name": "llm_sorting_height_eval",
-        "scene": "sorting_height_basic",
-        "attacker": "llm_sorting_height_basic",
-        "defenders": ["threshold_sorting_height_basic", "invariant_sorting_height_basic"],
-        "max_steps": 200,
-    },
+    }
+    for scene in [
+        "from_a_to_b",
+        "from_a_to_b_sr",
+        "filling_tank",
+        "queue_items",
+        "assembler",
+        "assembler_analog",
+        "warehouse",
+        "buffer_station",
+        "converge_station",
+        "elevator_advanced",
+        "elevator_basic",
+        "level_control",
+        "palletizer",
+        "pick_place_basic",
+        "pick_place_xyz",
+        "production_line",
+        "separating_station",
+        "sorting_height_advanced",
+        "sorting_height_basic",
+        "sorting_weight",
+        "sorting_station",
+    ]
 ]
 
 

@@ -1,0 +1,564 @@
+# =============================================================================
+# CPSForge Scene Configuration — Elevator (Advanced)
+# =============================================================================
+# Factory I/O scene: Elevator (Advanced)
+# DB19: Instance DB for FB_ElevatorAdvanced (non-optimized, 110 bytes)
+#
+# Physical setup:
+#   - Siemens S7 PLC at 192.168.0.1, TIA Portal v17
+#   - Single elevator servicing 4 floors (0-3)
+#   - Items arrive randomly at floors 1-3
+#   - Elevator carries a box, collects items (max 5)
+#   - Full box unloaded at floor 0
+#   - Dual sensors per floor (Low+High), traffic lights, panel
+#   - Enable vulnerability
+#
+# Attack surface: Elevator controls, ItemCount, MaxItems, Enable
+# =============================================================================
+
+scene_name: elevator_advanced
+scene_id: 10  # OB_Main CASE 10 — DB12
+
+description: >
+  Advanced single-elevator system across 4 floors. Collects up to 5 items
+  into a box. Items spawn randomly at floors 1-3. 6-state machine:
+  LoadBox→Scan→Moving→Collect→Return→Unload. Enable flag and ItemCount
+  are attack targets.
+
+sampling_interval_ms: 500
+
+tags:
+  # --- Floor call sensors ---
+  - name: at_1
+    address: "DB12,BOOL0.0"
+    data_type: bool
+    access: read
+    description: "Floor 1 call — item waiting"
+    category: sensor
+    scene_name: elevator_advanced
+
+  - name: at_2
+    address: "DB12,BOOL2.0"
+    data_type: bool
+    access: read
+    description: "Floor 2 call — item waiting"
+    category: sensor
+    scene_name: elevator_advanced
+
+  - name: at_3
+    address: "DB12,BOOL4.0"
+    data_type: bool
+    access: read
+    description: "Floor 3 call — item waiting"
+    category: sensor
+    scene_name: elevator_advanced
+
+  - name: at_elevator
+    address: "DB12,BOOL6.0"
+    data_type: bool
+    access: read
+    description: "Item on elevator platform"
+    category: sensor
+    scene_name: elevator_advanced
+
+  - name: at_entry
+    address: "DB12,BOOL8.0"
+    data_type: bool
+    access: read
+    description: "Item at entry"
+    category: sensor
+    scene_name: elevator_advanced
+
+  - name: at_exit
+    address: "DB12,BOOL10.0"
+    data_type: bool
+    access: read
+    description: "Item at exit"
+    category: sensor
+    scene_name: elevator_advanced
+
+  # --- Floor position sensors (dual) ---
+  - name: at_0_low
+    address: "DB12,BOOL12.0"
+    data_type: bool
+    access: read
+    description: "Elevator near floor 0"
+    category: sensor
+    scene_name: elevator_advanced
+
+  - name: at_0_high
+    address: "DB12,BOOL14.0"
+    data_type: bool
+    access: read
+    description: "Elevator at floor 0"
+    category: sensor
+    scene_name: elevator_advanced
+
+  - name: at_1_low
+    address: "DB12,BOOL16.0"
+    data_type: bool
+    access: read
+    description: "Elevator near floor 1"
+    category: sensor
+    scene_name: elevator_advanced
+
+  - name: at_1_high
+    address: "DB12,BOOL18.0"
+    data_type: bool
+    access: read
+    description: "Elevator at floor 1"
+    category: sensor
+    scene_name: elevator_advanced
+
+  - name: at_2_low
+    address: "DB12,BOOL20.0"
+    data_type: bool
+    access: read
+    description: "Elevator near floor 2"
+    category: sensor
+    scene_name: elevator_advanced
+
+  - name: at_2_high
+    address: "DB12,BOOL22.0"
+    data_type: bool
+    access: read
+    description: "Elevator at floor 2"
+    category: sensor
+    scene_name: elevator_advanced
+
+  - name: at_3_low
+    address: "DB12,BOOL24.0"
+    data_type: bool
+    access: read
+    description: "Elevator near floor 3"
+    category: sensor
+    scene_name: elevator_advanced
+
+  - name: at_3_high
+    address: "DB12,BOOL26.0"
+    data_type: bool
+    access: read
+    description: "Elevator at floor 3"
+    category: sensor
+    scene_name: elevator_advanced
+
+  # --- Panel buttons ---
+  - name: btn_start
+    address: "DB12,BOOL28.0"
+    data_type: bool
+    access: read
+    description: "Start button"
+    category: sensor
+    scene_name: elevator_advanced
+
+  - name: btn_reset
+    address: "DB12,BOOL30.0"
+    data_type: bool
+    access: read
+    description: "Reset button"
+    category: sensor
+    scene_name: elevator_advanced
+
+  - name: btn_stop
+    address: "DB12,BOOL32.0"
+    data_type: bool
+    access: read
+    description: "Stop button (NC)"
+    category: sensor
+    scene_name: elevator_advanced
+
+  - name: emergency_stop
+    address: "DB12,BOOL34.0"
+    data_type: bool
+    access: read
+    description: "Emergency stop"
+    category: alarm
+    scene_name: elevator_advanced
+
+  - name: btn_auto
+    address: "DB12,BOOL36.0"
+    data_type: bool
+    access: read
+    description: "Auto mode selector"
+    category: sensor
+    scene_name: elevator_advanced
+
+  # --- Actuators ---
+  - name: conveyor_0
+    address: "DB12,BOOL38.0"
+    data_type: bool
+    access: read_write
+    description: "Floor 0 conveyor"
+    category: actuator
+    scene_name: elevator_advanced
+
+  - name: conveyor_1
+    address: "DB12,BOOL40.0"
+    data_type: bool
+    access: read_write
+    description: "Floor 1 conveyor"
+    category: actuator
+    scene_name: elevator_advanced
+
+  - name: conveyor_2
+    address: "DB12,BOOL42.0"
+    data_type: bool
+    access: read_write
+    description: "Floor 2 conveyor"
+    category: actuator
+    scene_name: elevator_advanced
+
+  - name: conveyor_3
+    address: "DB12,BOOL44.0"
+    data_type: bool
+    access: read_write
+    description: "Floor 3 conveyor"
+    category: actuator
+    scene_name: elevator_advanced
+
+  - name: exit_conveyor
+    address: "DB12,BOOL46.0"
+    data_type: bool
+    access: read_write
+    description: "Exit conveyor"
+    category: actuator
+    scene_name: elevator_advanced
+
+  - name: load
+    address: "DB12,BOOL48.0"
+    data_type: bool
+    access: read_write
+    description: "Load rollers (pull item onto elevator)"
+    category: actuator
+    scene_name: elevator_advanced
+
+  - name: unload
+    address: "DB12,BOOL50.0"
+    data_type: bool
+    access: read_write
+    description: "Unload rollers (push item off elevator)"
+    category: actuator
+    scene_name: elevator_advanced
+
+  - name: up
+    address: "DB12,BOOL52.0"
+    data_type: bool
+    access: read_write
+    description: "Elevator UP command"
+    category: actuator
+    scene_name: elevator_advanced
+
+  - name: down
+    address: "DB12,BOOL54.0"
+    data_type: bool
+    access: read_write
+    description: "Elevator DOWN command"
+    category: actuator
+    scene_name: elevator_advanced
+
+  - name: slow
+    address: "DB12,BOOL56.0"
+    data_type: bool
+    access: read_write
+    description: "Elevator slow speed"
+    category: actuator
+    scene_name: elevator_advanced
+
+  - name: warning_light
+    address: "DB12,BOOL58.0"
+    data_type: bool
+    access: read
+    description: "Warning light"
+    category: actuator
+    scene_name: elevator_advanced
+
+  - name: start_light
+    address: "DB12,BOOL60.0"
+    data_type: bool
+    access: read
+    description: "Start indicator"
+    category: actuator
+    scene_name: elevator_advanced
+
+  - name: reset_light
+    address: "DB12,BOOL62.0"
+    data_type: bool
+    access: read
+    description: "Reset indicator"
+    category: actuator
+    scene_name: elevator_advanced
+
+  - name: stop_light
+    address: "DB12,BOOL64.0"
+    data_type: bool
+    access: read
+    description: "Stop indicator"
+    category: actuator
+    scene_name: elevator_advanced
+
+  - name: floor_1_ind
+    address: "DB12,BOOL66.0"
+    data_type: bool
+    access: read
+    description: "Floor 1 indicator"
+    category: actuator
+    scene_name: elevator_advanced
+
+  - name: floor_2_ind
+    address: "DB12,BOOL68.0"
+    data_type: bool
+    access: read
+    description: "Floor 2 indicator"
+    category: actuator
+    scene_name: elevator_advanced
+
+  - name: floor_3_ind
+    address: "DB12,BOOL70.0"
+    data_type: bool
+    access: read
+    description: "Floor 3 indicator"
+    category: actuator
+    scene_name: elevator_advanced
+
+  # --- Traffic lights ---
+  - name: green_1
+    address: "DB12,BOOL72.0"
+    data_type: bool
+    access: read
+    description: "Floor 1 green light"
+    category: actuator
+    scene_name: elevator_advanced
+
+  - name: yellow_1
+    address: "DB12,BOOL74.0"
+    data_type: bool
+    access: read
+    description: "Floor 1 yellow light"
+    category: actuator
+    scene_name: elevator_advanced
+
+  - name: red_1
+    address: "DB12,BOOL76.0"
+    data_type: bool
+    access: read
+    description: "Floor 1 red light"
+    category: actuator
+    scene_name: elevator_advanced
+
+  - name: green_2
+    address: "DB12,BOOL78.0"
+    data_type: bool
+    access: read
+    description: "Floor 2 green light"
+    category: actuator
+    scene_name: elevator_advanced
+
+  - name: yellow_2
+    address: "DB12,BOOL80.0"
+    data_type: bool
+    access: read
+    description: "Floor 2 yellow light"
+    category: actuator
+    scene_name: elevator_advanced
+
+  - name: red_2
+    address: "DB12,BOOL82.0"
+    data_type: bool
+    access: read
+    description: "Floor 2 red light"
+    category: actuator
+    scene_name: elevator_advanced
+
+  - name: green_3
+    address: "DB12,BOOL84.0"
+    data_type: bool
+    access: read
+    description: "Floor 3 green light"
+    category: actuator
+    scene_name: elevator_advanced
+
+  - name: yellow_3
+    address: "DB12,BOOL86.0"
+    data_type: bool
+    access: read
+    description: "Floor 3 yellow light"
+    category: actuator
+    scene_name: elevator_advanced
+
+  - name: red_3
+    address: "DB12,BOOL88.0"
+    data_type: bool
+    access: read
+    description: "Floor 3 red light"
+    category: actuator
+    scene_name: elevator_advanced
+
+  - name: display
+    address: "DB12,DINT90"
+    data_type: dint
+    access: read
+    description: "Floor display (items collected)"
+    category: internal
+    scene_name: elevator_advanced
+
+  # --- Internal state ---
+  - name: state
+    address: "DB12,INT94"
+    data_type: int
+    access: read
+    min_value: 0
+    max_value: 5
+    description: "State: 0=LoadBox, 1=Scan, 2=Moving, 3=Collect, 4=Return, 5=Unload"
+    category: internal
+    scene_name: elevator_advanced
+
+  - name: target_floor
+    address: "DB12,INT96"
+    data_type: int
+    access: read
+    description: "Target floor (0-3)"
+    category: internal
+    scene_name: elevator_advanced
+
+  - name: current_floor
+    address: "DB12,INT98"
+    data_type: int
+    access: read
+    description: "Current floor (0-3)"
+    category: internal
+    scene_name: elevator_advanced
+
+  - name: dwell_timer
+    address: "DB12,INT100"
+    data_type: int
+    access: read
+    description: "Dwell timer"
+    category: internal
+    scene_name: elevator_advanced
+
+  - name: running
+    address: "DB12,BOOL102.0"
+    data_type: bool
+    access: read
+    description: "System running"
+    category: internal
+    scene_name: elevator_advanced
+
+  - name: enable
+    address: "DB12,BOOL104.0"
+    data_type: bool
+    access: read_write
+    description: "System enable — never written by PLC (attack target)"
+    category: mode_bit
+    scene_name: elevator_advanced
+
+  - name: item_count
+    address: "DB12,INT106"
+    data_type: int
+    access: read_write
+    min_value: 0
+    max_value: 10
+    description: "Items collected in current box (attack target)"
+    category: internal
+    scene_name: elevator_advanced
+
+  - name: max_items
+    address: "DB12,INT108"
+    data_type: int
+    access: read_write
+    min_value: 1
+    max_value: 10
+    description: "Target items per box (default 5, attack target)"
+    category: setpoint
+    scene_name: elevator_advanced
+
+writable_tags:
+  - conveyor_0
+  - conveyor_1
+  - conveyor_2
+  - conveyor_3
+  - exit_conveyor
+  - load
+  - unload
+  - up
+  - down
+  - slow
+  - enable
+  - item_count
+  - max_items
+
+attack_surface:
+  - up
+  - down
+  - load
+  - unload
+  - enable
+  - item_count
+  - max_items
+
+safety_rules:
+  - rule_id: EA-SR-001
+    description: "UP and DOWN must not be active simultaneously"
+    rule_type: mutual_exclusion
+    tags: [up, down]
+    parameters:
+      forbidden_pairs: [[true, true]]
+    enabled: true
+    priority: 100
+
+  - rule_id: EA-SR-002
+    description: "Load and unload must not be active simultaneously"
+    rule_type: mutual_exclusion
+    tags: [load, unload]
+    parameters:
+      forbidden_pairs: [[true, true]]
+    enabled: true
+    priority: 90
+
+  - rule_id: EA-SR-003
+    description: "Enable must not be held FALSE for more than 30 seconds"
+    rule_type: duration
+    tags: [enable]
+    parameters:
+      max_duration_ms: 30000
+      forbidden_value: false
+    enabled: true
+    priority: 100
+
+  - rule_id: EA-SR-004
+    description: "ItemCount must stay within valid range"
+    rule_type: range
+    tags: [item_count]
+    parameters:
+      min: 0
+      max: 10
+    enabled: true
+    priority: 80
+
+  - rule_id: EA-SR-005
+    description: "MaxItems must stay within valid range"
+    rule_type: range
+    tags: [max_items]
+    parameters:
+      min: 1
+      max: 10
+    enabled: true
+    priority: 80
+
+reset_procedure:
+  - tag: enable
+    value: true
+  - tag: up
+    value: false
+  - tag: down
+    value: false
+  - tag: slow
+    value: false
+  - tag: load
+    value: false
+  - tag: unload
+    value: false
+  - tag: item_count
+    value: 0
+  - tag: max_items
+    value: 5

@@ -1,0 +1,11 @@
+# =============================================================================
+# CPSForge Attack Policy — Scripted (Separating Station)
+# =============================================================================
+name: scripted_separating_station
+attacker_type: scripted
+scene_name: separating_station
+max_actions: 5
+inter_attack_delay_ms: 3000
+attack_types:
+- actuator_override
+- sequence_perturbation

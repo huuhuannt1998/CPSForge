@@ -1,0 +1,29 @@
+# =============================================================================
+# CPSForge Defender — Invariant (Assembler Analog)
+# =============================================================================
+name: invariant_assembler_analog
+detector_type: invariant
+scene_name: assembler_analog
+enabled: true
+invariant_rules:
+- rule_id: AA-INV-001
+  description: State must be within valid range [0, 6]
+  condition: NOT (state < 0 OR state > 6)
+  tags:
+  - state
+  severity: high
+  label: invalid_state_range
+- rule_id: AA-INV-002
+  description: setpoint_x must be in [0.0, 1000.0]
+  condition: NOT (setpoint_x < 0.0 OR setpoint_x > 1000.0)
+  tags:
+  - setpoint_x
+  severity: high
+  label: setpoint_x_out_of_range
+- rule_id: AA-INV-003
+  description: setpoint_z must be in [0.0, 500.0]
+  condition: NOT (setpoint_z < 0.0 OR setpoint_z > 500.0)
+  tags:
+  - setpoint_z
+  severity: high
+  label: setpoint_z_out_of_range

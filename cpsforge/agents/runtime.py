@@ -123,6 +123,9 @@ class AgentRuntime:
         shield = ShieldEngine(scene.profile)
 
         plc_cfg = self._loader.load_plc()
+        # Propagate the experiment-level live_writes flag to the PLC client.
+        if self._exp.live_writes_enabled:
+            plc_cfg.live_writes_enabled = True
         llm_attacker = self._loader.load_llm(self._attacker_cfg.llm_provider)
         llm_defender = self._loader.load_llm(self._defender_cfg.llm_provider)
         if self._attacker_cfg.llm_model:

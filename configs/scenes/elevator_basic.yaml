@@ -1,0 +1,650 @@
+# =============================================================================
+# CPSForge Scene Configuration — Elevator (Basic)
+# =============================================================================
+# Factory I/O scene: Elevator (Basic)
+# DB20: Instance DB for FB_ElevatorBasic (non-optimized, 128 bytes)
+#
+# Physical setup:
+#   - Siemens S7 PLC at 192.168.0.1, TIA Portal v17
+#   - Two elevators: Left (L0↔L1), Right (L1↔L2)
+#   - Dual position sensors per floor (Low+High) for approach/arrival
+#   - Traffic lights per level (Green/Yellow/Red)
+#   - Control panel: Start/Stop/Reset/Emergency/Auto
+#   - Enable vulnerability: read but never written
+#
+# Attack surface: Elevator controls, Enable flag
+# =============================================================================
+
+scene_name: elevator_basic
+scene_id: 11  # OB_Main CASE 11 — DB13
+
+description: >
+  Two-elevator system spanning 3 levels. Left elevator shuttles between
+  Level 0 and Level 1. Right elevator between Level 1 and Level 2. Each
+  has a 4-state machine with dual-sensor floor detection and speed control.
+  Full panel handling with safety gates and Enable vulnerability.
+
+sampling_interval_ms: 500
+
+tags:
+  # --- Position sensors ---
+  - name: at_entry
+    address: "DB13,BOOL0.0"
+    data_type: bool
+    access: read
+    description: "Item at system entry"
+    category: sensor
+    scene_name: elevator_basic
+
+  - name: at_entry_left
+    address: "DB13,BOOL2.0"
+    data_type: bool
+    access: read
+    description: "Item at left elevator entry"
+    category: sensor
+    scene_name: elevator_basic
+
+  - name: at_exit_left
+    address: "DB13,BOOL4.0"
+    data_type: bool
+    access: read
+    description: "Item at left elevator exit"
+    category: sensor
+    scene_name: elevator_basic
+
+  - name: at_entry_0
+    address: "DB13,BOOL6.0"
+    data_type: bool
+    access: read
+    description: "Item at Level 0 entry"
+    category: sensor
+    scene_name: elevator_basic
+
+  - name: at_exit_0
+    address: "DB13,BOOL8.0"
+    data_type: bool
+    access: read
+    description: "Item at Level 0 exit"
+    category: sensor
+    scene_name: elevator_basic
+
+  - name: at_entry_right
+    address: "DB13,BOOL10.0"
+    data_type: bool
+    access: read
+    description: "Item at right elevator entry"
+    category: sensor
+    scene_name: elevator_basic
+
+  - name: at_exit_right
+    address: "DB13,BOOL12.0"
+    data_type: bool
+    access: read
+    description: "Item at right elevator exit"
+    category: sensor
+    scene_name: elevator_basic
+
+  - name: at_exit
+    address: "DB13,BOOL14.0"
+    data_type: bool
+    access: read
+    description: "Item at system exit"
+    category: sensor
+    scene_name: elevator_basic
+
+  - name: at_entry_1
+    address: "DB13,BOOL16.0"
+    data_type: bool
+    access: read
+    description: "Item at Level 1 entry"
+    category: sensor
+    scene_name: elevator_basic
+
+  - name: at_exit_1
+    address: "DB13,BOOL18.0"
+    data_type: bool
+    access: read
+    description: "Item at Level 1 exit"
+    category: sensor
+    scene_name: elevator_basic
+
+  - name: at_entry_2
+    address: "DB13,BOOL20.0"
+    data_type: bool
+    access: read
+    description: "Item at Level 2 entry"
+    category: sensor
+    scene_name: elevator_basic
+
+  - name: at_exit_2
+    address: "DB13,BOOL22.0"
+    data_type: bool
+    access: read
+    description: "Item at Level 2 exit"
+    category: sensor
+    scene_name: elevator_basic
+
+  # --- Elevator floor sensors (dual: Low+High) ---
+  - name: at_left_low_0
+    address: "DB13,BOOL24.0"
+    data_type: bool
+    access: read
+    description: "Left elevator near Level 0"
+    category: sensor
+    scene_name: elevator_basic
+
+  - name: at_left_high_0
+    address: "DB13,BOOL26.0"
+    data_type: bool
+    access: read
+    description: "Left elevator at Level 0"
+    category: sensor
+    scene_name: elevator_basic
+
+  - name: at_left_low_1
+    address: "DB13,BOOL28.0"
+    data_type: bool
+    access: read
+    description: "Left elevator near Level 1"
+    category: sensor
+    scene_name: elevator_basic
+
+  - name: at_left_high_1
+    address: "DB13,BOOL30.0"
+    data_type: bool
+    access: read
+    description: "Left elevator at Level 1"
+    category: sensor
+    scene_name: elevator_basic
+
+  - name: at_left_low_2
+    address: "DB13,BOOL32.0"
+    data_type: bool
+    access: read
+    description: "Left elevator near Level 2 (not used normally)"
+    category: sensor
+    scene_name: elevator_basic
+
+  - name: at_left_high_2
+    address: "DB13,BOOL34.0"
+    data_type: bool
+    access: read
+    description: "Left elevator at Level 2 (not used normally)"
+    category: sensor
+    scene_name: elevator_basic
+
+  - name: at_right_low_0
+    address: "DB13,BOOL36.0"
+    data_type: bool
+    access: read
+    description: "Right elevator near Level 0 (not used normally)"
+    category: sensor
+    scene_name: elevator_basic
+
+  - name: at_right_high_0
+    address: "DB13,BOOL38.0"
+    data_type: bool
+    access: read
+    description: "Right elevator at Level 0 (not used normally)"
+    category: sensor
+    scene_name: elevator_basic
+
+  - name: at_right_low_1
+    address: "DB13,BOOL40.0"
+    data_type: bool
+    access: read
+    description: "Right elevator near Level 1"
+    category: sensor
+    scene_name: elevator_basic
+
+  - name: at_right_high_1
+    address: "DB13,BOOL42.0"
+    data_type: bool
+    access: read
+    description: "Right elevator at Level 1"
+    category: sensor
+    scene_name: elevator_basic
+
+  - name: at_right_low_2
+    address: "DB13,BOOL44.0"
+    data_type: bool
+    access: read
+    description: "Right elevator near Level 2"
+    category: sensor
+    scene_name: elevator_basic
+
+  - name: at_right_high_2
+    address: "DB13,BOOL46.0"
+    data_type: bool
+    access: read
+    description: "Right elevator at Level 2"
+    category: sensor
+    scene_name: elevator_basic
+
+  # --- Panel buttons ---
+  - name: btn_start
+    address: "DB13,BOOL48.0"
+    data_type: bool
+    access: read
+    description: "Start button"
+    category: sensor
+    scene_name: elevator_basic
+
+  - name: btn_reset
+    address: "DB13,BOOL50.0"
+    data_type: bool
+    access: read
+    description: "Reset button"
+    category: sensor
+    scene_name: elevator_basic
+
+  - name: btn_stop
+    address: "DB13,BOOL52.0"
+    data_type: bool
+    access: read
+    description: "Stop button (NC)"
+    category: sensor
+    scene_name: elevator_basic
+
+  - name: emergency_stop
+    address: "DB13,BOOL54.0"
+    data_type: bool
+    access: read
+    description: "Emergency stop"
+    category: alarm
+    scene_name: elevator_basic
+
+  - name: btn_auto
+    address: "DB13,BOOL56.0"
+    data_type: bool
+    access: read
+    description: "Auto mode selector"
+    category: sensor
+    scene_name: elevator_basic
+
+  # --- Actuators ---
+  - name: entry_conveyor
+    address: "DB13,BOOL58.0"
+    data_type: bool
+    access: read_write
+    description: "Entry conveyor motor"
+    category: actuator
+    scene_name: elevator_basic
+
+  - name: unload_left
+    address: "DB13,BOOL60.0"
+    data_type: bool
+    access: read_write
+    description: "Left elevator unload rollers"
+    category: actuator
+    scene_name: elevator_basic
+
+  - name: load_left
+    address: "DB13,BOOL62.0"
+    data_type: bool
+    access: read_write
+    description: "Left elevator load rollers"
+    category: actuator
+    scene_name: elevator_basic
+
+  - name: conveyor_0
+    address: "DB13,BOOL64.0"
+    data_type: bool
+    access: read_write
+    description: "Level 0 transfer conveyor"
+    category: actuator
+    scene_name: elevator_basic
+
+  - name: unload_right
+    address: "DB13,BOOL66.0"
+    data_type: bool
+    access: read_write
+    description: "Right elevator unload rollers"
+    category: actuator
+    scene_name: elevator_basic
+
+  - name: load_right
+    address: "DB13,BOOL68.0"
+    data_type: bool
+    access: read_write
+    description: "Right elevator load rollers"
+    category: actuator
+    scene_name: elevator_basic
+
+  - name: exit_conveyor
+    address: "DB13,BOOL70.0"
+    data_type: bool
+    access: read_write
+    description: "Exit conveyor motor"
+    category: actuator
+    scene_name: elevator_basic
+
+  - name: left_up
+    address: "DB13,BOOL72.0"
+    data_type: bool
+    access: read_write
+    description: "Left elevator UP command"
+    category: actuator
+    scene_name: elevator_basic
+
+  - name: left_slow
+    address: "DB13,BOOL74.0"
+    data_type: bool
+    access: read_write
+    description: "Left elevator slow speed"
+    category: actuator
+    scene_name: elevator_basic
+
+  - name: left_down
+    address: "DB13,BOOL76.0"
+    data_type: bool
+    access: read_write
+    description: "Left elevator DOWN command"
+    category: actuator
+    scene_name: elevator_basic
+
+  - name: right_up
+    address: "DB13,BOOL78.0"
+    data_type: bool
+    access: read_write
+    description: "Right elevator UP command"
+    category: actuator
+    scene_name: elevator_basic
+
+  - name: right_slow
+    address: "DB13,BOOL80.0"
+    data_type: bool
+    access: read_write
+    description: "Right elevator slow speed"
+    category: actuator
+    scene_name: elevator_basic
+
+  - name: right_down
+    address: "DB13,BOOL82.0"
+    data_type: bool
+    access: read_write
+    description: "Right elevator DOWN command"
+    category: actuator
+    scene_name: elevator_basic
+
+  - name: conveyor_1
+    address: "DB13,BOOL84.0"
+    data_type: bool
+    access: read_write
+    description: "Level 1 transfer conveyor"
+    category: actuator
+    scene_name: elevator_basic
+
+  - name: conveyor_2
+    address: "DB13,BOOL86.0"
+    data_type: bool
+    access: read_write
+    description: "Level 2 transfer conveyor"
+    category: actuator
+    scene_name: elevator_basic
+
+  # --- Indicator lights ---
+  - name: left_warning
+    address: "DB13,BOOL88.0"
+    data_type: bool
+    access: read
+    description: "Left elevator warning light"
+    category: actuator
+    scene_name: elevator_basic
+
+  - name: right_warning
+    address: "DB13,BOOL90.0"
+    data_type: bool
+    access: read
+    description: "Right elevator warning light"
+    category: actuator
+    scene_name: elevator_basic
+
+  - name: green_0
+    address: "DB13,BOOL92.0"
+    data_type: bool
+    access: read
+    description: "Level 0 green light"
+    category: actuator
+    scene_name: elevator_basic
+
+  - name: yellow_0
+    address: "DB13,BOOL94.0"
+    data_type: bool
+    access: read
+    description: "Level 0 yellow light"
+    category: actuator
+    scene_name: elevator_basic
+
+  - name: red_0
+    address: "DB13,BOOL96.0"
+    data_type: bool
+    access: read
+    description: "Level 0 red light"
+    category: actuator
+    scene_name: elevator_basic
+
+  - name: b_green
+    address: "DB13,BOOL98.0"
+    data_type: bool
+    access: read
+    description: "Level 1 green light"
+    category: actuator
+    scene_name: elevator_basic
+
+  - name: b_yellow
+    address: "DB13,BOOL100.0"
+    data_type: bool
+    access: read
+    description: "Level 1 yellow light"
+    category: actuator
+    scene_name: elevator_basic
+
+  - name: b_red
+    address: "DB13,BOOL102.0"
+    data_type: bool
+    access: read
+    description: "Level 1 red light"
+    category: actuator
+    scene_name: elevator_basic
+
+  - name: c_green
+    address: "DB13,BOOL104.0"
+    data_type: bool
+    access: read
+    description: "Level 2 green light"
+    category: actuator
+    scene_name: elevator_basic
+
+  - name: c_yellow
+    address: "DB13,BOOL106.0"
+    data_type: bool
+    access: read
+    description: "Level 2 yellow light"
+    category: actuator
+    scene_name: elevator_basic
+
+  - name: c_red
+    address: "DB13,BOOL108.0"
+    data_type: bool
+    access: read
+    description: "Level 2 red light"
+    category: actuator
+    scene_name: elevator_basic
+
+  - name: start_light
+    address: "DB13,BOOL110.0"
+    data_type: bool
+    access: read
+    description: "Start indicator light"
+    category: actuator
+    scene_name: elevator_basic
+
+  - name: reset_light
+    address: "DB13,BOOL112.0"
+    data_type: bool
+    access: read
+    description: "Reset indicator light"
+    category: actuator
+    scene_name: elevator_basic
+
+  - name: stop_light
+    address: "DB13,BOOL114.0"
+    data_type: bool
+    access: read
+    description: "Stop indicator light"
+    category: actuator
+    scene_name: elevator_basic
+
+  # --- Internal ---
+  - name: left_state
+    address: "DB13,INT116"
+    data_type: int
+    access: read
+    min_value: 0
+    max_value: 3
+    description: "Left elevator state: 0=AtL0, 1=GoingUp, 2=AtL1, 3=GoingDown"
+    category: internal
+    scene_name: elevator_basic
+
+  - name: right_state
+    address: "DB13,INT118"
+    data_type: int
+    access: read
+    min_value: 0
+    max_value: 3
+    description: "Right elevator state: 0=AtL1, 1=GoingUp, 2=AtL2, 3=GoingDown"
+    category: internal
+    scene_name: elevator_basic
+
+  - name: left_timer
+    address: "DB13,INT120"
+    data_type: int
+    access: read
+    description: "Left elevator dwell timer"
+    category: internal
+    scene_name: elevator_basic
+
+  - name: right_timer
+    address: "DB13,INT122"
+    data_type: int
+    access: read
+    description: "Right elevator dwell timer"
+    category: internal
+    scene_name: elevator_basic
+
+  - name: running
+    address: "DB13,BOOL124.0"
+    data_type: bool
+    access: read
+    description: "System running state"
+    category: internal
+    scene_name: elevator_basic
+
+  - name: enable
+    address: "DB13,BOOL126.0"
+    data_type: bool
+    access: read_write
+    description: "System enable — never written by PLC (attack target)"
+    category: mode_bit
+    scene_name: elevator_basic
+
+writable_tags:
+  - entry_conveyor
+  - unload_left
+  - load_left
+  - conveyor_0
+  - unload_right
+  - load_right
+  - exit_conveyor
+  - left_up
+  - left_slow
+  - left_down
+  - right_up
+  - right_slow
+  - right_down
+  - conveyor_1
+  - conveyor_2
+  - enable
+
+attack_surface:
+  - left_up
+  - left_down
+  - right_up
+  - right_down
+  - load_left
+  - unload_left
+  - load_right
+  - unload_right
+  - enable
+
+safety_rules:
+  - rule_id: EB-SR-001
+    description: "Left elevator UP and DOWN must not be active simultaneously"
+    rule_type: mutual_exclusion
+    tags: [left_up, left_down]
+    parameters:
+      forbidden_pairs: [[true, true]]
+    enabled: true
+    priority: 100
+
+  - rule_id: EB-SR-002
+    description: "Right elevator UP and DOWN must not be active simultaneously"
+    rule_type: mutual_exclusion
+    tags: [right_up, right_down]
+    parameters:
+      forbidden_pairs: [[true, true]]
+    enabled: true
+    priority: 100
+
+  - rule_id: EB-SR-003
+    description: "Enable must not be held FALSE for more than 30 seconds"
+    rule_type: duration
+    tags: [enable]
+    parameters:
+      max_duration_ms: 30000
+      forbidden_value: false
+    enabled: true
+    priority: 100
+
+  - rule_id: EB-SR-004
+    description: "Left load and unload must not be active simultaneously"
+    rule_type: mutual_exclusion
+    tags: [load_left, unload_left]
+    parameters:
+      forbidden_pairs: [[true, true]]
+    enabled: true
+    priority: 90
+
+  - rule_id: EB-SR-005
+    description: "Right load and unload must not be active simultaneously"
+    rule_type: mutual_exclusion
+    tags: [load_right, unload_right]
+    parameters:
+      forbidden_pairs: [[true, true]]
+    enabled: true
+    priority: 90
+
+reset_procedure:
+  - tag: enable
+    value: true
+  - tag: left_up
+    value: false
+  - tag: left_down
+    value: false
+  - tag: left_slow
+    value: false
+  - tag: right_up
+    value: false
+  - tag: right_down
+    value: false
+  - tag: right_slow
+    value: false
+  - tag: load_left
+    value: false
+  - tag: unload_left
+    value: false
+  - tag: load_right
+    value: false
+  - tag: unload_right
+    value: false

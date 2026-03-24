@@ -1,0 +1,104 @@
+# =============================================================================
+# CPSForge Defender — Threshold (Pick Place Xyz)
+# =============================================================================
+name: threshold_pick_place_xyz
+detector_type: threshold
+scene_name: pick_place_xyz
+enabled: true
+thresholds:
+- tag: pos_x
+  operator: '>'
+  value: 900.0
+  severity: high
+  label: pos_x_high
+  description: pos_x exceeds 90% of max (1000.0)
+- tag: pos_x
+  operator: <
+  value: 50.0
+  severity: high
+  label: pos_x_low
+  description: pos_x below safe minimum
+- tag: pos_y
+  operator: '>'
+  value: 900.0
+  severity: high
+  label: pos_y_high
+  description: pos_y exceeds 90% of max (1000.0)
+- tag: pos_y
+  operator: <
+  value: 50.0
+  severity: high
+  label: pos_y_low
+  description: pos_y below safe minimum
+- tag: pos_z
+  operator: '>'
+  value: 450.0
+  severity: high
+  label: pos_z_high
+  description: pos_z exceeds 90% of max (500.0)
+- tag: pos_z
+  operator: <
+  value: 25.0
+  severity: high
+  label: pos_z_low
+  description: pos_z below safe minimum
+- tag: setpoint_x
+  operator: '>'
+  value: 900.0
+  severity: medium
+  label: setpoint_x_high
+  description: Setpoint setpoint_x near maximum
+- tag: setpoint_x
+  operator: <
+  value: 100.0
+  severity: medium
+  label: setpoint_x_low
+  description: Setpoint setpoint_x near minimum
+- tag: setpoint_y
+  operator: '>'
+  value: 900.0
+  severity: medium
+  label: setpoint_y_high
+  description: Setpoint setpoint_y near maximum
+- tag: setpoint_y
+  operator: <
+  value: 100.0
+  severity: medium
+  label: setpoint_y_low
+  description: Setpoint setpoint_y near minimum
+- tag: setpoint_z
+  operator: '>'
+  value: 450.0
+  severity: medium
+  label: setpoint_z_high
+  description: Setpoint setpoint_z near maximum
+- tag: setpoint_z
+  operator: <
+  value: 50.0
+  severity: medium
+  label: setpoint_z_low
+  description: Setpoint setpoint_z near minimum
+- tag: state
+  operator: '>'
+  value: 6
+  severity: high
+  label: invalid_state_high
+  description: State machine value exceeds max (6)
+- tag: state
+  operator: <
+  value: 0
+  severity: high
+  label: invalid_state_low
+  description: State machine value below min (0)
+- tag: gripper
+  operator: ==
+  value: 0
+  severity: medium
+  label: gripper_stopped
+  description: gripper is stopped — possible actuator override
+- tag: conveyor_in
+  operator: ==
+  value: 0
+  severity: medium
+  label: conveyor_in_stopped
+  description: conveyor_in is stopped — possible actuator override

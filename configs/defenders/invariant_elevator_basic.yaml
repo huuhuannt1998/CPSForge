@@ -1,0 +1,48 @@
+# =============================================================================
+# CPSForge Defender — Invariant (Elevator Basic)
+# =============================================================================
+name: invariant_elevator_basic
+detector_type: invariant
+scene_name: elevator_basic
+enabled: true
+invariant_rules:
+- rule_id: EB-INV-001
+  description: Left elevator UP and DOWN must not be active simultaneously
+  condition: NOT (left_up == True AND left_down == True)
+  tags:
+  - left_up
+  - left_down
+  severity: critical
+  label: left_up_left_down_conflict
+- rule_id: EB-INV-002
+  description: Right elevator UP and DOWN must not be active simultaneously
+  condition: NOT (right_up == True AND right_down == True)
+  tags:
+  - right_up
+  - right_down
+  severity: critical
+  label: right_up_right_down_conflict
+- rule_id: EB-INV-003
+  description: Left load and unload must not be active simultaneously
+  condition: NOT (load_left == True AND unload_left == True)
+  tags:
+  - load_left
+  - unload_left
+  severity: critical
+  label: load_left_unload_left_conflict
+- rule_id: EB-INV-004
+  description: Right load and unload must not be active simultaneously
+  condition: NOT (load_right == True AND unload_right == True)
+  tags:
+  - load_right
+  - unload_right
+  severity: critical
+  label: load_right_unload_right_conflict
+- rule_id: EB-INV-005
+  description: Enable must be on when entry_conveyor is active
+  condition: NOT (enable == False AND entry_conveyor == True)
+  tags:
+  - enable
+  - entry_conveyor
+  severity: high
+  label: enable_off_with_entry_conveyor

@@ -1,0 +1,16 @@
+# =============================================================================
+# CPSForge Defender — Invariant (Converge Station)
+# =============================================================================
+name: invariant_converge_station
+detector_type: invariant
+scene_name: converge_station
+enabled: true
+invariant_rules:
+- rule_id: CS-INV-001
+  description: 'Baseline: at least one writable tag should be active'
+  condition: NOT (conveyor_left == False AND conveyor_right == False)
+  tags:
+  - conveyor_left
+  - conveyor_right
+  severity: medium
+  label: all_actuators_off

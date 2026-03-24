@@ -1,0 +1,27 @@
+# =============================================================================
+# CPSForge Attack Policy — LLM (Assembler)
+# =============================================================================
+name: llm_assembler
+attacker_type: llm
+scene_name: assembler
+llm_provider: local_openai_compatible
+llm_model: null
+llm_max_retries: 3
+multi_step: false
+max_actions: 2
+inter_attack_delay_ms: 2000
+attack_types:
+- actuator_override
+- sequence_perturbation
+- timing_delay
+parameters:
+  attacker_objective: 'Disrupt the assembler process. Digital two-axis pick-and-place
+    assembler. Base parts and lids arrive on separate conveyors. The arm picks lids
+    and places them on bases. 7-state machine controls the full pick-clamp-place-release
+    cycle. Writable targets: conveyor_base, conveyor_lid, conveyor_out, move_x, move_z,
+    clamp. Try to cause state machine inconsistencies or stuck states. The defender
+    uses threshold and invariant checks.'
+  prompt_notes: 'Attack surface: conveyor_base, conveyor_lid, conveyor_out, move_x,
+    move_z, clamp. Sensors (read-only): part_at_pickup, part_at_place, lid_at_pickup,
+    clamp_sensor, moving_x, moving_z. Actuators: conveyor_base, conveyor_lid, conveyor_out,
+    move_x, move_z, clamp.'

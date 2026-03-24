@@ -1,0 +1,38 @@
+# =============================================================================
+# CPSForge Defender — Threshold (Sorting Height Advanced)
+# =============================================================================
+name: threshold_sorting_height_advanced
+detector_type: threshold
+scene_name: sorting_height_advanced
+enabled: true
+thresholds:
+- tag: state
+  operator: '>'
+  value: 90
+  severity: high
+  label: invalid_state_high
+  description: State machine value exceeds max (90)
+- tag: state
+  operator: <
+  value: 0
+  severity: high
+  label: invalid_state_low
+  description: State machine value below min (0)
+- tag: enable
+  operator: ==
+  value: 0
+  severity: high
+  label: enable_off
+  description: System enable flag is FALSE — process halted
+- tag: feeder_conveyor
+  operator: ==
+  value: 0
+  severity: medium
+  label: feeder_conveyor_stopped
+  description: feeder_conveyor is stopped — possible actuator override
+- tag: entry_conveyor
+  operator: ==
+  value: 0
+  severity: medium
+  label: entry_conveyor_stopped
+  description: entry_conveyor is stopped — possible actuator override

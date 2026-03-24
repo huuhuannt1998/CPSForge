@@ -1,0 +1,21 @@
+# =============================================================================
+# CPSForge Live Eval — Random (Production Line)
+# =============================================================================
+name: live_random_production_line
+description: 'Live eval run: random attacker vs threshold + invariant detectors on
+  production line.'
+scene_config: scenes/production_line.yaml
+plc_config: system/plc.yaml
+attackers:
+- random_production_line
+defenders:
+- threshold_production_line
+- invariant_production_line
+live_writes_enabled: true
+dry_run: false
+eval_run: true
+max_steps: 200
+run_duration_s: 180.0
+save_trace: true
+save_metrics: true
+reset_after_run: true

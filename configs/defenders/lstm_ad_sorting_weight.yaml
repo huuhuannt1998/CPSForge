@@ -1,0 +1,11 @@
+name: lstm_ad_sorting_weight
+detector_type: lstm_ad
+scene_name: sorting_weight
+enabled: true
+model_path: data/models/sorting_weight/lstm_ad_sorting_weight.pt
+window_size: 20
+anomaly_threshold: 0.5
+parameters:
+  hidden_dim: 32
+  num_layers: 1
+  reconstruction_threshold: 2.504124975204468

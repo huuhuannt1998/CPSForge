@@ -1,0 +1,226 @@
+# =============================================================================
+# CPSForge Scene Configuration — Palletizer
+# =============================================================================
+# Factory I/O scene: Palletizer
+# DB22: Instance DB for FB_Palletizer (non-optimized)
+#
+# Physical setup:
+#   - Siemens S7 PLC at 192.168.0.1, TIA Portal v17
+#   - Two-axis gripper places boxes on pallets in layers
+#   - REAL analog positions (PosX, PosZ) for gripper feedback
+#   - 4 boxes per layer, 3 layers per pallet
+#   - 7-state: Feed→MoveToPickup→Clamp→Lift→MoveToPlace→Lower→Release
+#
+# Attack surface: MoveX/Z setpoints, Clamp, Conveyors
+# =============================================================================
+
+scene_name: palletizer
+scene_id: 13  # OB_Main CASE 13 — DB15
+
+description: >
+  Palletize cases in multiple layers. Two-axis gripper picks boxes from
+  input conveyor and places them in a 2x2 grid (4/layer x 3 layers).
+  REAL analog positioning with tolerance-based arrival.
+
+sampling_interval_ms: 500
+
+tags:
+  - name: box_at_entry
+    address: "DB15,BOOL0.0"
+    data_type: bool
+    access: read
+    description: "Box at entry conveyor"
+    category: sensor
+    scene_name: palletizer
+
+  - name: box_at_pickup
+    address: "DB15,BOOL2.0"
+    data_type: bool
+    access: read
+    description: "Box at pickup position"
+    category: sensor
+    scene_name: palletizer
+
+  - name: pallet_ready
+    address: "DB15,BOOL4.0"
+    data_type: bool
+    access: read
+    description: "Pallet in place and ready"
+    category: sensor
+    scene_name: palletizer
+
+  - name: layer_complete
+    address: "DB15,BOOL6.0"
+    data_type: bool
+    access: read
+    description: "Current layer complete"
+    category: sensor
+    scene_name: palletizer
+
+  - name: clamp_sensor
+    address: "DB15,BOOL8.0"
+    data_type: bool
+    access: read
+    description: "Clamp closed sensor"
+    category: sensor
+    scene_name: palletizer
+
+  - name: pos_x
+    address: "DB15,REAL10"
+    data_type: real
+    access: read
+    unit: "mm"
+    min_value: 0.0
+    max_value: 1000.0
+    description: "X-axis position feedback"
+    category: sensor
+    scene_name: palletizer
+
+  - name: pos_z
+    address: "DB15,REAL14"
+    data_type: real
+    access: read
+    unit: "mm"
+    min_value: 0.0
+    max_value: 500.0
+    description: "Z-axis position feedback"
+    category: sensor
+    scene_name: palletizer
+
+  - name: conveyor_in
+    address: "DB15,BOOL18.0"
+    data_type: bool
+    access: read_write
+    description: "Input conveyor"
+    category: actuator
+    scene_name: palletizer
+
+  - name: clamp
+    address: "DB15,BOOL20.0"
+    data_type: bool
+    access: read_write
+    description: "Gripper clamp"
+    category: actuator
+    scene_name: palletizer
+
+  - name: move_x
+    address: "DB15,REAL22"
+    data_type: real
+    access: read_write
+    unit: "mm"
+    min_value: 0.0
+    max_value: 1000.0
+    description: "X-axis move setpoint"
+    category: setpoint
+    scene_name: palletizer
+
+  - name: move_z
+    address: "DB15,REAL26"
+    data_type: real
+    access: read_write
+    unit: "mm"
+    min_value: 0.0
+    max_value: 500.0
+    description: "Z-axis move setpoint"
+    category: setpoint
+    scene_name: palletizer
+
+  - name: conveyor_out
+    address: "DB15,BOOL30.0"
+    data_type: bool
+    access: read_write
+    description: "Output conveyor (pallet exit)"
+    category: actuator
+    scene_name: palletizer
+
+  - name: emitter
+    address: "DB15,BOOL32.0"
+    data_type: bool
+    access: read_write
+    description: "Box emitter"
+    category: actuator
+    scene_name: palletizer
+
+  - name: state
+    address: "DB15,INT34"
+    data_type: int
+    access: read
+    min_value: 0
+    max_value: 6
+    description: "State machine (0-6)"
+    category: internal
+    scene_name: palletizer
+
+  - name: box_index
+    address: "DB15,INT36"
+    data_type: int
+    access: read
+    description: "Box index in current layer"
+    category: internal
+    scene_name: palletizer
+
+  - name: layer_index
+    address: "DB15,INT38"
+    data_type: int
+    access: read
+    description: "Current layer index"
+    category: internal
+    scene_name: palletizer
+
+writable_tags:
+  - conveyor_in
+  - clamp
+  - move_x
+  - move_z
+  - conveyor_out
+  - emitter
+
+attack_surface:
+  - move_x
+  - move_z
+  - clamp
+  - conveyor_in
+
+safety_rules:
+  - rule_id: PAL-SR-001
+    description: "MoveX must stay within mechanical range"
+    rule_type: range
+    tags: [move_x]
+    parameters:
+      min: 0.0
+      max: 1000.0
+    enabled: true
+    priority: 100
+
+  - rule_id: PAL-SR-002
+    description: "MoveZ must stay within mechanical range"
+    rule_type: range
+    tags: [move_z]
+    parameters:
+      min: 0.0
+      max: 500.0
+    enabled: true
+    priority: 100
+
+  - rule_id: PAL-SR-003
+    description: "Clamp override capped at 30 seconds"
+    rule_type: duration
+    tags: [clamp]
+    parameters:
+      max_duration_ms: 30000
+    enabled: true
+    priority: 50
+
+reset_procedure:
+  - tag: conveyor_in
+    value: false
+  - tag: clamp
+    value: false
+  - tag: move_x
+    value: 0.0
+  - tag: move_z
+    value: 0.0
+  - tag: conveyor_out
+    value: false
+  - tag: emitter
+    value: false

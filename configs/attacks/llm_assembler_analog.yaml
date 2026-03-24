@@ -1,0 +1,30 @@
+# =============================================================================
+# CPSForge Attack Policy — LLM (Assembler Analog)
+# =============================================================================
+name: llm_assembler_analog
+attacker_type: llm
+scene_name: assembler_analog
+llm_provider: local_openai_compatible
+llm_model: null
+llm_max_retries: 3
+multi_step: false
+max_actions: 3
+inter_attack_delay_ms: 3000
+attack_types:
+- actuator_override
+- setpoint_shift
+- sensor_spoof
+- sequence_perturbation
+- timing_delay
+parameters:
+  attacker_objective: 'Disrupt the assembler analog process. Analog two-axis assembler.
+    Same 7-state pick-and-place as digital version but uses REAL analog setpoints
+    (SetpointX/SetpointZ) and position feedback (PosX/PosZ) with TOLERANCE-based arrival
+    checking. Writable targets: conveyor_base, conveyor_lid, setpoint_x, setpoint_z,
+    clamp. This scene has analog (REAL) values — gradual shifts may evade threshold
+    detectors. Try to cause state machine inconsistencies or stuck states. The defender
+    uses threshold and invariant checks.'
+  prompt_notes: 'Attack surface: conveyor_base, conveyor_lid, setpoint_x, setpoint_z,
+    clamp. Setpoints: setpoint_x, setpoint_z. Sensors (read-only): part_at_pickup,
+    part_at_place, lid_at_pickup, clamp_sensor, pos_x, pos_z. Actuators: conveyor_base,
+    conveyor_lid, conveyor_out, clamp, emitter.'

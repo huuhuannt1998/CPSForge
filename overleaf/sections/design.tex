@@ -87,7 +87,7 @@ CPSForge is organised as a closed-loop CPS security framework built around six i
 
     %% ===== Artifacts =====
     \node[logbox, below=0.6cm of write, minimum width=3.5cm] (artifacts) {Run Artifacts\\(Parquet, JSON)};
-    \draw[arr, gray] (logger) -| (artifacts);
+    \draw[arr, gray] (logger.south) -| (artifacts.west);
     \draw[arr, gray] (shield.south east) -- ++(0.3,0) |- (artifacts.east);
 
     %% ===== Group boxes =====
@@ -106,7 +106,7 @@ CPSForge is organised as a closed-loop CPS security framework built around six i
 
 \subsection{Physical Execution Layer}
 
-At the foundation of CPSForge is a live hardware-in-the-loop environment. A Siemens S7 PLC executes control logic deployed from TIA Portal~v17, while Factory~I/O emulates the physical process. This design provides realistic controller behaviour, including actual scan timing, state transitions, and control-loop interactions that are difficult to reproduce through offline logs alone.
+At the foundation of CPSForge is a PLC-in-the-loop execution environment. A Siemens S7 PLC executes control logic deployed from TIA Portal~v17, while Factory~I/O serves as a software-based process emulator. This design preserves authentic controller behaviour---including real scan timing, state transitions, and control-loop interactions---that is difficult to reproduce through offline logs alone.
 
 Each process scene is represented as a scene profile containing tag metadata, process descriptions, attack surface definitions, safety rules, and reset procedures. The architecture supports both continuous-process scenes (e.g., tank level control) and discrete event-driven scenes (e.g., conveyor sorting).
 
@@ -118,9 +118,9 @@ This layer serves several purposes. First, it provides current context for the a
 
 \subsection{Attack Layer}
 
-The attack layer supports multiple attacker types: scripted baselines, bounded random perturbation, and an LLM-based attacker. The key design decision is that attack actions are expressed in a structured semantic schema rather than as raw PLC memory writes.
+The attack layer supports multiple attacker types: scripted baselines, bounded random perturbation, an LLM-based attacker, and a \emph{campaign attacker} that plans multi-phase attack sequences. The key design decision is that attack actions are expressed in a structured semantic schema rather than as raw PLC memory writes.
 
-Example attack categories include sensor spoofing, actuator overrides, setpoint shifts, timing delays, and sequence perturbations. An LLM attacker receives scene context, current plant state, allowed capabilities, and attacker objectives, then returns one or more structured actions. These actions are interpreted as candidate plans, not automatically executed commands.
+Example attack categories include sensor spoofing, actuator overrides, setpoint shifts, timing delays, and sequence perturbations. An LLM attacker receives scene context, current plant state, allowed capabilities, and attacker objectives, then returns one or more structured actions. The campaign attacker extends this model by executing a structured four-phase attack lifecycle---reconnaissance, preparation, exploitation, and persistence---where each phase builds on observations from the previous one, enabling multi-step attack sequences that can discover evasive trajectories. All actions are interpreted as candidate plans, not automatically executed commands.
 
 \subsection{Safety Shield}
 
@@ -151,14 +151,14 @@ This mechanism is what makes CPSForge closed-loop rather than static. Instead of
         >=Stealth,
         node distance=0.5cm,
         every node/.style={font=\scriptsize},
-        step/.style={draw, rounded corners=3pt, minimum width=2.0cm, minimum height=0.55cm, align=center, thick},
+        stepbox/.style={draw, rounded corners=3pt, minimum width=2.0cm, minimum height=0.55cm, align=center, thick},
         arr/.style={->, very thick, >=Stealth},
     ]
     %% Cycle nodes arranged in a circle
-    \node[step, fill=red!10] (eval) {Evaluation\\Run};
-    \node[step, fill=blue!10, right=1.2cm of eval] (detect) {Defender\\Detection};
-    \node[step, fill=orange!10, below=0.8cm of detect] (hard) {Hard-Case\\Extraction};
-    \node[step, fill=green!10, below=0.8cm of eval] (retrain) {Detector\\Retraining};
+    \node[stepbox, fill=red!10] (eval) {Evaluation\\Run};
+    \node[stepbox, fill=blue!10, right=1.2cm of eval] (detect) {Defender\\Detection};
+    \node[stepbox, fill=orange!10, below=0.8cm of detect] (hard) {Hard-Case\\Extraction};
+    \node[stepbox, fill=green!10, below=0.8cm of eval] (retrain) {Detector\\Retraining};
 
     \draw[arr, red!60] (eval) -- (detect);
     \draw[arr, blue!60] (detect) -- node[right, font=\tiny, align=left]{missed attacks /\\late detections} (hard);
@@ -179,7 +179,7 @@ This mechanism is what makes CPSForge closed-loop rather than static. Instead of
 In addition to the batch orchestration pipeline, CPSForge provides a \emph{live agent mode} that models adversarial CPS interaction as a concurrent multi-agent system. Agent mode is motivated by the observation that real attackers and defenders operate simultaneously and asynchronously, rather than taking turns in a synchronised pipeline. Figure~\ref{fig:agent-mode} illustrates the agent-mode interaction flow.
 
 \paragraph{Process Isolation.}
-Each agent---attacker and defender---runs as an independent operating-system process, communicating through typed message queues. This design provides temporal independence (agents observe and act at their own cadence), fault isolation (a hung or crashed agent does not block the other), and reproducibility (message logs capture the complete interaction trace).
+Each agent---attacker and defender---runs in a separate process and communicates through typed queues, so each component progresses asynchronously without blocking the other. This provides temporal independence, fault isolation, and reproducibility through complete message traces.
 
 \paragraph{Coordinator.}
 A central coordinator process owns the PLC connection, polls plant state at the configured interval, and broadcasts snapshots to both agents via an event bus. When an agent submits a proposed action (an attack or a corrective write), the coordinator validates it through the safety shield before dispatching the write to the PLC. The coordinator is the \emph{only} component with write access to the PLC, enforcing the invariant that no agent can bypass safety mediation.
@@ -196,6 +196,8 @@ All writes---both offensive and corrective---pass through the same shield engine
 \begin{figure}[t]
     \centering
     \begin{tikzpicture}[
+        scale=0.97,
+        transform shape,
         >=Stealth,
         node distance=0.4cm,
         every node/.style={font=\scriptsize},
@@ -244,7 +246,7 @@ All writes---both offensive and corrective---pass through the same shield engine
     \draw[arr, gray, thick] (-1.0, -0.3) -- (-1.0, -5.8) node[midway, left, font=\tiny, rotate=90]{time};
 
     \end{tikzpicture}
-    \caption{Agent-mode interaction sequence. The coordinator mediates between the PLC, attacker agent, and defender agent. Both offensive and corrective writes pass through the safety shield.}
+    \caption{Agent-mode sequence. The coordinator mediates attacker and defender actions, and all writes pass through the safety shield.}
     \label{fig:agent-mode}
 \end{figure}
 

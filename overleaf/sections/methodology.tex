@@ -9,24 +9,24 @@ Our evaluation methodology measures attacker effectiveness, shield safety, defen
         >=Stealth,
         node distance=0.35cm,
         every node/.style={font=\scriptsize},
-        step/.style={draw, rounded corners=2pt, minimum width=2.8cm, minimum height=0.5cm, align=center, thick},
+        stepbox/.style={draw, rounded corners=2pt, minimum width=2.8cm, minimum height=0.5cm, align=center, thick},
         decision/.style={draw, diamond, aspect=2.2, minimum width=1.5cm, inner sep=1pt, align=center, thick},
         arr/.style={->, thick, >=Stealth},
     ]
 
     %% Pipeline steps
-    \node[step, fill=gray!10] (init) {1. Initialise PLC \&\\Factory~I/O scene};
-    \node[step, fill=gray!10, below=of init] (warmup) {2. Warm-up period\\(baseline telemetry)};
-    \node[step, fill=red!10, below=of warmup] (propose) {3. Attacker proposes\\structured action(s)};
-    \node[step, fill=yellow!15, below=of propose] (validate) {4. JSON schema\\validation \& normalise};
+    \node[stepbox, fill=gray!10] (init) {1. Initialise PLC \&\\Factory~I/O scene};
+    \node[stepbox, fill=gray!10, below=of init] (warmup) {2. Warm-up period\\(baseline telemetry)};
+    \node[stepbox, fill=red!10, below=of warmup] (propose) {3. Attacker proposes\\structured action(s)};
+    \node[stepbox, fill=yellow!15, below=of propose] (validate) {4. JSON schema\\validation \& normalise};
     \node[decision, fill=yellow!20, below=0.45cm of validate] (shield) {Shield\\check?};
-    \node[step, fill=green!10, below left=0.5cm and -0.3cm of shield] (exec) {5. Execute on\\live PLC};
-    \node[step, fill=red!5, below right=0.5cm and -0.3cm of shield] (reject) {Reject \&\\log reason};
-    \node[step, fill=blue!10, below=0.8cm of shield] (detect) {6. Defenders\\observe \& score};
+    \node[stepbox, fill=green!10, below left=0.5cm and -0.3cm of shield] (exec) {5. Execute on\\live PLC};
+    \node[stepbox, fill=red!5, below right=0.5cm and -0.3cm of shield] (reject) {Reject \&\\log reason};
+    \node[stepbox, fill=blue!10, below=0.8cm of shield] (detect) {6. Defenders\\observe \& score};
     \node[decision, fill=blue!15, below=0.45cm of detect] (detected) {Attack\\detected?};
-    \node[step, fill=green!10, below left=0.45cm and -0.3cm of detected] (alert) {Emit\\alert};
-    \node[step, fill=orange!10, below right=0.45cm and -0.3cm of detected] (hardcase) {Hard case\\$\to$ bank};
-    \node[step, fill=gray!10, below=0.8cm of detected] (log) {7. Record artifacts\\(Parquet, JSON)};
+    \node[stepbox, fill=green!10, below left=0.45cm and -0.3cm of detected] (alert) {Emit\\alert};
+    \node[stepbox, fill=orange!10, below right=0.45cm and -0.3cm of detected] (hardcase) {Hard case\\$\to$ bank};
+    \node[stepbox, fill=gray!10, below=0.8cm of detected] (log) {7. Record artifacts\\(Parquet, JSON)};
 
     %% Arrows
     \draw[arr] (init) -- (warmup);
@@ -64,11 +64,12 @@ Each experiment proceeds as follows:
 In agent mode, steps 4--7 are replaced by continuous concurrent operation: the attacker and defender agents independently observe plant state and propose actions, all mediated by the coordinator.
 
 \subsection{Attacker Variants}
-We compare four attacker classes:
+We compare five attacker classes:
 \begin{itemize}[leftmargin=1.2em]
     \item \textbf{Scripted attacker:} deterministic templates with targeted process-aware actions.
     \item \textbf{Random attacker:} bounded random perturbations over the configured attack surface.
     \item \textbf{LLM attacker (batch):} process-aware planning over structured scene and state context, executed through the batch orchestration pipeline.
+    \item \textbf{Campaign attacker:} a four-phase LLM-driven attacker that executes structured multi-step attack sequences (reconnaissance, preparation, exploitation, persistence), where each phase builds on observations from prior phases.
     \item \textbf{LLM attacker agent:} an autonomous LLM agent that observes plant state in real time, maintains action history with feedback, and proposes attacks concurrently with the defender agent.
 \end{itemize}
 
@@ -77,20 +78,27 @@ We evaluate four defender configurations:
 \begin{itemize}[leftmargin=1.2em]
     \item \textbf{Threshold detector:} configurable per-tag thresholds with severity levels.
     \item \textbf{Invariant detector:} rule-based state-consistency checks derived from scene-specific safety properties.
-    \item \textbf{Sequence detector:} a sliding-window ML model for temporal anomaly detection.
+    \item \textbf{Isolation Forest detector:} a one-class detector over sliding-window temporal features for anomaly detection.
     \item \textbf{LLM defender agent:} an autonomous LLM agent (agent mode only) that analyses process telemetry, diagnoses anomalies, and proposes corrective actions.
 \end{itemize}
 
 \subsection{Metrics}
-We measure:
+Let $N_{\text{sub}}$ be submitted actions, $N_{\text{schema}}$ schema-valid actions, $N_{\text{appr}}$ shield-approved actions, $N_{\text{exec}}$ executed actions, and $N_{\text{succ}}$ successful attacks. We report:
 \begin{itemize}[leftmargin=1.2em]
-    \item \textbf{Attack validity:} fraction of attacker outputs that compile and execute successfully.
-    \item \textbf{Attack success:} fraction of attacks that produce measurable process deviation.
-    \item \textbf{Physical impact:} process deviation measured as the difference between attack-period and baseline tag values.
-    \item \textbf{Shield effectiveness:} fraction of proposals approved versus rejected, and unsafe action block rate.
-    \item \textbf{Detection performance:} precision, recall, F1, false-positive count, and detection latency.
-    \item \textbf{Adaptation gain:} improvement in detection robustness across iterative rounds.
+    \item \textbf{Action validity:} $N_{\text{schema}} / N_{\text{sub}}$.
+    \item \textbf{Execution success rate (Exec.\ Rate):} $N_{\text{exec}} / N_{\text{appr}}$ (conditioned on shield approval). Because the shield already validates tag writability and value bounds, this metric serves primarily as a system-integrity check confirming that the middleware--PLC communication path is reliable; it is expected to be 1.0 under normal operation.
+    \item \textbf{Attack success rate (ASR):} $N_{\text{succ}} / N_{\text{exec}}$, where an attack is successful if at least one monitored tag exceeds a scene-specific deviation threshold $\epsilon$ during attack-active steps.
+    \item \textbf{Physical impact score:} for monitored tags $k \in \mathcal{K}$, 
+    \[
+    \mathrm{Impact} = \frac{1}{|\mathcal{K}|}\sum_{k\in\mathcal{K}} \frac{|\mu_k^{\text{attack}}-\mu_k^{\text{baseline}}|}{r_k},
+    \]
+    where $\mu_k^{\text{attack}}$ and $\mu_k^{\text{baseline}}$ are means over attack-active and baseline windows, and $r_k$ is the configured safe-range width for tag $k$.
+    \item \textbf{Shield effectiveness:} approval rate $N_{\text{appr}} / N_{\text{sub}}$, rejection rate $1-N_{\text{appr}} / N_{\text{sub}}$, and unsafe-action block rate.
+    \item \textbf{Detection performance:} precision, recall, F1, false-positive count, false-negative count, and detection latency.
+    \item \textbf{Adaptation gain:} $\Delta$F1 between Round~0 and later rounds under the same adaptation regime.
 \end{itemize}
+
+ASR is a thresholded binary metric, while impact is an averaged magnitude metric; therefore, non-zero ASR can co-occur with near-zero rounded impact and vice versa.
 
 For agent mode experiments, we additionally report:
 \begin{itemize}[leftmargin=1.2em]
@@ -101,11 +109,17 @@ For agent mode experiments, we additionally report:
 
 \subsection{Scenes and Scale}
 
-The evaluation covers three Factory~I/O scenes of increasing complexity: From A to B (4 tags, discrete transport), Level Control (15 tags, continuous process), and Sorting by Height (30 tags, mixed discrete/continuous). For batch mode, each attacker variant is evaluated per scene. For agent mode, LLM attacker and LLM defender agents are evaluated on each scene. Each configuration runs 120--200 steps at a 500\,ms polling interval against the live PLC.
+The evaluation covers five Factory~I/O scenes: From A to B (4 tags, discrete transport), Filling Tank (8 tags, discrete fill-cycle), Level Control (15 tags, continuous process), Sorting by Height (30 tags, mixed discrete-sort), and Sorting by Weight (35 tags, threshold-based sorting). These scenes range from single-conveyor transport to multi-sensor sorting processes with 4--35 tags. While smaller than full-scale ICS environments such as SWaT (51~sensors/actuators across 6~process stages)~\cite{mathur2016swat}, they cover both continuous and discrete control paradigms and span an order-of-magnitude range in tag complexity. For batch mode, each attacker variant is evaluated per scene. For agent mode, LLM attacker and LLM defender agents are evaluated on each scene. Campaign attacks are evaluated on Level Control and Sorting by Weight. Each configuration runs 112--200 steps at a 500\,ms polling interval against the live PLC. Two scenes (Level Control and Sorting by Weight) additionally undergo closed-loop adaptation for three rounds under both scripted/random and campaign attacker distributions.
 
 \subsection{Closed-Loop Adaptation}
-After each evaluation round, traces corresponding to missed or weakly detected attacks are added to a hard-case bank. These traces are used to refine learned defenders or detector policies in the next round. We measure adaptation gain as the improvement in detection F1 between the initial round and subsequent rounds trained on accumulated hard cases.
+After each evaluation round, traces corresponding to missed or weakly detected attacks are added to a hard-case bank. These traces are used to retrain learned defenders---in this work, the Isolation Forest detector is retrained on accumulated hard-case windows plus synthetic normal data. We evaluate adaptation under two regimes: (i)~scripted and random attackers (where rule-based detectors are already well-calibrated) and (ii)~campaign attackers (where multi-phase evasive sequences create genuine coverage gaps). We measure adaptation gain as the improvement in detection F1 between the initial round and subsequent rounds trained on accumulated hard cases.
 
 \subsection{Ground Truth}
 \label{sec:methodology:gt}
 Ground-truth labelling is derived from the experiment protocol itself. Each polling step is labelled as \emph{attack-active} or \emph{normal} based on whether a shield-approved attack action was active during that step. This label is recorded in the trace metadata at runtime, not post hoc. Baseline normal-operation traces (no attacker active) are collected for each scene to provide unlabelled ground truth for anomaly-detection calibration.
+
+\paragraph{Labelling limitation.} Protocol-based labels mark a step as ``attack-active'' even if the injected value lies within normal operating bounds and causes no observable deviation, and conversely label post-attack residual effects as ``normal.'' This can inflate recall (attacks that cause no anomaly are still labelled positive) and deflate precision during transient recovery periods. We adopt protocol-based labelling because it is unambiguous and reproducible; however, reported F1 values should be interpreted as upper bounds on detection performance relative to a physics-based ground truth.
+
+\subsection{Reproducibility}
+\label{sec:methodology:reproducibility}
+Every experiment run produces a self-contained artifact folder containing: (i)~the full time-series trace in Parquet format with one row per polling step, (ii)~attack records, shield decisions, and detection events in JSON, (iii)~the YAML experiment configuration that was used, and (iv)~summary metrics in JSON. All processing scripts---aggregation, table generation, figure generation, false-positive evaluation, overhead measurement, and attack-type analysis---operate exclusively on these artifacts and are included in the repository. Metric values reported in this paper are reproducible by re-running the provided scripts over the raw run folders. The CPSForge framework, all scene configurations, experiment scripts, and raw evaluation artifacts are released at the URL listed in the Data Availability statement.

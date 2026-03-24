@@ -1,0 +1,15 @@
+# =============================================================================
+# CPSForge Defender — Isolation Forest Detector (Sorting Height Basic)
+# =============================================================================
+name: iforest_sorting_height_basic
+detector_type: isolation_forest
+scene_name: sorting_height_basic
+enabled: true
+model_path: null
+window_size: 20
+anomaly_threshold: 0.5
+
+parameters:
+  n_estimators: 100
+  contamination: auto
+  point_wise: true

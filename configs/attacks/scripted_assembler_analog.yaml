@@ -1,0 +1,14 @@
+# =============================================================================
+# CPSForge Attack Policy — Scripted (Assembler Analog)
+# =============================================================================
+name: scripted_assembler_analog
+attacker_type: scripted
+scene_name: assembler_analog
+max_actions: 5
+inter_attack_delay_ms: 3000
+attack_types:
+- actuator_override
+- setpoint_shift
+- sensor_spoof
+- sequence_perturbation
+- timing_delay

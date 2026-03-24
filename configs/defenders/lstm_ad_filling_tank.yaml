@@ -1,0 +1,15 @@
+# =============================================================================
+# CPSForge Defender — LSTM Autoencoder Detector (Filling Tank)
+# =============================================================================
+name: lstm_ad_filling_tank
+detector_type: lstm_ad
+scene_name: filling_tank
+enabled: true
+model_path: null
+window_size: 20
+anomaly_threshold: 0.01
+
+parameters:
+  hidden_dim: 16
+  num_layers: 1
+  reconstruction_threshold: null

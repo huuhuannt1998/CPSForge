@@ -1,0 +1,37 @@
+{
+  "scene": "level_control",
+  "baseline_run": "data/raw/level_control_baseline/20260319T172014Z_319f1d25",
+  "n_samples": 300,
+  "n_features": 15,
+  "feature_columns": [
+    "sensor__start_button",
+    "sensor__reset_button",
+    "sensor__stop_button",
+    "sensor__level_meter",
+    "sensor__flow_meter",
+    "actuator__start_light",
+    "actuator__reset_light",
+    "actuator__stop_light",
+    "actuator__fill_valve",
+    "actuator__discharge_valve",
+    "setpoint__setpoint_in",
+    "feat__level_error",
+    "feat__valve_balance",
+    "feat__level_deviation",
+    "feat__level_rate"
+  ],
+  "results": {
+    "ocsvm": {
+      "status": "ok",
+      "model_path": "data\\models\\level_control\\ocsvm_level_control.pkl"
+    },
+    "isolation_forest": {
+      "status": "ok",
+      "model_path": "data\\models\\level_control\\iforest_level_control.pkl"
+    },
+    "lstm_ad": {
+      "status": "ok",
+      "model_path": "data\\models\\level_control\\lstm_ad_level_control.pt"
+    }
+  }
+}

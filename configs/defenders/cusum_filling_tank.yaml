@@ -1,0 +1,17 @@
+# =============================================================================
+# CPSForge Defender — CUSUM Detector (Filling Tank)
+# =============================================================================
+# Note: S3 has only boolean tags. CUSUM monitors 'state' integer tag only.
+# Limited effectiveness on discrete-only scenes.
+name: cusum_filling_tank
+detector_type: cusum
+scene_name: filling_tank
+enabled: true
+
+parameters:
+  target_tags:
+    - state
+  slack: 0.2
+  threshold: 3.0
+  warmup_steps: 20
+  reset_on_alarm: true

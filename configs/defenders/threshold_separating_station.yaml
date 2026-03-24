@@ -1,0 +1,20 @@
+# =============================================================================
+# CPSForge Defender — Threshold (Separating Station)
+# =============================================================================
+name: threshold_separating_station
+detector_type: threshold
+scene_name: separating_station
+enabled: true
+thresholds:
+- tag: conveyor_in
+  operator: ==
+  value: 0
+  severity: medium
+  label: conveyor_in_stopped
+  description: conveyor_in is stopped — possible actuator override
+- tag: conveyor_left
+  operator: ==
+  value: 0
+  severity: medium
+  label: conveyor_left_stopped
+  description: conveyor_left is stopped — possible actuator override

@@ -9,7 +9,7 @@ The adversary aims to manipulate the cyber-physical process in a way that causes
 
 \subsection{Adversary Capabilities}
 
-The attacker in CPSForge is not modeled as an unrestricted network intruder with arbitrary firmware-level access. Instead, the framework focuses on a bounded but meaningful attack surface appropriate for controlled experimentation. The attacker can propose structured actions within a configured set of capabilities, such as:
+The attacker in CPSForge models a post-compromise adversary who has achieved process-level access to the control network---for example, through credential theft, insider access, or exploitation of an engineering workstation. Rather than modelling the initial intrusion vector, the framework focuses on a bounded but meaningful attack surface appropriate for controlled experimentation:
 
 \begin{itemize}[leftmargin=1.5em]
     \item sensor spoofing,
@@ -48,6 +48,6 @@ CPSForge assumes that the safety shield is part of the trusted computing base fo
 
 The real PLC, deployed logic, and scene configuration are also assumed to be correctly installed and maintained by the operator. Human supervision remains in scope, and the framework assumes that emergency-stop and reset procedures are available during live experiments.
 
-\subsection{Out of Scope}
+\subsection{Scope and Limitations}
 
-The present work does not model arbitrary firmware compromise, PLC root access, or unrestricted malicious code deployment. It also does not claim to represent all possible industrial attacker behaviors. Instead, the goal is to study whether LLMs can produce process-grounded attack strategies within a controlled action space and whether defenders can improve under such pressure. This bounded scope is appropriate for safe, repeatable, and auditable CPS experimentation.
+The present work does not model arbitrary firmware compromise, PLC root access, or unrestricted malicious code deployment. The attacker operates within a configured action space mediated by the safety shield, which bounds all writes to process-safe ranges. This bounded model is a deliberate design choice: it enables safe, repeatable, and auditable experimentation while still permitting the attacker to cause measurable process impact---as the evaluation demonstrates. However, this means experimental attack success rates reflect effectiveness \emph{within the configured envelope}, not the full capability of an unconstrained adversary. The framework is designed to study whether LLMs can produce process-grounded attack strategies and whether defenders can improve under such pressure; it does not claim to replicate the full scope of nation-state ICS attack campaigns.

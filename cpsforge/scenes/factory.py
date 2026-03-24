@@ -18,6 +18,7 @@ from cpsforge.core.config import ConfigLoader
 from cpsforge.core.models import SceneProfile, TagDefinition, SafetyRule
 from cpsforge.scenes.base import BaseScene
 from cpsforge.scenes.from_a_to_b import FromAtoBScene
+from cpsforge.scenes.generic import GenericScene
 from cpsforge.scenes.level_control import LevelControlScene
 from cpsforge.scenes.sorting_height_basic import SortingHeightBasicScene
 from cpsforge.scenes.tank_control import TankControlScene
@@ -26,10 +27,30 @@ logger = logging.getLogger(__name__)
 
 # Registry of scene_name -> BaseScene subclass
 _SCENE_REGISTRY: Dict[str, Type[BaseScene]] = {
+    # Hand-crafted implementations
     "tank_control": TankControlScene,
     "from_a_to_b": FromAtoBScene,
     "level_control": LevelControlScene,
     "sorting_height_basic": SortingHeightBasicScene,
+    # Generic config-driven implementations for all other Factory I/O scenes
+    "from_a_to_b_sr": GenericScene,
+    "filling_tank": GenericScene,
+    "queue_items": GenericScene,
+    "assembler": GenericScene,
+    "assembler_analog": GenericScene,
+    "warehouse": GenericScene,
+    "buffer_station": GenericScene,
+    "converge_station": GenericScene,
+    "elevator_advanced": GenericScene,
+    "elevator_basic": GenericScene,
+    "palletizer": GenericScene,
+    "pick_place_basic": GenericScene,
+    "pick_place_xyz": GenericScene,
+    "production_line": GenericScene,
+    "separating_station": GenericScene,
+    "sorting_height_advanced": GenericScene,
+    "sorting_weight": GenericScene,
+    "sorting_station": GenericScene,
 }
 
 
@@ -78,6 +99,7 @@ def _parse_scene_profile(raw: dict) -> SceneProfile:
     return SceneProfile(
         scene_name=raw["scene_name"],
         description=raw.get("description", ""),
+        scene_id=raw.get("scene_id"),
         tags=tags,
         writable_tags=raw.get("writable_tags", []),
         safety_rules=rules,

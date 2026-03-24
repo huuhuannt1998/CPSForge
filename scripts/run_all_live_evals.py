@@ -1,18 +1,39 @@
-"""Run all 6 live eval experiments sequentially."""
+"""Run all live eval experiments sequentially across 21 scenes."""
 import subprocess
 import sys
 import json
 import time
 from pathlib import Path
 
-EXPERIMENTS = [
-    ("from_a_to_b", "scripted", "live_scripted_from_a_to_b"),
-    ("from_a_to_b", "random", "live_random_from_a_to_b"),
-    ("level_control", "scripted", "live_scripted_level_control"),
-    ("level_control", "random", "live_random_level_control"),
-    ("sorting_height_basic", "scripted", "live_scripted_sorting_height_basic"),
-    ("sorting_height_basic", "random", "live_random_sorting_height_basic"),
+ALL_SCENES = [
+    "from_a_to_b",
+    "from_a_to_b_sr",
+    "filling_tank",
+    "queue_items",
+    "assembler",
+    "assembler_analog",
+    "warehouse",
+    "buffer_station",
+    "converge_station",
+    "elevator_advanced",
+    "elevator_basic",
+    "level_control",
+    "palletizer",
+    "pick_place_basic",
+    "pick_place_xyz",
+    "production_line",
+    "separating_station",
+    "sorting_height_advanced",
+    "sorting_height_basic",
+    "sorting_weight",
+    "sorting_station",
 ]
+
+# Build experiment list: scripted + random for every scene
+EXPERIMENTS = []
+for scene in ALL_SCENES:
+    EXPERIMENTS.append((scene, "scripted", f"live_scripted_{scene}"))
+    EXPERIMENTS.append((scene, "random", f"live_random_{scene}"))
 
 def run_experiment(scene: str, attacker: str, config: str) -> dict:
     """Run one experiment and return result info."""

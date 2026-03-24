@@ -1,0 +1,15 @@
+# =============================================================================
+# CPSForge Defender — Isolation Forest Detector (Filling Tank)
+# =============================================================================
+name: iforest_filling_tank
+detector_type: isolation_forest
+scene_name: filling_tank
+enabled: true
+model_path: null
+window_size: 20
+anomaly_threshold: 0.5
+
+parameters:
+  n_estimators: 100
+  contamination: auto
+  point_wise: true

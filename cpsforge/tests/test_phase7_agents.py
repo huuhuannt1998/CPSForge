@@ -5,9 +5,8 @@ from __future__ import annotations
 import json
 import pickle
 import tempfile
-from multiprocessing import Queue
+from queue import Empty, Queue
 from pathlib import Path
-from queue import Empty
 from typing import Any, Dict, List, Optional
 from unittest.mock import MagicMock, patch
 

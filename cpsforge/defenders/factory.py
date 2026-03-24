@@ -39,8 +39,21 @@ def build_defender(config: DefenderConfig) -> BaseDetector:
         # Implemented in Phase 4
         from cpsforge.defenders.llm_explainer import LLMExplainerDetector
         return LLMExplainerDetector(config)
+    elif t == "cusum":
+        from cpsforge.defenders.cusum_detector import CUSUMDetector
+        return CUSUMDetector(config)
+    elif t == "ocsvm":
+        from cpsforge.defenders.ocsvm_detector import OCSVMDetector
+        return OCSVMDetector(config)
+    elif t == "isolation_forest":
+        from cpsforge.defenders.iforest_detector import IsolationForestDetector
+        return IsolationForestDetector(config)
+    elif t == "lstm_ad":
+        from cpsforge.defenders.lstm_ad_detector import LSTMADDetector
+        return LSTMADDetector(config)
     else:
         raise ValueError(
             f"Unknown detector type: '{config.detector_type}'. "
-            "Expected: threshold | invariant | sequence_model | llm_explainer"
+            "Expected: threshold | invariant | sequence_model | llm_explainer | "
+            "cusum | ocsvm | isolation_forest | lstm_ad"
         )

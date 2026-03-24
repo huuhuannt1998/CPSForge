@@ -1,0 +1,25 @@
+# =============================================================================
+# CPSForge Attack Policy — LLM (Separating Station)
+# =============================================================================
+name: llm_separating_station
+attacker_type: llm
+scene_name: separating_station
+llm_provider: local_openai_compatible
+llm_model: null
+llm_max_retries: 3
+multi_step: false
+max_actions: 2
+inter_attack_delay_ms: 2000
+attack_types:
+- actuator_override
+- sequence_perturbation
+parameters:
+  attacker_objective: 'Disrupt the separating station process. Color-based separation.
+    Vision sensor detects green (1) or blue (2) parts. Diverter routes blue parts
+    to one conveyor, green to the other. Simple stateless detection-and-route logic.
+    Writable targets: diverter, conveyor_in, conveyor_left, conveyor_right. The defender
+    uses threshold and invariant checks.'
+  prompt_notes: 'Attack surface: diverter, conveyor_in, conveyor_left, conveyor_right.
+    Sensors (read-only): part_at_entry, vision_sensor, at_diverter, at_exit_left,
+    at_exit_right. Actuators: conveyor_in, conveyor_left, conveyor_right, diverter,
+    emitter, remover_left.'

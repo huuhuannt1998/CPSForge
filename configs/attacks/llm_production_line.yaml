@@ -1,0 +1,25 @@
+# =============================================================================
+# CPSForge Attack Policy — LLM (Production Line)
+# =============================================================================
+name: llm_production_line
+attacker_type: llm
+scene_name: production_line
+llm_provider: local_openai_compatible
+llm_model: null
+llm_max_retries: 3
+multi_step: false
+max_actions: 2
+inter_attack_delay_ms: 2000
+attack_types:
+- actuator_override
+- sequence_perturbation
+parameters:
+  attacker_objective: 'Disrupt the production line process. Balanced production line
+    with two machining centers. Lid machine and base machine alternate to produce
+    equal numbers of lids and bases. Simple comparison-based scheduling. Writable
+    targets: lid_machine, base_machine, conveyor_lid, conveyor_base. The defender
+    uses threshold and invariant checks.'
+  prompt_notes: 'Attack surface: lid_machine, base_machine, conveyor_lid, conveyor_base.
+    Sensors (read-only): lid_ready, base_ready, lid_at_assembly, base_at_assembly.
+    Actuators: lid_machine, base_machine, conveyor_lid, conveyor_base, conveyor_out,
+    emitter.'

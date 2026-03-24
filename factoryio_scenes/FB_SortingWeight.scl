@@ -1,86 +1,242 @@
 // MANTIS — Scene 20: Sorting by Weight
-// Sort boxes by weight using a conveyor scale.
-// DB29: I/O mapping
+// 3-way weight sorter: weigh each box, then send left / forward / right.
+// DB22: Instance DB for FB_SortingWeight (non-optimized access)
+//
+// Factory I/O connections (ComDrvS7):
+//   INPUTS (Bool Inputs Offset=10):
+//     At scale entry  → %I10.0      At forward entry → %I10.5
+//     At scale        → %I10.1      At exit front    → %I10.6
+//     At scale exit   → %I10.2      At right entry   → %I10.7
+//     At left entry   → %I10.3      At exit right    → %I11.0
+//     At exit left    → %I10.4      Start            → %I11.1
+//                                   Reset            → %I11.2
+//                                   Stop             → %I11.3
+//                                   Auto             → %I11.4
+//                                   FIO Running      → %I11.5
+//     Weight          → %ID100 (REAL)
+//
+//   OUTPUTS (Bool Outputs Offset=0):
+//     Entry conveyor  → %Q0.0       Front conveyor   → %Q0.7
+//     Load scale      → %Q0.1       Start light      → %Q1.0
+//     Send left       → %Q0.2       Reset light      → %Q1.1
+//     Left conveyor   → %Q0.3       Stop light       → %Q1.2
+//     Send right      → %Q0.4       Left count       → %QD100 (DINT)
+//     Right conveyor  → %Q0.5       Forward count    → %QD104 (DINT)
+//     Send forward    → %Q0.6       Right count      → %QD108 (DINT)
+//                                   Weight (display) → %QD112 (DINT)
+//
+// DB22 byte layout (non-optimized):
+//   -- Inputs --
+//   Byte 0    : AtScaleEntry   (BOOL)
+//   Byte 2    : AtScale        (BOOL)
+//   Byte 4    : AtScaleExit    (BOOL)
+//   Byte 6    : AtLeftEntry    (BOOL)
+//   Byte 8    : AtExitLeft     (BOOL)
+//   Byte 10   : AtForwardEntry (BOOL)
+//   Byte 12   : AtExitFront    (BOOL)
+//   Byte 14   : AtRightEntry   (BOOL)
+//   Byte 16   : AtExitRight    (BOOL)
+//   Byte 18   : BtnStart       (BOOL)
+//   Byte 20   : BtnReset       (BOOL)
+//   Byte 22   : BtnStop        (BOOL)
+//   Byte 24   : BtnAuto        (BOOL)
+//   Byte 26   : FIO_Running    (BOOL)
+//   Byte 28   : Weight         (REAL)  — analog scale reading
+//   -- Outputs --
+//   Byte 32   : EntryConveyor  (BOOL)
+//   Byte 34   : LoadScale      (BOOL)
+//   Byte 36   : SendLeft       (BOOL)
+//   Byte 38   : LeftConveyor   (BOOL)
+//   Byte 40   : SendRight      (BOOL)
+//   Byte 42   : RightConveyor  (BOOL)
+//   Byte 44   : SendForward    (BOOL)
+//   Byte 46   : FrontConveyor  (BOOL)
+//   Byte 48   : StartLight     (BOOL)
+//   Byte 50   : ResetLight     (BOOL)
+//   Byte 52   : StopLight      (BOOL)
+//   Byte 54   : LeftCount      (DINT)
+//   Byte 58   : ForwardCount   (DINT)
+//   Byte 62   : RightCount     (DINT)
+//   Byte 66   : WeightDisplay  (DINT)
+//   -- Internal --
+//   Byte 70   : MeasuredWeight (REAL)
+//   Byte 74   : LightThresh    (REAL)  — below = left
+//   Byte 78   : HeavyThresh    (REAL)  — above = right, between = forward
+//   Byte 82   : iState         (INT)
+//   Byte 84   : Enable         (BOOL)
+//   Total = 86 bytes
 
 FUNCTION_BLOCK "FB_SortingWeight"
 { S7_Optimized_Access := 'FALSE' }
-VERSION : 0.1
+VERSION : 1.0
 
 VAR
-    BoxAtEntry      : BOOL;  // 0.0
-    _pad0           : BYTE;
-    BoxWeight       : REAL;  // 2
-    BoxOnScale      : BOOL;  // 6.0
-    _pad1           : BYTE;
-    AtPusher        : BOOL;  // 8.0
-    _pad2           : BYTE;
-    AtExit          : BOOL;  // 10.0
-    _pad3           : BYTE;
-    ConveyorIn      : BOOL;  // 12.0
-    _pad4           : BYTE;
-    ConveyorScale   : BOOL;  // 14.0
-    _pad5           : BYTE;
-    Pusher          : BOOL;  // 16.0
-    _pad6           : BYTE;
-    ConveyorHeavy   : BOOL;  // 18.0
-    _pad7           : BYTE;
-    ConveyorLight   : BOOL;  // 20.0
-    _pad8           : BYTE;
-    Emitter         : BOOL;  // 22.0
-    _pad9           : BYTE;
-    WeightThreshold : REAL;  // 24
-    
-    MeasuredWeight : REAL := 0.0;
-    IsHeavy        : BOOL := FALSE;
-    iState          : INT := 0;
+    // -- Inputs (sensors) --
+    AtScaleEntry   : BOOL;          // 0
+    _p00           : BYTE;
+    AtScale        : BOOL;          // 2
+    _p01           : BYTE;
+    AtScaleExit    : BOOL;          // 4
+    _p02           : BYTE;
+    AtLeftEntry    : BOOL;          // 6
+    _p03           : BYTE;
+    AtExitLeft     : BOOL;          // 8
+    _p04           : BYTE;
+    AtForwardEntry : BOOL;          // 10
+    _p05           : BYTE;
+    AtExitFront    : BOOL;          // 12
+    _p06           : BYTE;
+    AtRightEntry   : BOOL;          // 14
+    _p07           : BYTE;
+    AtExitRight    : BOOL;          // 16
+    _p08           : BYTE;
+    BtnStart       : BOOL;          // 18
+    _p09           : BYTE;
+    BtnReset       : BOOL;          // 20
+    _p10           : BYTE;
+    BtnStop        : BOOL;          // 22
+    _p11           : BYTE;
+    BtnAuto        : BOOL;          // 24
+    _p12           : BYTE;
+    FIO_Running    : BOOL;          // 26
+    _p13           : BYTE;
+    Weight         : REAL;          // 28  — analog scale reading
+
+    // -- Outputs (actuators) --
+    EntryConveyor  : BOOL;          // 32
+    _p14           : BYTE;
+    LoadScale      : BOOL;          // 34
+    _p15           : BYTE;
+    SendLeft       : BOOL;          // 36
+    _p16           : BYTE;
+    LeftConveyor   : BOOL;          // 38
+    _p17           : BYTE;
+    SendRight      : BOOL;          // 40
+    _p18           : BYTE;
+    RightConveyor  : BOOL;          // 42
+    _p19           : BYTE;
+    SendForward    : BOOL;          // 44
+    _p20           : BYTE;
+    FrontConveyor  : BOOL;          // 46
+    _p21           : BYTE;
+    StartLight     : BOOL;          // 48
+    _p22           : BYTE;
+    ResetLight     : BOOL;          // 50
+    _p23           : BYTE;
+    StopLight      : BOOL;          // 52
+    _p24           : BYTE;
+    LeftCount      : DINT;          // 54
+    ForwardCount   : DINT;          // 58
+    RightCount     : DINT;          // 62
+    WeightDisplay  : DINT;          // 66
+
+    // -- Internal --
+    MeasuredWeight : REAL := 0.0;   // 70
+    LightThresh    : REAL := 2.0;   // 74  — below this = light → left
+    HeavyThresh    : REAL := 5.0;   // 78  — above this = heavy → right
+    iState         : INT  := 0;     // 82
+    Enable         : BOOL := TRUE;  // 84
+    _p25           : BYTE;          // 85
+    // Total DB size: 86 bytes
 END_VAR
 
 BEGIN
-    Emitter := TRUE;
-    ConveyorHeavy := TRUE;
-    ConveyorLight := TRUE;
-    
-    // Default threshold
-    IF WeightThreshold < 0.1 THEN
-        WeightThreshold := 5.0;
-    END_IF;
-    
-    CASE iState OF
-        0: // Feed box
-            ConveyorIn := TRUE;
-            ConveyorScale := TRUE;
-            Pusher := FALSE;
-            IF BoxOnScale THEN
-                ConveyorScale := FALSE;  // Stop for weighing
-                MeasuredWeight := BoxWeight;
-                IsHeavy := MeasuredWeight >= WeightThreshold;
-                iState := 1;
-            END_IF;
-            
-        1: // Weighed — continue to pusher
-            ConveyorScale := TRUE;
-            IF AtPusher THEN
-                ConveyorScale := FALSE;
-                IF NOT IsHeavy THEN
-                    // Light box: push to side
-                    Pusher := TRUE;
-                    iState := 2;
-                ELSE
-                    // Heavy box: continue straight
-                    ConveyorScale := TRUE;
-                    iState := 3;
+    // Exit conveyors always run to clear sorted boxes
+    LeftConveyor  := TRUE;
+    FrontConveyor := TRUE;
+    RightConveyor := TRUE;
+
+    // Lights mirror buttons
+    StartLight := BtnStart OR BtnAuto;
+    StopLight  := BtnStop;
+    ResetLight := BtnReset;
+
+    // Display current weight as integer (×100 for display)
+    WeightDisplay := REAL_TO_DINT(Weight * 100.0);
+
+    // Default thresholds
+    IF LightThresh < 0.1 THEN LightThresh := 2.0; END_IF;
+    IF HeavyThresh < 0.1 THEN HeavyThresh := 5.0; END_IF;
+
+    IF NOT FIO_Running OR NOT Enable THEN
+        // Safe state
+        EntryConveyor := FALSE;
+        LoadScale     := FALSE;
+        SendLeft      := FALSE;
+        SendRight     := FALSE;
+        SendForward   := FALSE;
+        iState        := 0;
+    ELSE
+        CASE iState OF
+            0: // Idle — feed box onto scale
+                EntryConveyor := TRUE;
+                LoadScale     := TRUE;
+                SendLeft      := FALSE;
+                SendRight     := FALSE;
+                SendForward   := FALSE;
+                IF AtScale THEN
+                    // Box is on scale — stop to weigh
+                    EntryConveyor := FALSE;
+                    LoadScale     := FALSE;
+                    MeasuredWeight := Weight;
+                    iState := 1;
                 END_IF;
-            END_IF;
-            
-        2: // Wait for push complete
-            IF NOT AtPusher THEN
-                Pusher := FALSE;
+
+            1: // Weighed — decide direction
+                EntryConveyor := FALSE;
+                LoadScale     := FALSE;
+                IF MeasuredWeight < LightThresh THEN
+                    // Light → send left
+                    SendLeft := TRUE;
+                    iState := 2;
+                ELSIF MeasuredWeight >= HeavyThresh THEN
+                    // Heavy → send right
+                    SendRight := TRUE;
+                    iState := 4;
+                ELSE
+                    // Medium → send forward
+                    SendForward := TRUE;
+                    iState := 6;
+                END_IF;
+
+            2: // Sending left — wait for box to clear scale
+                SendLeft := TRUE;
+                LoadScale := TRUE;  // run scale belt to push box off
+                IF NOT AtScale AND NOT AtScaleExit THEN
+                    SendLeft  := FALSE;
+                    LoadScale := FALSE;
+                    LeftCount := LeftCount + 1;
+                    iState := 0;
+                END_IF;
+
+            3: // (unused — reserved)
                 iState := 0;
-            END_IF;
-            
-        3: // Wait for heavy box to clear
-            IF AtExit THEN
+
+            4: // Sending right — wait for box to clear scale
+                SendRight := TRUE;
+                LoadScale := TRUE;
+                IF NOT AtScale AND NOT AtScaleExit THEN
+                    SendRight := FALSE;
+                    LoadScale := FALSE;
+                    RightCount := RightCount + 1;
+                    iState := 0;
+                END_IF;
+
+            5: // (unused — reserved)
                 iState := 0;
-            END_IF;
-    END_CASE;
+
+            6: // Sending forward — wait for box to clear scale
+                SendForward := TRUE;
+                LoadScale   := TRUE;
+                IF NOT AtScale AND NOT AtScaleExit THEN
+                    SendForward := FALSE;
+                    LoadScale   := FALSE;
+                    ForwardCount := ForwardCount + 1;
+                    iState := 0;
+                END_IF;
+
+            7: // (unused — reserved)
+                iState := 0;
+        END_CASE;
+    END_IF;
 END_FUNCTION_BLOCK

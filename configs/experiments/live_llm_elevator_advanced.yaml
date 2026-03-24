@@ -1,0 +1,21 @@
+# =============================================================================
+# CPSForge Live Eval — LLM (Elevator Advanced)
+# =============================================================================
+name: live_llm_elevator_advanced
+description: 'Live eval run: LLM batch attacker vs threshold + invariant detectors
+  on elevator advanced.'
+scene_config: scenes/elevator_advanced.yaml
+plc_config: system/plc.yaml
+attackers:
+- llm_elevator_advanced
+defenders:
+- threshold_elevator_advanced
+- invariant_elevator_advanced
+live_writes_enabled: true
+dry_run: false
+eval_run: true
+max_steps: 150
+run_duration_s: 150.0
+save_trace: true
+save_metrics: true
+reset_after_run: true

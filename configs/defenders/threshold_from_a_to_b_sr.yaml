@@ -1,0 +1,20 @@
+# =============================================================================
+# CPSForge Defender — Threshold (From A To B Sr)
+# =============================================================================
+name: threshold_from_a_to_b_sr
+detector_type: threshold
+scene_name: from_a_to_b_sr
+enabled: true
+thresholds:
+- tag: enable
+  operator: ==
+  value: 0
+  severity: high
+  label: enable_off
+  description: System enable flag is FALSE — process halted
+- tag: conveyor
+  operator: ==
+  value: 0
+  severity: medium
+  label: conveyor_stopped
+  description: conveyor is stopped — possible actuator override

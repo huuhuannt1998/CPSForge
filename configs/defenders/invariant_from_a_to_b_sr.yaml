@@ -1,0 +1,16 @@
+# =============================================================================
+# CPSForge Defender — Invariant (From A To B Sr)
+# =============================================================================
+name: invariant_from_a_to_b_sr
+detector_type: invariant
+scene_name: from_a_to_b_sr
+enabled: true
+invariant_rules:
+- rule_id: FATBS-INV-001
+  description: Enable must be on when conveyor is active
+  condition: NOT (enable == False AND conveyor == True)
+  tags:
+  - enable
+  - conveyor
+  severity: high
+  label: enable_off_with_conveyor

@@ -1,0 +1,22 @@
+# =============================================================================
+# CPSForge Agent Mode (Pick Place Basic)
+# =============================================================================
+name: agent_pick_place_basic
+description: Live attacker and defender agents on pick place basic.
+mode: agent
+scene_config: scenes/pick_place_basic.yaml
+plc_config: system/plc.yaml
+attackers: []
+defenders:
+- threshold_pick_place_basic
+- invariant_pick_place_basic
+attacker_agent: attacker_agent
+defender_agent: defender_agent
+live_writes_enabled: true
+dry_run: false
+eval_run: true
+max_steps: 200
+run_duration_s: null
+save_trace: true
+save_metrics: true
+reset_after_run: true

@@ -1,0 +1,484 @@
+# =============================================================================
+# CPSForge Scene Configuration — Sorting by Weight (3-Way)
+# =============================================================================
+# Factory I/O scene: Sorting by Weight
+# DB22: Instance DB for FB_SortingWeight (non-optimized, 86 bytes)
+#
+# Physical setup:
+#   - Siemens S7 PLC at 192.168.0.1, TIA Portal v17
+#   - Entry conveyor feeds boxes onto a weighing scale
+#   - Scale reads REAL weight via %ID100
+#   - 3-way sort: light (<2.0 kg) → LEFT, medium → FORWARD, heavy (≥5.0 kg) → RIGHT
+#   - State machine: Idle→Weighed→SendLeft/SendForward/SendRight→ClearScale→Idle
+#   - Panel: Start/Reset/Stop/Auto buttons, indicator lights
+#   - Count displays for left/forward/right + weight display (DINT)
+#
+# Factory I/O driver connections (ComDrvS7, Bool Inputs Offset=10):
+#   INPUTS:
+#     At scale entry   → %I10.0      At forward entry → %I10.5
+#     At scale         → %I10.1      At exit front    → %I10.6
+#     At scale exit    → %I10.2      At right entry   → %I10.7
+#     At left entry    → %I10.3      At exit right    → %I11.0
+#     At exit left     → %I10.4      Start            → %I11.1
+#                                    Reset            → %I11.2
+#                                    Stop             → %I11.3
+#                                    Auto             → %I11.4
+#                                    FIO Running      → %I11.5
+#     Weight           → %ID100 (REAL)
+#
+#   OUTPUTS:
+#     Entry conveyor   → %Q0.0       Front conveyor   → %Q0.7
+#     Load scale       → %Q0.1       Start light      → %Q1.0
+#     Send left        → %Q0.2       Reset light      → %Q1.1
+#     Left conveyor    → %Q0.3       Stop light       → %Q1.2
+#     Send right       → %Q0.4       Left count       → %QD100 (DINT)
+#     Right conveyor   → %Q0.5       Forward count    → %QD104 (DINT)
+#     Send forward     → %Q0.6       Right count      → %QD108 (DINT)
+#                                    Weight display   → %QD112 (DINT)
+#
+# Attack surface: LightThresh, HeavyThresh, SendLeft, SendRight, SendForward,
+#                 EntryConveyor, LoadScale, Enable
+# =============================================================================
+
+scene_name: sorting_weight
+scene_id: 20  # OB_Main CASE 20 — DB22
+
+description: >
+  3-way weight-based sorting. Boxes are weighed on a conveyor scale and
+  sorted: light boxes (<LightThresh) go LEFT, heavy boxes (≥HeavyThresh)
+  go RIGHT, medium boxes go FORWARD. 8-state machine with REAL weight
+  measurement and DINT count outputs. Panel buttons and indicator lights.
+
+sampling_interval_ms: 500
+
+# ---------------------------------------------------------------------------
+# Tag Definitions (DB22, 86 bytes total)
+# ---------------------------------------------------------------------------
+tags:
+
+  # --- Sensors (14 Bools + 1 REAL) ---
+  - name: at_scale_entry
+    address: "DB22,BOOL0.0"
+    data_type: bool
+    access: read
+    description: "Box at scale entry conveyor"
+    category: sensor
+    scene_name: sorting_weight
+
+  - name: at_scale
+    address: "DB22,BOOL2.0"
+    data_type: bool
+    access: read
+    description: "Box on scale — triggers weighing"
+    category: sensor
+    scene_name: sorting_weight
+
+  - name: at_scale_exit
+    address: "DB22,BOOL4.0"
+    data_type: bool
+    access: read
+    description: "Box leaving scale area"
+    category: sensor
+    scene_name: sorting_weight
+
+  - name: at_left_entry
+    address: "DB22,BOOL6.0"
+    data_type: bool
+    access: read
+    description: "Box entering left exit conveyor"
+    category: sensor
+    scene_name: sorting_weight
+
+  - name: at_exit_left
+    address: "DB22,BOOL8.0"
+    data_type: bool
+    access: read
+    description: "Box at end of left exit conveyor"
+    category: sensor
+    scene_name: sorting_weight
+
+  - name: at_forward_entry
+    address: "DB22,BOOL10.0"
+    data_type: bool
+    access: read
+    description: "Box entering forward exit conveyor"
+    category: sensor
+    scene_name: sorting_weight
+
+  - name: at_exit_front
+    address: "DB22,BOOL12.0"
+    data_type: bool
+    access: read
+    description: "Box at end of forward exit conveyor"
+    category: sensor
+    scene_name: sorting_weight
+
+  - name: at_right_entry
+    address: "DB22,BOOL14.0"
+    data_type: bool
+    access: read
+    description: "Box entering right exit conveyor"
+    category: sensor
+    scene_name: sorting_weight
+
+  - name: at_exit_right
+    address: "DB22,BOOL16.0"
+    data_type: bool
+    access: read
+    description: "Box at end of right exit conveyor"
+    category: sensor
+    scene_name: sorting_weight
+
+  - name: btn_start
+    address: "DB22,BOOL18.0"
+    data_type: bool
+    access: read
+    description: "Start button — momentary"
+    category: sensor
+    scene_name: sorting_weight
+
+  - name: btn_reset
+    address: "DB22,BOOL20.0"
+    data_type: bool
+    access: read
+    description: "Reset button — momentary"
+    category: sensor
+    scene_name: sorting_weight
+
+  - name: btn_stop
+    address: "DB22,BOOL22.0"
+    data_type: bool
+    access: read
+    description: "Stop button — NC alternate"
+    category: sensor
+    scene_name: sorting_weight
+
+  - name: btn_auto
+    address: "DB22,BOOL24.0"
+    data_type: bool
+    access: read
+    description: "Auto mode selector"
+    category: sensor
+    scene_name: sorting_weight
+
+  - name: fio_running
+    address: "DB22,BOOL26.0"
+    data_type: bool
+    access: read
+    description: "Factory I/O Running — TRUE while simulation active"
+    category: sensor
+    scene_name: sorting_weight
+
+  - name: weight
+    address: "DB22,REAL28"
+    data_type: real
+    access: read
+    unit: "kg"
+    min_value: 0.0
+    max_value: 15.0
+    description: "Live scale weight reading"
+    category: sensor
+    scene_name: sorting_weight
+
+  # --- Actuators (12 Bools) ---
+  - name: entry_conveyor
+    address: "DB22,BOOL32.0"
+    data_type: bool
+    access: read_write
+    description: "Entry conveyor motor — feeds boxes toward scale"
+    category: actuator
+    scene_name: sorting_weight
+
+  - name: load_scale
+    address: "DB22,BOOL34.0"
+    data_type: bool
+    access: read_write
+    description: "Scale conveyor/roller — moves box onto and off scale"
+    category: actuator
+    scene_name: sorting_weight
+
+  - name: send_left
+    address: "DB22,BOOL36.0"
+    data_type: bool
+    access: read_write
+    description: "Diverter/pusher to route box LEFT"
+    category: actuator
+    scene_name: sorting_weight
+
+  - name: left_conveyor
+    address: "DB22,BOOL38.0"
+    data_type: bool
+    access: read_write
+    description: "Left exit conveyor motor"
+    category: actuator
+    scene_name: sorting_weight
+
+  - name: send_right
+    address: "DB22,BOOL40.0"
+    data_type: bool
+    access: read_write
+    description: "Diverter/pusher to route box RIGHT"
+    category: actuator
+    scene_name: sorting_weight
+
+  - name: right_conveyor
+    address: "DB22,BOOL42.0"
+    data_type: bool
+    access: read_write
+    description: "Right exit conveyor motor"
+    category: actuator
+    scene_name: sorting_weight
+
+  - name: send_forward
+    address: "DB22,BOOL44.0"
+    data_type: bool
+    access: read_write
+    description: "Diverter/pusher to route box FORWARD"
+    category: actuator
+    scene_name: sorting_weight
+
+  - name: front_conveyor
+    address: "DB22,BOOL46.0"
+    data_type: bool
+    access: read_write
+    description: "Forward exit conveyor motor"
+    category: actuator
+    scene_name: sorting_weight
+
+  - name: start_light
+    address: "DB22,BOOL48.0"
+    data_type: bool
+    access: read
+    description: "Start indicator light"
+    category: actuator
+    scene_name: sorting_weight
+
+  - name: reset_light
+    address: "DB22,BOOL50.0"
+    data_type: bool
+    access: read
+    description: "Reset indicator light"
+    category: actuator
+    scene_name: sorting_weight
+
+  - name: stop_light
+    address: "DB22,BOOL52.0"
+    data_type: bool
+    access: read
+    description: "Stop indicator light"
+    category: actuator
+    scene_name: sorting_weight
+
+  # --- Count outputs (4 DINTs) ---
+  - name: left_count
+    address: "DB22,DINT54"
+    data_type: dint
+    access: read
+    min_value: 0
+    max_value: 99999
+    description: "Counter: boxes sent left"
+    category: internal
+    scene_name: sorting_weight
+
+  - name: forward_count
+    address: "DB22,DINT58"
+    data_type: dint
+    access: read
+    min_value: 0
+    max_value: 99999
+    description: "Counter: boxes sent forward"
+    category: internal
+    scene_name: sorting_weight
+
+  - name: right_count
+    address: "DB22,DINT62"
+    data_type: dint
+    access: read
+    min_value: 0
+    max_value: 99999
+    description: "Counter: boxes sent right"
+    category: internal
+    scene_name: sorting_weight
+
+  - name: weight_display
+    address: "DB22,DINT66"
+    data_type: dint
+    access: read
+    min_value: 0
+    max_value: 99999
+    description: "Weight display (weight × 100, integer)"
+    category: internal
+    scene_name: sorting_weight
+
+  # --- Internal state ---
+  - name: measured_weight
+    address: "DB22,REAL70"
+    data_type: real
+    access: read
+    unit: "kg"
+    min_value: 0.0
+    max_value: 15.0
+    description: "Last captured weight at weighing instant"
+    category: internal
+    scene_name: sorting_weight
+
+  - name: light_thresh
+    address: "DB22,REAL74"
+    data_type: real
+    access: read_write
+    unit: "kg"
+    min_value: 0.5
+    max_value: 10.0
+    description: "Light threshold — below this weight → LEFT (default 2.0)"
+    category: setpoint
+    scene_name: sorting_weight
+
+  - name: heavy_thresh
+    address: "DB22,REAL78"
+    data_type: real
+    access: read_write
+    unit: "kg"
+    min_value: 1.0
+    max_value: 15.0
+    description: "Heavy threshold — at or above this weight → RIGHT (default 5.0)"
+    category: setpoint
+    scene_name: sorting_weight
+
+  - name: i_state
+    address: "DB22,INT82"
+    data_type: int
+    access: read
+    min_value: 0
+    max_value: 7
+    description: "State: 0=Idle, 1=Weighed, 2=SendLeft, 4=SendRight, 6=SendForward"
+    category: internal
+    scene_name: sorting_weight
+
+  - name: enable
+    address: "DB22,BOOL84.0"
+    data_type: bool
+    access: read_write
+    description: "System enable — gates all outputs (attack/DoS target)"
+    category: mode_bit
+    scene_name: sorting_weight
+
+# ---------------------------------------------------------------------------
+# Writable Tags
+# ---------------------------------------------------------------------------
+writable_tags:
+  - entry_conveyor
+  - load_scale
+  - send_left
+  - send_right
+  - send_forward
+  - left_conveyor
+  - right_conveyor
+  - front_conveyor
+  - light_thresh
+  - heavy_thresh
+  - enable
+
+# ---------------------------------------------------------------------------
+# Attack Surface
+# ---------------------------------------------------------------------------
+attack_surface:
+  - light_thresh
+  - heavy_thresh
+  - send_left
+  - send_right
+  - send_forward
+  - entry_conveyor
+  - load_scale
+  - enable
+
+# ---------------------------------------------------------------------------
+# Safety Rules
+# ---------------------------------------------------------------------------
+safety_rules:
+
+  - rule_id: SW-SR-001
+    description: "Light threshold must be in [0.5, 10.0]"
+    rule_type: range
+    tags: [light_thresh]
+    parameters:
+      min: 0.5
+      max: 10.0
+    enabled: true
+    priority: 80
+
+  - rule_id: SW-SR-002
+    description: "Heavy threshold must be in [1.0, 15.0]"
+    rule_type: range
+    tags: [heavy_thresh]
+    parameters:
+      min: 1.0
+      max: 15.0
+    enabled: true
+    priority: 80
+
+  - rule_id: SW-SR-003
+    description: "SendLeft and SendRight must not be active simultaneously"
+    rule_type: mutual_exclusion
+    tags: [send_left, send_right]
+    parameters:
+      forbidden_pairs: [[true, true]]
+    enabled: true
+    priority: 100
+
+  - rule_id: SW-SR-004
+    description: "SendLeft and SendForward must not be active simultaneously"
+    rule_type: mutual_exclusion
+    tags: [send_left, send_forward]
+    parameters:
+      forbidden_pairs: [[true, true]]
+    enabled: true
+    priority: 100
+
+  - rule_id: SW-SR-005
+    description: "SendRight and SendForward must not be active simultaneously"
+    rule_type: mutual_exclusion
+    tags: [send_right, send_forward]
+    parameters:
+      forbidden_pairs: [[true, true]]
+    enabled: true
+    priority: 100
+
+  - rule_id: SW-SR-006
+    description: "Entry conveyor override capped at 20 seconds"
+    rule_type: duration
+    tags: [entry_conveyor]
+    parameters:
+      max_duration_ms: 20000
+    enabled: true
+    priority: 50
+
+  - rule_id: SW-SR-007
+    description: "Enable must not be held FALSE for more than 30 seconds"
+    rule_type: duration
+    tags: [enable]
+    parameters:
+      max_duration_ms: 30000
+      forbidden_value: false
+    enabled: true
+    priority: 100
+
+# ---------------------------------------------------------------------------
+# Reset Procedure
+# ---------------------------------------------------------------------------
+reset_procedure:
+  - tag: entry_conveyor
+    value: true
+  - tag: load_scale
+    value: true
+  - tag: send_left
+    value: false
+  - tag: send_right
+    value: false
+  - tag: send_forward
+    value: false
+  - tag: light_thresh
+    value: 2.0
+  - tag: heavy_thresh
+    value: 5.0
+  - tag: enable
+    value: true

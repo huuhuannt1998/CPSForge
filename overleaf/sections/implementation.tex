@@ -1,18 +1,20 @@
 \section{Implementation}
 \label{sec:implementation}
 
-This section describes the implementation of CPSForge. The system is built around a real Siemens S7 PLC connected to Factory~I/O, with logic engineered in TIA Portal~v17. Unlike purely simulation-based frameworks, CPSForge is grounded in a live hardware-in-the-loop setting.
+This section describes the implementation of CPSForge. The system is built around a real Siemens S7 PLC connected to Factory~I/O (a software-based process emulator), with logic engineered in TIA Portal~v17. All experiments execute in a PLC-in-the-loop setting where the controller runs real scan cycles against emulated plant I/O.
 
 \subsection{Hardware and Process Setup}
 
 The controller layer consists of a Siemens S7-1200 PLC deployed with logic created in TIA Portal~v17. The PLC communicates over Ethernet at a fixed IP address (192.168.0.1). Factory~I/O serves as the process emulator, providing realistic industrial scenes with sensors, actuators, and stateful physical interaction. The PLC interacts with Factory~I/O through the normal control loop, while CPSForge observes and mediates selected control-relevant variables through an external middleware bridge implemented using the python-snap7 library~\cite{snap7}.
 
-The current deployment supports three Factory~I/O scenes:
+The current deployment supports five Factory~I/O scenes:
 
 \begin{itemize}[leftmargin=1.5em]
     \item \textbf{From A to B:} a conveyor transport scene with 4 tags (conveyor, enable, state, item\_detected), exposing actuator override and sequence perturbation attack surfaces.
+    \item \textbf{Filling Tank:} a discrete fill-cycle scene with 8 tags (fill pump, discharge pump, sensor, fill level, timers), exposing actuator override and setpoint shift attack surfaces.
     \item \textbf{Level Control:} a tank filling and draining scene with 15 tags (fill valve, discharge valve, liquid level, setpoints, enable), exposing setpoint shift and actuator override attack surfaces.
     \item \textbf{Sorting by Height:} a sorting conveyor scene with 30 tags (entry conveyor, transfer left/right, load/unload actuators, height sensors, enable), exposing a broader combinatorial attack surface.
+    \item \textbf{Sorting by Weight:} a weight-threshold sorting scene with 35 tags (conveyor, weight sensor, threshold setpoints, pushers, reject lane), exposing setpoint shift attacks targeting classifier thresholds.
 \end{itemize}
 
 \subsection{Middleware Bridge}
@@ -27,13 +29,17 @@ Each Factory~I/O scene is represented as a configurable YAML profile that define
 
 \subsection{Attack Representation}
 
-CPSForge does not permit attack modules to manipulate raw memory areas directly. Instead, the attacker outputs structured actions with fields such as target, mode, value, duration, rationale, and expected effect. This representation constraints the action space to meaningful process operations, enables validation by the shield, and makes experiments easier to replay and analyse.
+CPSForge does not permit attack modules to manipulate raw memory areas directly. Instead, the attacker outputs structured actions with fields such as target, mode, value, duration, rationale, and expected effect. This representation constrains the action space to meaningful process operations, enables validation by the shield, and makes experiments easier to replay and analyse.
+
+\subsection{Campaign Attacker}
+
+The campaign attacker extends the LLM batch attacker with a structured four-phase attack lifecycle: \emph{reconnaissance} (probing tag responses and process dynamics), \emph{preparation} (small perturbations to test detector sensitivity), \emph{exploitation} (targeted attacks informed by prior observations), and \emph{persistence} (sustained low-magnitude perturbations designed to remain undetected). Each phase is parameterised with a phase-specific objective prompt that receives the scene profile, current plant snapshot, action history with observed effects from prior phases, and phase-specific constraints. The LLM generates structured actions for each phase, and inter-phase delays allow the process to settle before the next phase begins. This design enables multi-step attack sequences where later phases exploit information gathered in earlier phases---for example, using reconnaissance observations to calibrate exploitation values just below detector thresholds.
 
 \subsection{Safety Shield Implementation}
 
 The shield is implemented as a policy enforcement layer with scene-specific rule support. Before a candidate action is executed, the shield checks whether the target is on the writable whitelist, whether the value falls within allowed bounds, whether the duration exceeds policy, and whether the action violates interlocks or state-based constraints. The shield emits a structured decision recording approval status, reasons, normalised values, violated rules, expiration times, and rollback procedures. Figure~\ref{fig:shield-flow} shows the decision flow.
 
-In agent mode, the shield additionally supports \texttt{evaluate\_corrective()} for defender-proposed writes, applying the same safety constraints to corrective actions that it applies to attack actions.
+In agent mode, the shield also validates defender corrective writes via \texttt{evaluate\_corrective()}, applying the same constraints used for attack actions.
 
 \begin{figure}[t]
     \centering
@@ -41,17 +47,17 @@ In agent mode, the shield additionally supports \texttt{evaluate\_corrective()} 
         >=Stealth,
         node distance=0.3cm,
         every node/.style={font=\scriptsize},
-        step/.style={draw, rounded corners=2pt, minimum width=2.4cm, minimum height=0.45cm, align=center, thick},
+        stepbox/.style={draw, rounded corners=2pt, minimum width=2.4cm, minimum height=0.45cm, align=center, thick},
         dec/.style={draw, diamond, aspect=2.5, inner sep=1pt, align=center, thick, font=\scriptsize},
         arr/.style={->, thick, >=Stealth},
     ]
-    \node[step, fill=red!10] (input) {Proposed Action};
+    \node[stepbox, fill=red!10] (input) {Proposed Action};
     \node[dec, fill=yellow!15, below=0.4cm of input] (wl) {Target on\\whitelist?};
     \node[dec, fill=yellow!15, below=0.5cm of wl] (range) {Value in\\range?};
     \node[dec, fill=yellow!15, below=0.5cm of range] (dur) {Duration\\$\leq$ cap?};
     \node[dec, fill=yellow!15, below=0.5cm of dur] (interlock) {Interlocks\\OK?};
-    \node[step, fill=green!15, below=0.4cm of interlock] (approve) {\textbf{Approved}\\+ rollback plan};
-    \node[step, fill=red!15, right=1.2cm of range] (reject) {\textbf{Rejected}\\+ reason log};
+    \node[stepbox, fill=green!15, below=0.4cm of interlock] (approve) {\textbf{Approved}\\+ rollback plan};
+    \node[stepbox, fill=red!15, right=1.2cm of range] (reject) {\textbf{Rejected}\\+ reason log};
 
     \draw[arr] (input) -- (wl);
     \draw[arr] (wl) -- node[left, font=\tiny]{\checkmark} (range);
@@ -70,26 +76,29 @@ In agent mode, the shield additionally supports \texttt{evaluate\_corrective()} 
 
 \subsection{Defender Stack}
 
-The initial defender stack consists of:
+The defender stack comprises six anomaly detection approaches spanning rule-based, statistical, and learned categories:
 
 \begin{itemize}[leftmargin=1.5em]
-    \item a threshold-based detector for simple process deviations,
-    \item an invariant-based detector derived from scene rules, and
-    \item a sequence-based detector that analyses temporal behaviour over a sliding window.
+    \item \textbf{Threshold detector:} configurable per-tag high/low bounds for simple process deviation detection.
+    \item \textbf{Invariant detector:} rule-based checks derived from scene-specific safety invariants (e.g., actuator interlocks, mode-gated constraints).
+    \item \textbf{CUSUM detector:} cumulative sum (CUSUM) change-point detection~\cite{page1954continuous} applied to each monitored tag, with configurable drift tolerance and decision threshold.
+    \item \textbf{One-Class SVM (OCSVM):} a one-class support vector machine~\cite{scholkopf2001estimating} trained on normal-operation baseline traces, scoring each snapshot against the learned normal boundary.
+    \item \textbf{Isolation Forest:} an unsupervised ensemble method~\cite{liu2008isolation} that isolates anomalies by random recursive partitioning of the feature space.
+    \item \textbf{LSTM autoencoder (LSTM-AD):} a sequence-to-sequence LSTM autoencoder~\cite{malhotra2016lstm} trained to reconstruct sliding windows of normal process behaviour; anomalies are detected when reconstruction error exceeds a learned threshold.
 \end{itemize}
 
-The threshold and invariant detectors provide interpretable baselines, while the sequence detector provides a more flexible learned baseline.
+The threshold and invariant detectors provide interpretable baselines requiring no training data. The ML-based detectors (OCSVM, Isolation Forest, LSTM-AD) are trained offline on baseline traces collected during normal plant operation and support both offline evaluation and online inference. All detectors implement a common interface supporting \texttt{observe}, \texttt{detect}, and \texttt{reset} operations.
 
 \subsection{LLM Integration}
 \label{sec:impl:llm}
 
-CPSForge abstracts the LLM backend through a provider interface supporting OpenAI-compatible APIs, including local inference servers (e.g., LM Studio). The current deployment uses local models served at \texttt{http://127.0.0.1:1234/v1}: Qwen2-7B-Instruct for batch-mode experiments, and Phi-3-Mini-4K-Instruct (3.8B) for agent-mode experiments where the smaller context window of the 7B model was prohibitive. The provider includes an automatic system-role fallback that merges system prompts into user messages for models that do not support multi-role conversations.
+CPSForge abstracts the LLM backend through a provider interface supporting OpenAI-compatible APIs, including local inference servers (e.g., LM Studio). The current deployment uses local models served at \texttt{http://127.0.0.1:1234/v1}: Qwen2-7B-Instruct for both batch-mode and agent-mode experiments. The provider includes an automatic system-role fallback that merges system prompts into user messages for models that do not support multi-role conversations.
 
 The LLM integration layer includes:
 
 \begin{itemize}[leftmargin=1.5em]
     \item \textbf{Prompt builder.} A versioned template system that constructs LLM prompts from scene profiles, plant snapshots, attacker/defender objectives, action history, and detection events. Templates are stored as text files and can be updated without code changes.
-    \item \textbf{JSON schema validation.} LLM responses are parsed against the \texttt{AttackAction} or corrective-action schema. A normalisation layer maps alternative key names (e.g., \texttt{target\_sensor}$\to$\texttt{target}), alternative attack type names (e.g., \texttt{alter\_sensor\_reading}$\to$\texttt{sensor\_spoof}), and unwraps nested JSON objects. Truncated numeric values are repaired (e.g., \texttt{"confidence":0ayer}$\to$\texttt{"confidence":0}). Malformed outputs trigger automatic retries with schema-correction prompts.
+    \item \textbf{JSON schema validation.} LLM responses are parsed against attack and corrective-action schemas. A normalisation layer maps common key and attack-type aliases, unwraps nested JSON objects, and repairs malformed numeric fields. Invalid outputs trigger automatic retries with schema-correction prompts.
     \item \textbf{Safe parsing.} Responses are sanitised to prevent injection of raw PLC addresses or unsafe field values.
     \item \textbf{Run logging.} All prompts and responses are optionally logged with configurable redaction for reproducibility.
 \end{itemize}
@@ -100,8 +109,8 @@ The LLM integration layer includes:
 The agent mode uses Python's \texttt{multiprocessing} module to run the attacker and defender as independent OS processes. Each agent communicates with the coordinator through typed \texttt{multiprocessing.Queue} channels. The coordinator runs the PLC polling loop and dispatches actions:
 
 \begin{enumerate}[leftmargin=1.5em]
-    \item The coordinator polls PLC tags 	and broadcasts a \texttt{PlantSnapshot} to both agents.
-    \item The attacker agent invokes its LLM with scene context, snapshot, and action history, producing an \texttt{AttackAction}.
+    \item The coordinator polls PLC tags and broadcasts a plant snapshot to both agents.
+    \item The attacker agent invokes its LLM with scene context, snapshot, and action history, producing an attack action.
     \item The coordinator validates the action through the safety shield, executes approved writes, and logs the result.
     \item The defender agent receives the same snapshot (and optionally the attacker's action after execution), invokes its LLM to diagnose process state, and may propose a corrective write.
     \item Corrective writes pass through the same shield before execution.
@@ -113,4 +122,4 @@ The coordinator enforces per-agent timeouts, graceful shutdown on errors, and co
 
 Every experiment run produces structured artifacts for replay and analysis. A run folder contains the time-series trace, metadata, attack records, shield decisions, and detection outputs. Runs that lead to missed or delayed detections are marked as hard cases and placed into a replay bank for future defender refinement.
 
-The pipeline is fully operational: evaluation runs have been executed against the real PLC across three Factory~I/O scenes using scripted, random, LLM batch, and LLM agent attackers. Results are presented in Section~\ref{sec:evaluation}.
+The pipeline is fully operational: evaluation runs have been executed against the real PLC across five Factory~I/O scenes using scripted, random, LLM batch, campaign, and LLM agent attackers, and a closed-loop adaptation protocol has been validated across two scenes with both rule-based and campaign attackers. Results are presented in Section~\ref{sec:evaluation}.

@@ -1,0 +1,86 @@
+# =============================================================================
+# CPSForge Defender — Threshold (Warehouse)
+# =============================================================================
+name: threshold_warehouse
+detector_type: threshold
+scene_name: warehouse
+enabled: true
+thresholds:
+- tag: crane_x
+  operator: '>'
+  value: 1350.0
+  severity: high
+  label: crane_x_high
+  description: crane_x exceeds 90% of max (1500.0)
+- tag: crane_x
+  operator: <
+  value: 75.0
+  severity: high
+  label: crane_x_low
+  description: crane_x below safe minimum
+- tag: crane_z
+  operator: '>'
+  value: 900.0
+  severity: high
+  label: crane_z_high
+  description: crane_z exceeds 90% of max (1000.0)
+- tag: crane_z
+  operator: <
+  value: 50.0
+  severity: high
+  label: crane_z_low
+  description: crane_z below safe minimum
+- tag: crane_move_x
+  operator: '>'
+  value: 1350.0
+  severity: medium
+  label: crane_move_x_high
+  description: Setpoint crane_move_x near maximum
+- tag: crane_move_x
+  operator: <
+  value: 150.0
+  severity: medium
+  label: crane_move_x_low
+  description: Setpoint crane_move_x near minimum
+- tag: crane_move_z
+  operator: '>'
+  value: 900.0
+  severity: medium
+  label: crane_move_z_high
+  description: Setpoint crane_move_z near maximum
+- tag: crane_move_z
+  operator: <
+  value: 100.0
+  severity: medium
+  label: crane_move_z_low
+  description: Setpoint crane_move_z near minimum
+- tag: target_slot
+  operator: '>'
+  value: 24
+  severity: high
+  label: target_slot_exceeds_max
+  description: target_slot exceeds max (24)
+- tag: state
+  operator: '>'
+  value: 3
+  severity: high
+  label: invalid_state_high
+  description: State machine value exceeds max (3)
+- tag: state
+  operator: <
+  value: 0
+  severity: high
+  label: invalid_state_low
+  description: State machine value below min (0)
+- tag: conveyor_in
+  operator: ==
+  value: 0
+  severity: medium
+  label: conveyor_in_stopped
+  description: conveyor_in is stopped — possible actuator override
+- tag: conveyor_out
+  operator: ==
+  value: 0
+  severity: medium
+  label: conveyor_out_stopped
+  description: conveyor_out is stopped — possible actuator override

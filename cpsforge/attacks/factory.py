@@ -46,8 +46,11 @@ def build_attacker(config: AttackPolicyConfig, scene: "BaseScene") -> BaseAttack
         # LLM attacker is implemented in Phase 4
         from cpsforge.llm.attacker import LLMAttacker
         return LLMAttacker(config)
+    elif t == "campaign":
+        from cpsforge.attacks.campaign_attacker import CampaignAttacker
+        return CampaignAttacker(config)
     else:
         raise ValueError(
             f"Unknown attacker type: '{config.attacker_type}'. "
-            "Expected: scripted | random | llm"
+            "Expected: scripted | random | llm | campaign"
         )

@@ -1,0 +1,35 @@
+# =============================================================================
+# CPSForge Ablation — ML Detectors Only (Level Control)
+# =============================================================================
+# Tests OCSVM + Isolation Forest detectors without rule-based baselines.
+# Part of the defense ablation study.
+#
+# Usage:
+#   cpsforge run attack --scene level_control --experiment ablation_ml_only_level_control --no-dry-run --eval-run
+# =============================================================================
+
+name: ablation_ml_only_level_control
+description: >
+  Ablation study: ML detectors only (OCSVM + Isolation Forest) on Level Control.
+  Isolates the contribution of learned anomaly detection without thresholds or invariants.
+
+scene_config: "scenes/level_control.yaml"
+plc_config: "system/plc.yaml"
+
+attackers:
+  - scripted_level_control
+
+defenders:
+  - ocsvm_level_control
+  - iforest_level_control
+
+live_writes_enabled: true
+dry_run: false
+eval_run: true
+
+max_steps: 150
+run_duration_s: 150.0
+
+save_trace: true
+save_metrics: true
+reset_after_run: true

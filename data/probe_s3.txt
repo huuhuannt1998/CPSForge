@@ -1,0 +1,428 @@
+Probe log started at 2026-03-18 16:01:23
+Connected to PLC at 192.168.0.1
+
+============================================================
+  Scene 3: Filling Tank
+  DB5, 18 bytes
+============================================================
+
+  --- Sample 0 ---
+    SensorFill           = False     (byte 0)
+    SensorDrain          = True      (byte 2)
+    FIO_Running          = False     (byte 4)
+    FillValve            = False     (byte 6)
+    Filling              = False     (byte 8)
+    DrainValve           = False     (byte 10)
+    Discharging          = False     (byte 12)
+    IsFilling            = True      (byte 14)
+    Enable               = True      (byte 16)
+    --- Physical I/O ---
+    IB10               = 00000010
+    QB 0                = 00000000
+
+  --- Sample 1 ---
+    SensorFill           = False     (byte 0)
+    SensorDrain          = True      (byte 2)
+    FIO_Running          = True      (byte 4)
+    FillValve            = True      (byte 6)
+    Filling              = True      (byte 8)
+    DrainValve           = False     (byte 10)
+    Discharging          = False     (byte 12)
+    IsFilling            = True      (byte 14)
+    Enable               = True      (byte 16)
+    --- Physical I/O ---
+    IB10               = 00000110
+    QB 0                = 00000011
+
+  --- Sample 2 ---
+    SensorFill           = False     (byte 0)
+    SensorDrain          = True      (byte 2)
+    FIO_Running          = True      (byte 4)
+    FillValve            = True      (byte 6)
+    Filling              = True      (byte 8)
+    DrainValve           = False     (byte 10)
+    Discharging          = False     (byte 12)
+    IsFilling            = True      (byte 14)
+    Enable               = True      (byte 16)
+    --- Physical I/O ---
+    IB10               = 00000110
+    QB 0                = 00000011
+
+  --- Sample 3 ---
+    SensorFill           = False     (byte 0)
+    SensorDrain          = True      (byte 2)
+    FIO_Running          = True      (byte 4)
+    FillValve            = True      (byte 6)
+    Filling              = True      (byte 8)
+    DrainValve           = False     (byte 10)
+    Discharging          = False     (byte 12)
+    IsFilling            = True      (byte 14)
+    Enable               = True      (byte 16)
+    --- Physical I/O ---
+    IB10               = 00000110
+    QB 0                = 00000011
+
+  --- Sample 4 ---
+    SensorFill           = False     (byte 0)
+    SensorDrain          = True      (byte 2)
+    FIO_Running          = True      (byte 4)
+    FillValve            = True      (byte 6)
+    Filling              = True      (byte 8)
+    DrainValve           = False     (byte 10)
+    Discharging          = False     (byte 12)
+    IsFilling            = True      (byte 14)
+    Enable               = True      (byte 16)
+    --- Physical I/O ---
+    IB10               = 00000110
+    QB 0                = 00000011
+
+  --- Sample 5 ---
+    SensorFill           = False     (byte 0)
+    SensorDrain          = True      (byte 2)
+    FIO_Running          = True      (byte 4)
+    FillValve            = True      (byte 6)
+    Filling              = True      (byte 8)
+    DrainValve           = False     (byte 10)
+    Discharging          = False     (byte 12)
+    IsFilling            = True      (byte 14)
+    Enable               = True      (byte 16)
+    --- Physical I/O ---
+    IB10               = 00000110
+    QB 0                = 00000011
+
+  --- Sample 6 ---
+    SensorFill           = False     (byte 0)
+    SensorDrain          = True      (byte 2)
+    FIO_Running          = True      (byte 4)
+    FillValve            = True      (byte 6)
+    Filling              = True      (byte 8)
+    DrainValve           = False     (byte 10)
+    Discharging          = False     (byte 12)
+    IsFilling            = True      (byte 14)
+    Enable               = True      (byte 16)
+    --- Physical I/O ---
+    IB10               = 00000110
+    QB 0                = 00000011
+
+  --- Sample 7 ---
+    SensorFill           = False     (byte 0)
+    SensorDrain          = True      (byte 2)
+    FIO_Running          = True      (byte 4)
+    FillValve            = True      (byte 6)
+    Filling              = True      (byte 8)
+    DrainValve           = False     (byte 10)
+    Discharging          = False     (byte 12)
+    IsFilling            = True      (byte 14)
+    Enable               = True      (byte 16)
+    --- Physical I/O ---
+    IB10               = 00000110
+    QB 0                = 00000011
+
+  --- Sample 8 ---
+    SensorFill           = False     (byte 0)
+    SensorDrain          = True      (byte 2)
+    FIO_Running          = True      (byte 4)
+    FillValve            = True      (byte 6)
+    Filling              = True      (byte 8)
+    DrainValve           = False     (byte 10)
+    Discharging          = False     (byte 12)
+    IsFilling            = True      (byte 14)
+    Enable               = True      (byte 16)
+    --- Physical I/O ---
+    IB10               = 00000110
+    QB 0                = 00000000
+
+  --- Sample 9 ---
+    SensorFill           = False     (byte 0)
+    SensorDrain          = True      (byte 2)
+    FIO_Running          = True      (byte 4)
+    FillValve            = True      (byte 6)
+    Filling              = True      (byte 8)
+    DrainValve           = False     (byte 10)
+    Discharging          = False     (byte 12)
+    IsFilling            = True      (byte 14)
+    Enable               = True      (byte 16)
+    --- Physical I/O ---
+    IB10               = 00000110
+    QB 0                = 00000000
+
+  --- Sample 10 ---
+    SensorFill           = False     (byte 0)
+    SensorDrain          = True      (byte 2)
+    FIO_Running          = True      (byte 4)
+    FillValve            = True      (byte 6)
+    Filling              = True      (byte 8)
+    DrainValve           = False     (byte 10)
+    Discharging          = False     (byte 12)
+    IsFilling            = True      (byte 14)
+    Enable               = True      (byte 16)
+    --- Physical I/O ---
+    IB10               = 00000110
+    QB 0                = 00000011
+
+  --- Sample 11 ---
+    SensorFill           = False     (byte 0)
+    SensorDrain          = True      (byte 2)
+    FIO_Running          = True      (byte 4)
+    FillValve            = True      (byte 6)
+    Filling              = True      (byte 8)
+    DrainValve           = False     (byte 10)
+    Discharging          = False     (byte 12)
+    IsFilling            = True      (byte 14)
+    Enable               = True      (byte 16)
+    --- Physical I/O ---
+    IB10               = 00000110
+    QB 0                = 00000000
+
+  --- Sample 12 ---
+    SensorFill           = False     (byte 0)
+    SensorDrain          = True      (byte 2)
+    FIO_Running          = True      (byte 4)
+    FillValve            = True      (byte 6)
+    Filling              = True      (byte 8)
+    DrainValve           = False     (byte 10)
+    Discharging          = False     (byte 12)
+    IsFilling            = True      (byte 14)
+    Enable               = True      (byte 16)
+    --- Physical I/O ---
+    IB10               = 00000110
+    QB 0                = 00000011
+
+  --- Sample 13 ---
+    SensorFill           = False     (byte 0)
+    SensorDrain          = True      (byte 2)
+    FIO_Running          = True      (byte 4)
+    FillValve            = True      (byte 6)
+    Filling              = True      (byte 8)
+    DrainValve           = False     (byte 10)
+    Discharging          = False     (byte 12)
+    IsFilling            = True      (byte 14)
+    Enable               = True      (byte 16)
+    --- Physical I/O ---
+    IB10               = 00000110
+    QB 0                = 00000000
+
+  --- Sample 14 ---
+    SensorFill           = False     (byte 0)
+    SensorDrain          = True      (byte 2)
+    FIO_Running          = True      (byte 4)
+    FillValve            = True      (byte 6)
+    Filling              = True      (byte 8)
+    DrainValve           = False     (byte 10)
+    Discharging          = False     (byte 12)
+    IsFilling            = True      (byte 14)
+    Enable               = True      (byte 16)
+    --- Physical I/O ---
+    IB10               = 00000110
+    QB 0                = 00000011
+
+  --- Sample 15 ---
+    SensorFill           = False     (byte 0)
+    SensorDrain          = True      (byte 2)
+    FIO_Running          = True      (byte 4)
+    FillValve            = True      (byte 6)
+    Filling              = True      (byte 8)
+    DrainValve           = False     (byte 10)
+    Discharging          = False     (byte 12)
+    IsFilling            = True      (byte 14)
+    Enable               = True      (byte 16)
+    --- Physical I/O ---
+    IB10               = 00000110
+    QB 0                = 00000011
+
+  --- Sample 16 ---
+    SensorFill           = False     (byte 0)
+    SensorDrain          = True      (byte 2)
+    FIO_Running          = True      (byte 4)
+    FillValve            = True      (byte 6)
+    Filling              = True      (byte 8)
+    DrainValve           = False     (byte 10)
+    Discharging          = False     (byte 12)
+    IsFilling            = True      (byte 14)
+    Enable               = True      (byte 16)
+    --- Physical I/O ---
+    IB10               = 00000110
+    QB 0                = 00000011
+
+  --- Sample 17 ---
+    SensorFill           = False     (byte 0)
+    SensorDrain          = True      (byte 2)
+    FIO_Running          = True      (byte 4)
+    FillValve            = True      (byte 6)
+    Filling              = True      (byte 8)
+    DrainValve           = False     (byte 10)
+    Discharging          = False     (byte 12)
+    IsFilling            = True      (byte 14)
+    Enable               = True      (byte 16)
+    --- Physical I/O ---
+    IB10               = 00000110
+    QB 0                = 00000011
+
+  --- Sample 18 ---
+    SensorFill           = False     (byte 0)
+    SensorDrain          = True      (byte 2)
+    FIO_Running          = True      (byte 4)
+    FillValve            = True      (byte 6)
+    Filling              = True      (byte 8)
+    DrainValve           = False     (byte 10)
+    Discharging          = False     (byte 12)
+    IsFilling            = True      (byte 14)
+    Enable               = True      (byte 16)
+    --- Physical I/O ---
+    IB10               = 00000110
+    QB 0                = 00000000
+
+  --- Sample 19 ---
+    SensorFill           = False     (byte 0)
+    SensorDrain          = True      (byte 2)
+    FIO_Running          = True      (byte 4)
+    FillValve            = True      (byte 6)
+    Filling              = True      (byte 8)
+    DrainValve           = False     (byte 10)
+    Discharging          = False     (byte 12)
+    IsFilling            = True      (byte 14)
+    Enable               = True      (byte 16)
+    --- Physical I/O ---
+    IB10               = 00000110
+    QB 0                = 00000011
+
+  --- Sample 20 ---
+    SensorFill           = False     (byte 0)
+    SensorDrain          = True      (byte 2)
+    FIO_Running          = True      (byte 4)
+    FillValve            = True      (byte 6)
+    Filling              = True      (byte 8)
+    DrainValve           = False     (byte 10)
+    Discharging          = False     (byte 12)
+    IsFilling            = True      (byte 14)
+    Enable               = True      (byte 16)
+    --- Physical I/O ---
+    IB10               = 00000110
+    QB 0                = 00000011
+
+  --- Sample 21 ---
+    SensorFill           = False     (byte 0)
+    SensorDrain          = True      (byte 2)
+    FIO_Running          = True      (byte 4)
+    FillValve            = True      (byte 6)
+    Filling              = True      (byte 8)
+    DrainValve           = False     (byte 10)
+    Discharging          = False     (byte 12)
+    IsFilling            = True      (byte 14)
+    Enable               = True      (byte 16)
+    --- Physical I/O ---
+    IB10               = 00000110
+    QB 0                = 00000011
+
+  --- Sample 22 ---
+    SensorFill           = False     (byte 0)
+    SensorDrain          = True      (byte 2)
+    FIO_Running          = True      (byte 4)
+    FillValve            = True      (byte 6)
+    Filling              = True      (byte 8)
+    DrainValve           = False     (byte 10)
+    Discharging          = False     (byte 12)
+    IsFilling            = True      (byte 14)
+    Enable               = True      (byte 16)
+    --- Physical I/O ---
+    IB10               = 00000110
+    QB 0                = 00000011
+
+  --- Sample 23 ---
+    SensorFill           = False     (byte 0)
+    SensorDrain          = True      (byte 2)
+    FIO_Running          = True      (byte 4)
+    FillValve            = True      (byte 6)
+    Filling              = True      (byte 8)
+    DrainValve           = False     (byte 10)
+    Discharging          = False     (byte 12)
+    IsFilling            = True      (byte 14)
+    Enable               = True      (byte 16)
+    --- Physical I/O ---
+    IB10               = 00000110
+    QB 0                = 00000011
+
+  --- Sample 24 ---
+    SensorFill           = False     (byte 0)
+    SensorDrain          = True      (byte 2)
+    FIO_Running          = True      (byte 4)
+    FillValve            = True      (byte 6)
+    Filling              = True      (byte 8)
+    DrainValve           = False     (byte 10)
+    Discharging          = False     (byte 12)
+    IsFilling            = True      (byte 14)
+    Enable               = True      (byte 16)
+    --- Physical I/O ---
+    IB10               = 00000110
+    QB 0                = 00000000
+
+  --- Sample 25 ---
+    SensorFill           = False     (byte 0)
+    SensorDrain          = True      (byte 2)
+    FIO_Running          = True      (byte 4)
+    FillValve            = True      (byte 6)
+    Filling              = True      (byte 8)
+    DrainValve           = False     (byte 10)
+    Discharging          = False     (byte 12)
+    IsFilling            = True      (byte 14)
+    Enable               = True      (byte 16)
+    --- Physical I/O ---
+    IB10               = 00000110
+    QB 0                = 00000011
+
+  --- Sample 26 ---
+    SensorFill           = False     (byte 0)
+    SensorDrain          = True      (byte 2)
+    FIO_Running          = True      (byte 4)
+    FillValve            = True      (byte 6)
+    Filling              = True      (byte 8)
+    DrainValve           = False     (byte 10)
+    Discharging          = False     (byte 12)
+    IsFilling            = True      (byte 14)
+    Enable               = True      (byte 16)
+    --- Physical I/O ---
+    IB10               = 00000110
+    QB 0                = 00000011
+
+  --- Sample 27 ---
+    SensorFill           = False     (byte 0)
+    SensorDrain          = True      (byte 2)
+    FIO_Running          = True      (byte 4)
+    FillValve            = True      (byte 6)
+    Filling              = True      (byte 8)
+    DrainValve           = False     (byte 10)
+    Discharging          = False     (byte 12)
+    IsFilling            = True      (byte 14)
+    Enable               = True      (byte 16)
+    --- Physical I/O ---
+    IB10               = 00000110
+    QB 0                = 00000011
+
+  --- Sample 28 ---
+    SensorFill           = False     (byte 0)
+    SensorDrain          = True      (byte 2)
+    FIO_Running          = True      (byte 4)
+    FillValve            = True      (byte 6)
+    Filling              = True      (byte 8)
+    DrainValve           = False     (byte 10)
+    Discharging          = False     (byte 12)
+    IsFilling            = True      (byte 14)
+    Enable               = True      (byte 16)
+    --- Physical I/O ---
+    IB10               = 00000110
+    QB 0                = 00000000
+
+  --- Sample 29 ---
+    SensorFill           = False     (byte 0)
+    SensorDrain          = True      (byte 2)
+    FIO_Running          = True      (byte 4)
+    FillValve            = True      (byte 6)
+    Filling              = True      (byte 8)
+    DrainValve           = False     (byte 10)
+    Discharging          = False     (byte 12)
+    IsFilling            = True      (byte 14)
+    Enable               = True      (byte 16)
+    --- Physical I/O ---
+    IB10               = 00000110
+    QB 0                = 00000011
+Disconnected.

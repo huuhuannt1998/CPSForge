@@ -1,0 +1,213 @@
+# =============================================================================
+# CPSForge Scene Configuration — Assembler (Analog)
+# =============================================================================
+# Factory I/O scene: Assembler (Analog)
+# DB15: Instance DB for FB_AssemblerAnalog (non-optimized)
+#
+# Physical setup:
+#   - Siemens S7 PLC at 192.168.0.1, TIA Portal v17
+#   - Two-axis pick-and-place with REAL analog positions
+#   - SetpointX/SetpointZ for target, PosX/PosZ for feedback
+#   - 7-state machine same as digital assembler
+#
+# Attack surface: Conveyors, SetpointX/SetpointZ, Clamp
+# =============================================================================
+
+scene_name: assembler_analog
+scene_id: 6  # OB_Main CASE 6 — DB8
+
+description: >
+  Analog two-axis assembler. Same 7-state pick-and-place as digital version
+  but uses REAL analog setpoints (SetpointX/SetpointZ) and position feedback
+  (PosX/PosZ) with TOLERANCE-based arrival checking.
+
+sampling_interval_ms: 500
+
+tags:
+  - name: part_at_pickup
+    address: "DB8,BOOL0.0"
+    data_type: bool
+    access: read
+    description: "Part detected at pickup position"
+    category: sensor
+    scene_name: assembler_analog
+
+  - name: part_at_place
+    address: "DB8,BOOL2.0"
+    data_type: bool
+    access: read
+    description: "Part detected at place position"
+    category: sensor
+    scene_name: assembler_analog
+
+  - name: lid_at_pickup
+    address: "DB8,BOOL4.0"
+    data_type: bool
+    access: read
+    description: "Lid detected at pickup"
+    category: sensor
+    scene_name: assembler_analog
+
+  - name: clamp_sensor
+    address: "DB8,BOOL6.0"
+    data_type: bool
+    access: read
+    description: "Clamp closed sensor"
+    category: sensor
+    scene_name: assembler_analog
+
+  - name: pos_x
+    address: "DB8,REAL8"
+    data_type: real
+    access: read
+    unit: "mm"
+    min_value: 0.0
+    max_value: 1000.0
+    description: "Current X-axis position"
+    category: sensor
+    scene_name: assembler_analog
+
+  - name: pos_z
+    address: "DB8,REAL12"
+    data_type: real
+    access: read
+    unit: "mm"
+    min_value: 0.0
+    max_value: 500.0
+    description: "Current Z-axis position"
+    category: sensor
+    scene_name: assembler_analog
+
+  - name: conveyor_base
+    address: "DB8,BOOL16.0"
+    data_type: bool
+    access: read_write
+    description: "Base part conveyor"
+    category: actuator
+    scene_name: assembler_analog
+
+  - name: conveyor_lid
+    address: "DB8,BOOL18.0"
+    data_type: bool
+    access: read_write
+    description: "Lid conveyor"
+    category: actuator
+    scene_name: assembler_analog
+
+  - name: conveyor_out
+    address: "DB8,BOOL20.0"
+    data_type: bool
+    access: read_write
+    description: "Output conveyor"
+    category: actuator
+    scene_name: assembler_analog
+
+  - name: clamp
+    address: "DB8,BOOL22.0"
+    data_type: bool
+    access: read_write
+    description: "Clamp actuator"
+    category: actuator
+    scene_name: assembler_analog
+
+  - name: emitter
+    address: "DB8,BOOL24.0"
+    data_type: bool
+    access: read_write
+    description: "Part emitter"
+    category: actuator
+    scene_name: assembler_analog
+
+  - name: setpoint_x
+    address: "DB8,REAL26"
+    data_type: real
+    access: read_write
+    unit: "mm"
+    min_value: 0.0
+    max_value: 1000.0
+    description: "X-axis setpoint position"
+    category: setpoint
+    scene_name: assembler_analog
+
+  - name: setpoint_z
+    address: "DB8,REAL30"
+    data_type: real
+    access: read_write
+    unit: "mm"
+    min_value: 0.0
+    max_value: 500.0
+    description: "Z-axis setpoint position"
+    category: setpoint
+    scene_name: assembler_analog
+
+  - name: state
+    address: "DB8,INT34"
+    data_type: int
+    access: read
+    min_value: 0
+    max_value: 6
+    description: "State: 0-6, same as digital assembler"
+    category: internal
+    scene_name: assembler_analog
+
+writable_tags:
+  - conveyor_base
+  - conveyor_lid
+  - conveyor_out
+  - clamp
+  - emitter
+  - setpoint_x
+  - setpoint_z
+
+attack_surface:
+  - conveyor_base
+  - conveyor_lid
+  - setpoint_x
+  - setpoint_z
+  - clamp
+
+safety_rules:
+  - rule_id: ASMA-SR-001
+    description: "SetpointX must stay within mechanical range"
+    rule_type: range
+    tags: [setpoint_x]
+    parameters:
+      min: 0.0
+      max: 1000.0
+    enabled: true
+    priority: 100
+
+  - rule_id: ASMA-SR-002
+    description: "SetpointZ must stay within mechanical range"
+    rule_type: range
+    tags: [setpoint_z]
+    parameters:
+      min: 0.0
+      max: 500.0
+    enabled: true
+    priority: 100
+
+  - rule_id: ASMA-SR-003
+    description: "Clamp override capped at 30 seconds"
+    rule_type: duration
+    tags: [clamp]
+    parameters:
+      max_duration_ms: 30000
+    enabled: true
+    priority: 50
+
+reset_procedure:
+  - tag: conveyor_base
+    value: false
+  - tag: conveyor_lid
+    value: false
+  - tag: conveyor_out
+    value: false
+  - tag: clamp
+    value: false
+  - tag: emitter
+    value: false
+  - tag: setpoint_x
+    value: 0.0
+  - tag: setpoint_z
+    value: 0.0

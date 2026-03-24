@@ -1,0 +1,21 @@
+# =============================================================================
+# CPSForge Live Eval — LLM (Pick Place Basic)
+# =============================================================================
+name: live_llm_pick_place_basic
+description: 'Live eval run: LLM batch attacker vs threshold + invariant detectors
+  on pick place basic.'
+scene_config: scenes/pick_place_basic.yaml
+plc_config: system/plc.yaml
+attackers:
+- llm_pick_place_basic
+defenders:
+- threshold_pick_place_basic
+- invariant_pick_place_basic
+live_writes_enabled: true
+dry_run: false
+eval_run: true
+max_steps: 150
+run_duration_s: 150.0
+save_trace: true
+save_metrics: true
+reset_after_run: true

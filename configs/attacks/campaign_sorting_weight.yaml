@@ -1,0 +1,22 @@
+# =============================================================================
+# CPSForge Attack Policy — LLM Campaign (Sorting Weight)
+# =============================================================================
+name: campaign_sorting_weight
+attacker_type: campaign
+scene_name: sorting_weight
+max_actions: 12
+inter_attack_delay_ms: 3000
+attack_types:
+  - actuator_override
+  - sensor_spoof
+  - setpoint_shift
+llm_provider: local
+llm_max_retries: 3
+multi_step: true
+
+parameters:
+  campaign_objective: >
+    Cause items to be mis-sorted by manipulating weight thresholds or
+    the weight sensor reading. The goal is to shift the classification
+    boundaries so that light items go to the heavy bin and vice versa,
+    while keeping changes small enough to avoid immediate detection.

@@ -1,0 +1,16 @@
+# =============================================================================
+# CPSForge Defender — One-Class SVM Detector (Filling Tank)
+# =============================================================================
+name: ocsvm_filling_tank
+detector_type: ocsvm
+scene_name: filling_tank
+enabled: true
+model_path: null
+window_size: 20
+anomaly_threshold: 0.5
+
+parameters:
+  kernel: rbf
+  nu: 0.05
+  gamma: scale
+  use_window: true

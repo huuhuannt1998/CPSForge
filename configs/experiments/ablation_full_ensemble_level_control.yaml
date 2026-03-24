@@ -1,0 +1,38 @@
+# =============================================================================
+# CPSForge Ablation — Full Ensemble (Level Control)
+# =============================================================================
+# Tests all detectors together: threshold + invariant + OCSVM + IForest + CUSUM.
+# Part of the defense ablation study.
+#
+# Usage:
+#   cpsforge run attack --scene level_control --experiment ablation_full_ensemble_level_control --no-dry-run --eval-run
+# =============================================================================
+
+name: ablation_full_ensemble_level_control
+description: >
+  Ablation study: full detector ensemble on Level Control.
+  Tests combined output of all available detectors.
+
+scene_config: "scenes/level_control.yaml"
+plc_config: "system/plc.yaml"
+
+attackers:
+  - scripted_level_control
+
+defenders:
+  - threshold_level_control
+  - invariant_level_control
+  - ocsvm_level_control
+  - iforest_level_control
+  - cusum_level_control
+
+live_writes_enabled: true
+dry_run: false
+eval_run: true
+
+max_steps: 150
+run_duration_s: 150.0
+
+save_trace: true
+save_metrics: true
+reset_after_run: true

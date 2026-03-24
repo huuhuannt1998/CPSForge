@@ -1,0 +1,60 @@
+# =============================================================================
+# CPSForge Defender — Threshold (Sorting Weight — 3-Way Sorter)
+# =============================================================================
+name: threshold_sorting_weight
+detector_type: threshold
+scene_name: sorting_weight
+enabled: true
+thresholds:
+  # --- Weight sensor ---
+  - tag: weight
+    operator: '>'
+    value: 13.0
+    severity: high
+    label: weight_over_max
+    description: Scale reading exceeds expected max (~13 kg)
+  # --- Setpoint drift ---
+  - tag: light_thresh
+    operator: '>'
+    value: 8.0
+    severity: medium
+    label: light_thresh_high
+    description: Light threshold shifted too high — all boxes go left
+  - tag: light_thresh
+    operator: <
+    value: 0.5
+    severity: medium
+    label: light_thresh_low
+    description: Light threshold too low — no boxes to left
+  - tag: heavy_thresh
+    operator: '>'
+    value: 12.0
+    severity: medium
+    label: heavy_thresh_high
+    description: Heavy threshold too high — no boxes to right
+  - tag: heavy_thresh
+    operator: <
+    value: 1.5
+    severity: medium
+    label: heavy_thresh_low
+    description: Heavy threshold too low — all boxes go right
+  # --- State machine ---
+  - tag: i_state
+    operator: '>'
+    value: 7
+    severity: high
+    label: invalid_state_high
+    description: State machine value exceeds max (7)
+  - tag: i_state
+    operator: <
+    value: 0
+    severity: high
+    label: invalid_state_low
+    description: State machine value below min (0)
+  # --- Conveyor not running ---
+  - tag: entry_conveyor
+    operator: ==
+    value: 0
+    severity: medium
+    label: entry_conveyor_stopped
+    description: Entry conveyor stopped — possible actuator override

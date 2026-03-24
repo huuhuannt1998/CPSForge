@@ -1,0 +1,38 @@
+# =============================================================================
+# CPSForge Defender — Threshold (Elevator Basic)
+# =============================================================================
+name: threshold_elevator_basic
+detector_type: threshold
+scene_name: elevator_basic
+enabled: true
+thresholds:
+- tag: left_state
+  operator: '>'
+  value: 3
+  severity: high
+  label: left_state_exceeds_max
+  description: left_state exceeds max (3)
+- tag: right_state
+  operator: '>'
+  value: 3
+  severity: high
+  label: right_state_exceeds_max
+  description: right_state exceeds max (3)
+- tag: enable
+  operator: ==
+  value: 0
+  severity: high
+  label: enable_off
+  description: System enable flag is FALSE — process halted
+- tag: entry_conveyor
+  operator: ==
+  value: 0
+  severity: medium
+  label: entry_conveyor_stopped
+  description: entry_conveyor is stopped — possible actuator override
+- tag: unload_left
+  operator: ==
+  value: 0
+  severity: medium
+  label: unload_left_stopped
+  description: unload_left is stopped — possible actuator override
