@@ -1,0 +1,93 @@
+\section{Evaluation}
+\label{sec:evaluation}
+
+All results are from live PLC runs. ASR values are lower bounds under the safety shield: an unconstrained adversary could achieve higher ASR. This constraint applies uniformly and does not affect within-table comparisons.
+
+\subsection{RQ1: Context Ablation}
+\label{sec:eval:rq1}
+
+Table~\ref{tab:context_ablation} shows how context depth affects attack capability (Qwen2.5-3B, no defense).
+
+\input{sections/table3_context}
+
+\textbf{Finding 1: Self-deterrence under rich context.} Full context produces \emph{zero} attack proposals on Sorting by Weight---the model decides ``wait'' on every call across all repeats. On Level Control, full context reduces proposals from 23 (minimal) to 5, all shield-blocked. Rich operational context (phase inference, safety rules) makes the 3B model overly cautious.
+
+\textbf{Finding 2: Self-deterrence is scene-dependent.} On Sorting by Height, full context is the \emph{most} effective tier (13.3\% ASR vs.\ 3.3\% at minimal)---the discrete state-machine logic benefits from richer phase context. On Sorting by Weight, partial context achieves 40\% ASR while full drops to zero proposals.
+
+\textbf{Finding 3: Context changes strategy.} Minimal context produces brute-force overrides. Partial shifts toward setpoint manipulation. Full, when it does attack (Sort.~Height), targets a narrow set of tags with deliberate overrides. More context makes the model more selective but also more conservative.
+
+\textbf{Implication:} Exposing operational context may itself serve as a defense---deterrence through transparency.
+
+\subsection{RQ2: Fine-Tuning Impact}
+\label{sec:eval:rq2}
+
+Table~\ref{tab:finetune_comparison} compares base vs.\ QLoRA-finetuned Qwen2.5-3B.
+
+\input{sections/table_rq2_finetune}
+
+\textbf{Finding 4: Fine-tuning enables attacks on Level Control.} The finetuned model achieves 36.7\% ASR (11/30 writes) on Level Control minimal, vs.\ 0\% for the base model. Training teaches the model to propose shield-legal values.
+
+\textbf{Finding 5: Schema regression under full context.} The finetuned model achieves VAR=0\% under full context on all scenes---every output fails schema validation. This is a prompt-length distributional mismatch: training examples come from shorter prompts; full-context prompts ($\sim$1.5--2K tokens) fall outside the training distribution. Addressable by augmenting training data with full-context examples.
+
+\textbf{Finding 6: Defense capability preserved.} The finetuned LLM defender retains 100\% blocking on Sort.~Height (Table~\ref{tab:defense_finetuned}), confirming dual-role training preserves defense while modifying attack behavior.
+
+\subsection{RQ3: Online vs.\ Static Attack Mode}
+\label{sec:eval:rq3}
+
+Table~\ref{tab:attacker_comparison} compares three attacker modes (no defense).
+
+\input{sections/table4_attacker}
+
+\textbf{Finding 7: Static LLM generates zero valid proposals.} The one-shot batch LLM produces no schema-valid outputs---the 350-token budget is insufficient for a multi-object JSON array. This reflects our experimental design constraint, not a fundamental limitation of one-shot attacks.
+
+\textbf{Finding 8: Online MITM is the only effective attacker on complex scenes.} On Sort.~Weight (35 tags), the online MITM achieves 53.8\% ASR while random and static generate zero proposals. The LLM's ability to reason about control logic is essential on complex scenes.
+
+\textbf{Finding 9: Random baseline is competitive on discrete scenes.} On Sort.~Height, random achieves 13.3\% ASR vs.\ 3.3\% for the online MITM---binary actuators allow random overrides to accidentally align with vulnerable states.
+
+\subsection{RQ4: Defense Effectiveness}
+\label{sec:eval:rq4}
+
+Table~\ref{tab:defense_comparison} (base model) and Table~\ref{tab:defense_finetuned} (finetuned) present defense results.
+
+\input{sections/table5_defense}
+\input{sections/table_rq4_finetuned}
+
+\textbf{Finding 10: LLM defender achieves 100\% prevention on Sort.~Height.} The LLM defender blocks all 30 proposals---including cross-model blocking of GPT-4o-mini proposals (Finding~14). No rule-based defense achieves comparable blocking on this scene. \textbf{Critical caveat:} the LLM defender also blocks 98.7\% of legitimate writes (226/229 probes), indicating a block-everything policy rather than discriminative detection (\S\ref{sec:discussion}).
+
+\textbf{Finding 11: Self-deterrence confounds defense measurement.} On Level Control and Sort.~Weight, most defense variants produce 0 proposals---the attacker self-deterred, not the defense. Defense comparison is most interpretable on Sort.~Height, where proposals are consistent across configurations.
+
+\textbf{Finding 12: Finetuned attacker beats rule-based defenses.} On Sort.~Height, the finetuned attacker achieves 25--40\% ASR against all rule-based defenses, vs.\ 0--17\% for the base model. But the LLM defender still blocks 100\%.
+
+\subsection{RQ5: Cross-Model Robustness}
+\label{sec:eval:rq5}
+
+Table~\ref{tab:crossmodel} compares three local models (no defense).
+
+\input{sections/table6_crossmodel}
+
+\textbf{Finding 13: ASR scales with model size.} On Level Control: Qwen2.5-3B 13.7\%, SmolLM3-3B 11.7\%, Qwen3-1.7B 0\%. The 1.7B model produces valid writes but never shifts the tag successfully---smaller models generate semantically ineffective actions.
+
+\textbf{Finding 14: Cross-family capability is comparable at 3B.} Qwen2.5-3B and SmolLM3-3B achieve similar ASR despite different architectures, supporting generalizability.
+
+\subsection{RQ6: Frontier Model Scaling}
+\label{sec:eval:rq6}
+
+Table~\ref{tab:frontier} compares GPT-4o-mini with Qwen2.5-3B across the same conditions.
+
+\input{sections/table_rq6_frontier}
+
+\textbf{Finding 15: Self-deterrence vanishes at frontier scale.} GPT-4o-mini generates 30/30 proposals in every cell (45 runs)---zero self-deterrence under any context level. This is a \emph{model-capacity artifact} of 3B-class models, not an inherent property of LLM attackers. Defenders cannot rely on deterrence through transparency against larger models.
+
+\textbf{Finding 16: Frontier model achieves 100\% ASR on Sort.~Weight.} GPT-4o-mini achieves 100\% ASR (18/18 writes) under minimal context---the highest in the evaluation. Under full context, all proposals are shield-blocked (different mechanism from Qwen's self-deterrence).
+
+\textbf{Finding 17: Full context enables frontier attacks on Level Control.} GPT-4o-mini achieves 20\% ASR on Level Control full (6/30 writes)---the only configuration where any model achieves nonzero ASR on LC full. More context provides better targeting rather than suppressing attacks.
+
+\textbf{Finding 18: Scene-dependent reversal.} On Sort.~Height, GPT-4o-mini achieves 0\% ASR (30/30 writes execute but none succeed) while Qwen2.5-3B achieves 13.3\%. The frontier model selects syntactically valid but semantically ineffective targets for this scene.
+
+\textbf{Finding 19: LLM defender generalizes cross-model.} The local Qwen2.5-3B defender blocks all GPT-4o-mini proposals (0/30 reach the PLC in all 6 defense cells). A 3B defender blocks a frontier attacker.
+
+\subsection{Threats to Validity}
+
+\textbf{Internal:} Post-hoc ASR measurement may undercount PLC corrections within one polling cycle. The 3-repeat design limits statistical power---Wilson CIs can exceed $\pm$30\,pp for cells with $\leq$10 writes.
+\textbf{External:} One PLC model (S7-1200) with software-emulated plants. Results may not transfer to other PLC families or physical plants.
+\textbf{Construct:} ASR measures tag displacement, not physical harm (e.g., overflow).

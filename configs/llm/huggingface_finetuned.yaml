@@ -1,0 +1,35 @@
+# CPSForge LLM Provider Config -- HuggingFace (Fine-tuned Qwen2.5-3B)
+# =====================================================================
+# Same as huggingface.yaml but loads a QLoRA v2 adapter on top of the base
+# model for fine-tuned inference (RQ2: before/after comparison).
+#
+# v2 adapter trained on dual-role data:
+#   - 83 attack examples (post-hoc verified successful)
+#   - 608 defense "block" examples
+#   - 1366 defense "allow" examples
+#
+# Workflow:
+#   1. Run baseline experiments with configs/llm/huggingface.yaml
+#   2. Fine-tune:  python -m cpsforge.finetune.trainer
+#   3. Run fine-tuned experiments with this config
+#
+# Requirements:
+#   pip install transformers>=4.48 accelerate bitsandbytes>=0.43 peft>=0.14
+
+provider: huggingface
+model: models/qwen2.5-3b-instruct    # same base as huggingface.yaml
+adapter_path: finetune/adapters/qwen25_3b_cps_v2/final_adapter
+load_in_4bit: true
+
+max_tokens: 300          # attack JSON is ~150-200 tokens; 300 leaves margin
+temperature: 0.2
+timeout_s: 300.0
+
+api_key_env: ""
+base_url: null
+
+log_prompts: false
+redact_prompts: false
+log_llm_responses: true
+
+prompt_template_version: "v2"

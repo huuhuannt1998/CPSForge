@@ -29,6 +29,8 @@ from cpsforge.analysis.tables import (
     full_paper_export,
 )
 from cpsforge.analysis.replay_analysis import hard_case_generalization
+from cpsforge.analysis.context_analysis import ContextAblationAnalyzer, compute_context_gain
+from cpsforge.analysis.finetune_analysis import FinetuneAnalyzer, compute_finetune_deltas
 
 __all__ = [
     "cross_attacker_table",
@@ -40,4 +42,8 @@ __all__ = [
     "latency_distribution",
     "hard_case_generalization",
     "full_paper_export",
+    "ContextAblationAnalyzer",
+    "compute_context_gain",
+    "FinetuneAnalyzer",
+    "compute_finetune_deltas",
 ]

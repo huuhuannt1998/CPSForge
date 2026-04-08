@@ -1,0 +1,23 @@
+# CPSForge LLM Provider Config -- OpenAI GPT-4o-mini (API)
+# =====================================================================
+# Frontier model for cross-model comparison (RQ5 / CCS Phase 1).
+# Uses the standard OpenAI API via the local_openai_compatible provider.
+#
+# Requires OPENAI_API_KEY set in .env or environment.
+
+provider: local_openai_compatible
+model: gpt-4o-mini
+api_key_env: OPENAI_API_KEY
+
+base_url: https://api.openai.com/v1
+
+max_tokens: 350                 # match existing experiment token budget
+temperature: 0.2
+timeout_s: 60.0                 # API calls are faster than local 3B
+
+# Logging controls
+log_prompts: false
+redact_prompts: false
+log_llm_responses: true
+
+prompt_template_version: "v2"

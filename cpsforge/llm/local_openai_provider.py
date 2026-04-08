@@ -59,7 +59,15 @@ class LocalOpenAICompatibleProvider(BaseLLMProvider):
     def __init__(self, config: LLMConfig) -> None:
         super().__init__(config)
         self._base_url = (config.base_url or _DEFAULT_BASE_URL).rstrip("/")
-        self._http = httpx.Client(timeout=config.timeout_s)
+        # Build auth headers if an API key env var is specified
+        import os
+        headers: Dict[str, str] = {}
+        key_env = getattr(config, "api_key_env", "") or ""
+        if key_env:
+            api_key = os.environ.get(key_env, "")
+            if api_key:
+                headers["Authorization"] = f"Bearer {api_key}"
+        self._http = httpx.Client(timeout=config.timeout_s, headers=headers)
 
     # ------------------------------------------------------------------
     # Identity

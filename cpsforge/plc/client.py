@@ -5,7 +5,7 @@ Wraps python-snap7 to provide a clean, typed interface for reading and writing
 Siemens S7 PLC tags.
 
 Design principles:
-  - This client drives the REAL PLC only. There is no mock/simulation backend.
+  - This client implements the PlcBackend interface for Siemens S7 PLCs.
   - All WRITE operations are gated by the PlcClient.live_writes_enabled flag.
     If the flag is False (default), write_tag() raises a SafetyError.
   - Callers outside this module (attackers, orchestrators) must use the
@@ -25,8 +25,14 @@ from typing import Any, Dict, List, Optional, Union
 from cpsforge.core.config import PLCConfig
 from cpsforge.core.models import TagDefinition, DataType
 from cpsforge.plc.address import parse_address, S7Area, S7WordLen, S7Address
+from cpsforge.plc.backend import PlcBackend
 
 logger = logging.getLogger(__name__)
+
+# Lazy import to avoid circular dependency
+def _get_event_logger_class():
+    from cpsforge.plc.event_logger import PlcEventLogger
+    return PlcEventLogger
 
 
 class PLCConnectionError(RuntimeError):
@@ -87,9 +93,12 @@ def _decode_value(raw: bytes, word_len: S7WordLen, bit: int = 0) -> Any:
 # ---------------------------------------------------------------------------
 
 
-class PlcClient:
+class PlcClient(PlcBackend):
     """
     Thread-safe Siemens S7 PLC client built on python-snap7.
+
+    Implements :class:`PlcBackend` for Siemens S7-1200/1500 PLCs via
+    the python-snap7 (ISO-on-TCP) library.
 
     Parameters
     ----------
@@ -102,11 +111,13 @@ class PlcClient:
     Do not set that flag unless you are intentionally writing to live hardware.
     """
 
-    def __init__(self, config: PLCConfig) -> None:
+    def __init__(self, config: PLCConfig, event_logger=None) -> None:
         self._config = config
         self._lock = Lock()
         self._client: Optional[Any] = None  # snap7.client.Client, imported lazily
         self._connected: bool = False
+        self._event_logger = event_logger  # Optional[PlcEventLogger]
+        self._current_step: int = 0        # Updated by runner each step
 
     # ------------------------------------------------------------------
     # Lazy snap7 import (allows the rest of CPSForge to import without snap7)
@@ -161,6 +172,8 @@ class PlcClient:
                     )
                     self._connected = True
                     logger.info("PLC connected: %s", self._config.host)
+                    if self._event_logger:
+                        self._event_logger.log_connect(self._config.host)
                     return
                 except Exception as exc:
                     last_exc = exc
@@ -179,6 +192,8 @@ class PlcClient:
                 try:
                     self._client.disconnect()
                     logger.info("PLC disconnected.")
+                    if self._event_logger:
+                        self._event_logger.log_disconnect()
                 except Exception as exc:
                     logger.warning("Error during PLC disconnect: %s", exc)
             self._connected = False
@@ -343,6 +358,8 @@ class PlcClient:
         results: Dict[str, Optional[Any]] = {}
         for tag in tags:
             results[tag.name] = self.read_tag(tag)
+        if self._event_logger:
+            self._event_logger.log_poll(self._current_step, results)
         return results
 
     # ------------------------------------------------------------------
@@ -367,6 +384,16 @@ class PlcClient:
         success = self._raw_write(addr, raw)
         if success:
             logger.debug("PLC write: %s = %s", tag.name, value)
+            if self._event_logger:
+                self._event_logger.log_write(
+                    step_id=self._current_step,
+                    tag_name=tag.name,
+                    address_str=tag.address,
+                    written_value=value,
+                    db_number=addr.db_number,
+                    byte_offset=addr.start,
+                    data_type=addr.word_len.name,
+                )
         return success
 
     def write_many(self, tag_values: Dict[TagDefinition, Any]) -> Dict[str, bool]:

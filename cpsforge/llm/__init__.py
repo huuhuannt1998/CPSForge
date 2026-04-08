@@ -24,6 +24,7 @@ from cpsforge.llm.attacker import LLMAttacker
 from cpsforge.llm.base_provider import BaseLLMProvider, CompletionResult, ProviderError
 from cpsforge.llm.factory import build_provider, list_providers
 from cpsforge.llm.local_openai_provider import LocalOpenAICompatibleProvider
+from cpsforge.llm.huggingface_provider import HuggingFaceProvider
 from cpsforge.llm.prompt_builder import PromptBuilder
 from cpsforge.llm.prompt_logger import NullPromptLogger, PromptLogger
 from cpsforge.llm.schema_validator import ActionSchemaValidator, ValidationError
@@ -37,6 +38,7 @@ __all__ = [
     "ProviderError",
     # Concrete provider
     "LocalOpenAICompatibleProvider",
+    "HuggingFaceProvider",
     # Factory
     "build_provider",
     "list_providers",

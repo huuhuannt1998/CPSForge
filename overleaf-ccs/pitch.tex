@@ -1,0 +1,232 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{parskip}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage[T1]{fontenc}
+
+\title{\textbf{CPSForge: Closed-Loop LLM Red/Blue Team Framework\\for Cyber-Physical System Security}}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+
+\section*{Motivation}
+
+Industrial control systems communicate over field protocols (S7, Modbus, OPC-UA) between PLCs and physical machines. Every polling cycle carries actuator commands, sensor readings, and setpoint values --- a live stream of control-plane communication. An attacker with protocol-level network access can read this stream, infer process state, and inject malicious writes at exactly the right moment to cause physical damage. A defender watching the same stream can detect writes that are inconsistent with the observed process state and block them before they execute.
+
+CPSForge automates both roles using a local LLM. The model is placed in the communication path between PLC and plant as a man-in-the-middle agent. Every 500\,ms it observes the live tag stream (via python-snap7), reasons about what the communication reveals about process state, and decides: \textbf{attack} (inject a write), \textbf{wait}, or \textbf{block} (intercept an anomalous write). The same model, same observation pipeline, and same decision loop serve as both red team (attacker) and blue team (defender) --- differing only in the prompt.
+
+This creates an automated, closed-loop red/blue team framework that can be applied to \textbf{any PLC-connected plant}. The framework reads standard S7 protocol communication; the scene YAML provides the semantic interpretation of the tag stream for each specific plant. Swapping in a water treatment plant, power grid substation, or manufacturing line requires only a new scene configuration --- no code changes.
+
+Three research gaps motivate the five research questions:
+\begin{enumerate}[leftmargin=1.5em,nosep]
+    \item How much of the communication stream must the LLM observe to mount effective attacks or defenses? (\textbf{RQ1}: context ablation)
+    \item Does task-specific fine-tuning on observed attack/defense communication traces improve both roles? (\textbf{RQ2})
+    \item Does the LLM need a closed-loop feedback from the communication stream, or is a single snapshot enough? (\textbf{RQ3})
+    \item Which defense configurations can block context-aware communication-level attacks? (\textbf{RQ4})
+    \item Are these findings model-specific or do they generalize across architectures? (\textbf{RQ5})
+\end{enumerate}
+
+\section*{Research Questions}
+
+\textbf{Three factors jointly determine LLM effectiveness at analyzing live PLC communication for attack and defense: how much of the stream the model observes, whether it receives continuous feedback, and its underlying capability.} CPSForge isolates each:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Stream context (RQ1):} How much of the communication stream must the LLM observe to mount effective attacks or defenses? Three tiers: minimal (current tag values only), partial (+ history, descriptions, ranges), full (+ phase, safety rules, prior actions). \emph{Key finding: full context causes self-deterrence (0\% ASR on 2/3 scenes); partial is the attack sweet spot.}
+    \item \textbf{Fine-tuning (RQ2):} Does training on real PLC communication traces improve \emph{both} attack and defense reasoning? Before/after QLoRA study with dual-role training data derived from real run artifacts.
+    \item \textbf{Live vs.\ static stream (RQ3):} Does the LLM need continuous feedback from the communication stream, or is a single snapshot sufficient? \emph{Key finding: static (one-snapshot) LLM achieves 0\% ASR despite generating proposals; online MITM with live stream achieves 6--46\%.}
+    \item \textbf{Defense configuration (RQ4):} Which configurations can block communication-level LLM attacks? Seven variants: rule-based, LLM-based, and combined. \emph{Key finding: LLM blue team blocks 100\% of attacks on Sorting by Height where all rule-based defenses fail.}
+    \item \textbf{Model robustness (RQ5):} Are findings model-specific or architecture-independent? Three-model evaluation. \emph{Key finding: capability scales with model size (0\% at 1.7B vs.\ 14\% at 3B).}
+\end{itemize}
+
+\section*{Contributions}
+
+Six contributions:
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{C1. LLM MITM agent in PLC communication:} The LLM reads the live S7 tag stream every 500\,ms and decides every 3 cycles: read stream $\to$ infer phase $\to$ assemble context $\to$ attack$|$wait $\to$ inject write $\to$ observe stream response $\to$ iterate. First framework to place a local LLM as a live man-in-the-middle agent in real PLC communication.
+    \item \textbf{C2. Communication-context ablation:} Three strictly controlled stream context tiers (minimal/partial/full) measuring how much of the communication stream the LLM must observe for effective attack or defense --- revealing the self-deterrence phenomenon (too much context suppresses attacks).
+    \item \textbf{C3. Communication-trace fine-tuning:} QLoRA fine-tuning on 2057 examples from real PLC run artifacts (83 attack + 608 defense-block + 1366 defense-allow communication snapshots). Measures how training on real stream observations changes both red and blue team reasoning.
+    \item \textbf{C4. Symmetric LLM blue team:} The same model and stream-observation pipeline serves as both attacker and defender, enabling symmetric red/blue team analysis. Complemented by rule-based defenses (PhaseAwareShield, IntentConsistencyChecker); seven blue team configurations compared.
+    \item \textbf{C5. Cross-model robustness:} Qwen2.5-3B-Instruct, Qwen3-1.7B, SmolLM3-3B --- testing whether communication-analysis capability is architecture-specific or generalizes across model families.
+    \item \textbf{C6. Live PLC evaluation:} 288 completed runs across 3 Factory~I/O scenes on a real Siemens S7-1200, with per-step S7 event capture and unified structured logging for full reproducibility.
+\end{itemize}
+
+\section*{Method}
+
+The framework reads the live PLC tag stream via S7 protocol (python-snap7, 500\,ms polling) and places the LLM in that stream as a man-in-the-middle agent. Key components:
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Communication layer:} python-snap7 reads PLC data blocks every 500\,ms, producing a structured tag stream (sensor values, actuator states, setpoints, alarms).
+    \item \textbf{Context builder:} Assembles three tiers of stream context (minimal/partial/full) from live observations + scene YAML semantics. Same pipeline for red and blue team.
+    \item \textbf{Red team agent:} Every 3 polling cycles, queries the LLM with current stream context; LLM decides attack or wait, returning a structured \texttt{AttackDecision} JSON.
+    \item \textbf{Blue team agent:} Receives the same stream context + proposed write; LLM decides allow or block, returning \texttt{decision}, \texttt{suspicion\_score}, \texttt{reasoning}.
+    \item \textbf{Safety shield:} Mandatory gate between LLM output and PLC write. Enforces tag whitelist, value ranges, duration caps, and process invariants.
+    \item \textbf{Defense chain:} Safety Shield $\to$ PhaseAwareShield $\to$ IntentConsistencyChecker $\to$ LLM Blue Team $\to$ Execute.
+    \item \textbf{Inference:} In-process HuggingFace \texttt{transformers}, 4-bit NF4 quantization, RTX~A4000 (16\,GB VRAM).
+    \item \textbf{Logging:} 33+ fields per step (Parquet) + per-event S7 JSONL capture (reads, writes, blocks, connects).
+\end{itemize}
+
+\subsection*{Models}
+
+\begin{itemize}[leftmargin=1.5em,nosep]
+    \item \textbf{Primary (RQ1--RQ4):} Qwen2.5-3B-Instruct --- 4-bit NF4, $\sim$6\,GB VRAM.
+    \item \textbf{Fine-tuned (RQ2, RQ4):} Same model + QLoRA v2 adapter trained on dual-role CPS traces.
+    \item \textbf{Cross-model (RQ5):} Qwen3-1.7B (within-family scaling), SmolLM3-3B (cross-family).
+\end{itemize}
+
+\subsection*{Scenes}
+
+Three Factory~I/O scenes covering continuous and discrete process types:
+\begin{itemize}[leftmargin=1.5em,nosep]
+    \item \textbf{Level Control} (Scene~12, 15~tags) --- continuous PID tank fill/drain.
+    \item \textbf{Sorting by Weight} (Scene~20, 35~tags) --- discrete 3-way classification.
+    \item \textbf{Sorting by Height} (Scene~19, 30~tags) --- discrete 2-way classification.
+\end{itemize}
+
+\subsection*{Experiment Matrix}
+
+\begin{itemize}[leftmargin=1.5em,nosep]
+    \item \textbf{RQ1}: 3~contexts $\times$ 3~scenes $\times$ 3~repeats = 27~cells. [DONE]
+    \item \textbf{RQ2}: 2~models $\times$ 2~contexts $\times$ 3~scenes $\times$ 3~repeats = 36~cells. [DONE]
+    \item \textbf{RQ3}: 3~attackers $\times$ 3~scenes $\times$ 3~repeats = 27~cells. [DONE]
+    \item \textbf{RQ4}: 2~models $\times$ 7~defenses $\times$ 3~scenes $\times$ 3~repeats = 126~cells. [DONE]
+    \item \textbf{RQ5}: 3~models $\times$ 2~contexts $\times$ 2~attackers $\times$ 2~scenes $\times$ 3~repeats = 72~cells. [DONE]
+\end{itemize}
+
+Total: 288 experiment cells completed.
+
+
+\section*{Fine-Tuning Design (C3)}
+
+\subsection*{Motivation}
+
+Standard LLMs are not trained on PLC communication traces, control-plane tag semantics, or industrial process dynamics. A base model must reason from first principles about what a tag value of \texttt{fill\_valve = 0.85} in a communication snapshot means for the physical process, which tags are high-value attack targets, and what ``normal'' controller communication looks like vs.\ anomalous writes. Fine-tuning on real PLC communication traces gives the model two things a base model must infer without evidence: (1)~\emph{communication-pattern grounding} --- which patterns in the live tag stream indicate exploitable windows (attack) or anomalous writes (defense); (2)~\emph{role-specific output shaping} --- producing tightly structured JSON decisions (\texttt{AttackDecision}, \texttt{DefenseDecision}) that the execution pipeline can validate and act on.
+
+The key design choice is \textbf{dual-role training}: the same adapter is trained on both attack communication patterns and defense communication patterns, so a single fine-tuned checkpoint improves both red and blue team reasoning from the same stream. This enables a controlled before/after comparison across both roles simultaneously on real PLC data.
+
+\subsection*{Training Data: v2 Dataset (2057 examples)}
+
+All training examples are derived from real PLC run artifacts (Parquet traces from completed experiments). No synthetic or hand-authored data is used.
+
+\subsubsection*{Attack examples (83)}
+
+Sources: RQ1 and RQ4-base runs where a write was executed on the PLC.
+
+\textbf{Post-hoc success filtering.} Only physically verified writes are included. For each write at step $N$, the generator compares the observation snapshot at step $N{-}1$ (before) against step $N{+}2$ (after) and checks whether the target tag moved in the direction of the written value. Writes where the tag did not deviate are excluded. This filtering is necessary because the \texttt{attack\_success} field in the raw traces was unreliable (a bug caused the same snapshot to be compared for before/after). The post-hoc computation identifies 83 physically effective writes from $\sim$500 total write events.
+
+\textbf{Input format.} Each attack example presents: (i)~the system prompt describing the attacker role and JSON schema; (ii)~the user prompt with current sensor/actuator snapshot, short history, tag descriptions, and control objective (partial context tier); (iii)~the gold completion: the verified \texttt{AttackDecision} JSON that caused physical deviation.
+
+\textbf{Why partial context.} Partial context is used for all attack training examples because it is the empirically observed attack sweet spot (RQ1: 80.6\% ASR on Level Control). Minimal context produces brute-force proposals; full context causes self-deterrence. Training on partial-context examples teaches the model to use process state effectively without triggering the self-deterrence response.
+
+\subsubsection*{Defense ``block'' examples (608)}
+
+Sources: all write events from RQ1, RQ3, and RQ4 runs where an attack write was executed (regardless of physical success).
+
+\textbf{Gold label.} Each example presents the same observation context plus the proposed write (tag, value, duration, action type) and has gold output: \texttt{\{``decision'': ``block'', ``suspicion\_score'': 0.9, ``reasoning'': ``...''\}}. The reasoning field is templated from the known attack type (e.g., ``Proposed write forces fill\_valve to 1.0 while process is in FILLING phase---inconsistent with PID control trajectory'').
+
+\textbf{Purpose.} Teaches the model to identify the pattern of LLM-generated attack proposals: plausible tag targets, values within legal range, but semantically inconsistent with the current process phase or controller trend. Rule-based defenses can catch range violations; the LLM defender is trained to catch the harder cases where values are in-range but contextually wrong.
+
+\subsubsection*{Defense ``allow'' examples (1366)}
+
+Sources: normal operation snapshots from all completed runs, combined with synthetically generated legitimate write proposals.
+
+\textbf{Construction.} For each normal-operation snapshot, a legitimate write is synthesized: a small perturbation in the direction the PID controller is already moving (e.g., if the fill valve setpoint is increasing, propose a small increase; if the conveyor is running, propose keeping it on). Gold output: \texttt{\{``decision'': ``allow'', ``suspicion\_score'': 0.1, ``reasoning'': ``Write is consistent with current control trajectory''\}}.
+
+\textbf{Purpose.} Without allow examples, a fine-tuned defender would learn to block everything. The 1366 allow examples (16.5$\times$ oversampled vs.\ attack examples) teach the model to distinguish genuinely anomalous writes from normal controller activity. The imbalance (1366 allow vs.\ 608 block) reflects realistic operation: most writes in a running system are legitimate.
+
+\subsubsection*{Dataset statistics}
+
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Category} & \textbf{Count} & \textbf{Fraction} & \textbf{Source} \\
+\midrule
+Attack (red team)       & 83    & 4.0\%  & Post-hoc verified writes \\
+Defense block (blue)    & 608   & 29.6\% & Known attack events \\
+Defense allow (blue)    & 1366  & 66.4\% & Normal operation + synthetic \\
+\midrule
+\textbf{Total}          & \textbf{2057} & & \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{QLoRA Configuration}
+
+\begin{itemize}[leftmargin=1.5em,nosep]
+    \item \textbf{Base model:} Qwen2.5-3B-Instruct, 4-bit NF4 quantization (bitsandbytes).
+    \item \textbf{Adapter:} QLoRA, rank $r{=}16$, $\alpha{=}32$, dropout $= 0.05$.
+    \item \textbf{Target modules:} All linear projection layers (\texttt{q\_proj}, \texttt{k\_proj}, \texttt{v\_proj}, \texttt{o\_proj}, \texttt{gate\_proj}, \texttt{up\_proj}, \texttt{down\_proj}).
+    \item \textbf{Trainable parameters:} 29.9M (0.96\% of 3.1B total).
+    \item \textbf{Training:} 3 epochs, lr $= 2{\times}10^{-4}$, batch size 1, gradient accumulation 8 (effective batch 8), cosine schedule.
+    \item \textbf{Adapter size on disk:} 59.9\,MB (\texttt{adapter\_model.safetensors}).
+    \item \textbf{Hardware:} NVIDIA RTX A4000 (16\,GB VRAM); training completes in $\sim$45\,min on 2057 examples.
+\end{itemize}
+
+\subsection*{RQ2 Experiment Design}
+
+RQ2 measures the \emph{delta} from fine-tuning across both roles:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Attacker comparison (red team):} Base vs.\ finetuned $\times$ 2 contexts (minimal, full) $\times$ 3 scenes $\times$ 3 repeats = 36 cells. Metrics: $\Delta$ASR, $\Delta$VAR (valid action rate), $\Delta$TFS (time to first success), $\Delta$SSR (stealth success rate).
+    \item \textbf{Defender comparison (blue team):} The same finetuned checkpoint is used as the LLM blue team in RQ4-finetuned (63 cells: 7 defenses $\times$ 3 scenes $\times$ 3 repeats). Metrics: $\Delta$block-rate, $\Delta$false-block-rate.
+\end{itemize}
+
+\textbf{Key hypothesis.} Attack-aware fine-tuning (83 successful attack examples) should increase ASR by teaching the model which tag/value combinations cause physical deviations. Defense-aware fine-tuning (608 + 1366 examples) should increase the LLM blue team's precision --- blocking more attacks while blocking fewer legitimate writes. Whether the same adapter improves \emph{both} roles simultaneously is the central question of C3.
+
+\textbf{Context choice for RQ2.} Minimal and full context are tested (not partial). Partial is the base-model sweet spot; the fine-tuned model may behave differently. Using the two extremes (minimal = no context, full = maximum context) captures the largest delta range. If fine-tuning collapses the gap between minimal and full context, it suggests the adapter has internalized process knowledge that the base model only accesses through prompting.
+
+\subsection*{Why Dual-Role Training Is Non-Trivial}
+
+Training attack and defense on the same weights creates a tension: the model must learn to generate proposals that look like attacks (red) \emph{and} to identify proposals that look like attacks (blue). Naive training risks the model always blocking its own outputs, or always generating unblockable proposals. The training balance (4\% attack, 30\% block, 67\% allow) is designed to prevent both failure modes. Measuring whether this balance produces a useful dual-role adapter --- or merely averages the two roles into mediocrity --- is the empirical contribution of RQ2.
+
+\subsection*{What Fine-Tuning Teaches: Communication-Pattern Reasoning}
+
+A key question is whether training on Factory~I/O communication traces produces an adapter that generalizes to other plants.
+
+\paragraph{What the adapter learns.}
+Every training example presents the model with a snapshot of the PLC tag stream (sensor values, actuator states, setpoints) and asks it to make a decision. The training signal is not ``fill\_valve is a high-value target''---it is the \emph{relationship} between the observed communication state and the decision quality:
+\begin{itemize}[leftmargin=1.5em,nosep]
+    \item \emph{Attack training (83 examples):} ``Given this communication snapshot, a write to [tag] with [value] during [phase] caused a physical deviation.'' The model learns when communication state creates an exploitable window.
+    \item \emph{Block training (608 examples):} ``Given this communication state, a write to [tag] is inconsistent with what the controller is currently doing.'' The model learns to read controller intent from the tag stream.
+    \item \emph{Allow training (1366 examples):} ``A write consistent with the current communication trajectory is legitimate.'' The model learns what normal control-plane traffic looks like.
+\end{itemize}
+
+These are \emph{communication-analysis reasoning patterns}, not Factory~I/O facts. The model learns: ``does the proposed write agree with or contradict the observed controller behavior?'' --- a question that applies identically to any industrial process.
+
+\paragraph{How tag semantics are provided.}
+Tag names in the training data (\texttt{fill\_valve}, \texttt{sorting\_state}) are labels on communication channels, not memorized facts. At inference time, the context builder injects the semantic meaning of those channels from the scene YAML: descriptions, value ranges, units, and control objectives. On a water treatment plant, the same context builder would inject the meaning of \texttt{flow\_rate\_in}, \texttt{tank\_level}, and \texttt{pump\_speed}. The adapter does not need to know these labels in advance --- it needs to know how to \emph{use} the context it is given to make a decision.
+
+\paragraph{Practical universality: the two-layer design.}
+The framework separates two concerns:
+\begin{enumerate}[leftmargin=1.5em,nosep]
+    \item \textbf{Base model + context builder}: Fully general. Reads any PLC tag stream via snap7. Scene YAML provides semantic interpretation. Zero retraining needed for a new plant --- deploy immediately.
+    \item \textbf{QLoRA adapter}: A capability booster trained on that plant's communication traces. For a new plant, the workflow is: (a)~run baseline experiments with the base model; (b)~collect attack and normal-operation traces; (c)~run \texttt{cpsforge.finetune} to train a plant-specific adapter; (d)~re-run and measure the delta.
+\end{enumerate}
+RQ2 demonstrates that this fine-tuning workflow produces measurable capability gains. The replication methodology is the contribution --- it transfers to any plant with PLC communication, not just Factory~I/O.
+
+\paragraph{Limitation.}
+The 83 attack examples come from PID fill/drain and discrete sorting processes. The block/allow balance reflects Factory~I/O operational rhythms. For plants with fundamentally different control architectures (e.g., batch processes, multi-stage SCADA), the adapter may exhibit bias from training. Cross-domain validation on non-Factory~I/O plants is the primary open direction for future work.
+
+
+\section*{Key Findings}
+
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{Self-deterrence:} Full operational context causes the 3B model to self-deter---0\% ASR on 2/3~scenes (the model decides ``wait'' on every call). Partial context is the attack sweet spot (80.6\% ASR on Level Control).
+    \item \textbf{Context changes strategy:} Minimal context $\to$ brute-force actuator overrides. Partial $\to$ control-plane setpoint manipulation. Full $\to$ self-deterrence or very selective targeting.
+    \item \textbf{Feedback loop is essential:} Static one-shot LLM achieves 0\% VAR (zero schema-valid proposals) across all scenes under our batch design (350-token output budget). This reflects experimental design constraints, not fundamental one-shot incapability (AttackLLM~\cite{ahmed2025attackllm} with GPT-4 would likely overcome the token limit). Online MITM achieves 3--54\% ASR depending on scene and context.
+    \item \textbf{LLM blue team dominates---but blocks everything:} 100\% prevention rate on Sorting by Height. All rule-based defenses (baseline, intent, combined) let writes through with ASR up to 16.7\%. However, a controlled FPR study across all three scenes reveals 95--100\% false-positive rate on legitimate writes (226/229 probes blocked, FPR\,=\,98.7\%)---the LLM operates as a ``block-everything'' policy, not a discriminating detector. Fine-tuning increases blocking confidence (0.90--0.95 vs.\ 0.80 base) without improving discrimination.
+    \item \textbf{Model scaling:} Qwen2.5-3B (14\%) $\approx$ SmolLM3-3B (12\%) $>$ Qwen3-1.7B (0\%). The 1.7B model produces valid writes but zero physical success --- suggesting semantic process understanding, not JSON compliance, limits small models.
+    \item \textbf{Defense through transparency:} The self-deterrence effect suggests exposing operational context may itself reduce LLM attack effectiveness---a novel passive defense mechanism requiring no additional detector.
+\end{enumerate}
+
+\section*{Novelty}
+
+Within the scope of this evaluation---one PLC model (Siemens S7-1200) with software-emulated plants (15--35 tags)---CPSForge is, to our knowledge, the \textbf{first framework to use a local LLM as a live man-in-the-middle agent in real PLC communication}, performing both attack injection and anomaly defense on the same protocol stream. Prior work uses LLMs for offline analysis, static attack generation, or simulation-only experiments --- none operate in-loop on real S7 protocol communication.
+
+No prior work combines: (1) online MITM LLM attacks on real PLC hardware; (2) symmetric LLM-vs-LLM defense using the same model and observation pipeline; (3) controlled context ablation over communication snapshot content; (4) before/after fine-tuning on communication traces with dual-role (attack + defense) training data; (5) cross-model robustness evaluation. The dual-role fine-tuning design --- training one adapter on real PLC communication traces to improve both attack generation and attack detection --- has no direct prior art in the CPS or LLM security literature.
+
+
+
+\end{document}

@@ -1,0 +1,45 @@
+# =============================================================================
+# CPSForge Modbus TCP Connection Configuration (OpenPLC)
+# =============================================================================
+# This file configures the connection to a Modbus TCP PLC (OpenPLC v4).
+# Used when scenes specify backend: modbus.
+#
+# SAFETY: live_writes_enabled is FALSE by default.
+# =============================================================================
+
+# IP address of the Modbus TCP PLC (OpenPLC runtime)
+host: 127.0.0.1
+
+# Modbus TCP port (standard: 502)
+port: 502
+
+# Modbus unit ID (slave address)
+unit_id: 1
+
+# Connection timeout in seconds
+connect_timeout_s: 5.0
+
+# Default cyclic polling interval in milliseconds
+poll_interval_ms: 500
+
+# Reconnect behaviour on lost connection
+reconnect_attempts: 3
+reconnect_delay_s: 2.0
+
+# -----------------------------------------------------------------------
+# SAFETY FLAG — must be explicitly true for live PLC writes
+# -----------------------------------------------------------------------
+live_writes_enabled: false
+
+# -----------------------------------------------------------------------
+# OpenPLC Runtime v4 REST API configuration
+# Used for programmatic program upload (Tier 3 experiments)
+# -----------------------------------------------------------------------
+openplc:
+  host: 127.0.0.1
+  port: 8443
+  username: openplc
+  password: openplc
+  use_tls: true
+  verify_tls: false
+  compile_timeout_s: 120.0

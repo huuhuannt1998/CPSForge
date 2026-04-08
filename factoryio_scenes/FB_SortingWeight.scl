@@ -199,9 +199,9 @@ BEGIN
                     iState := 6;
                 END_IF;
 
-            2: // Sending left — wait for box to clear scale
+            2: // Sending left — push box off scale
                 SendLeft := TRUE;
-                LoadScale := TRUE;  // run scale belt to push box off
+                LoadScale := TRUE;
                 IF NOT AtScale AND NOT AtScaleExit THEN
                     SendLeft  := FALSE;
                     LoadScale := FALSE;
@@ -209,10 +209,10 @@ BEGIN
                     iState := 0;
                 END_IF;
 
-            3: // (unused — reserved)
+            3: // (reserved)
                 iState := 0;
 
-            4: // Sending right — wait for box to clear scale
+            4: // Sending right — push box off scale
                 SendRight := TRUE;
                 LoadScale := TRUE;
                 IF NOT AtScale AND NOT AtScaleExit THEN
@@ -222,10 +222,10 @@ BEGIN
                     iState := 0;
                 END_IF;
 
-            5: // (unused — reserved)
+            5: // (reserved)
                 iState := 0;
 
-            6: // Sending forward — wait for box to clear scale
+            6: // Sending forward — push box off scale
                 SendForward := TRUE;
                 LoadScale   := TRUE;
                 IF NOT AtScale AND NOT AtScaleExit THEN
@@ -235,8 +235,11 @@ BEGIN
                     iState := 0;
                 END_IF;
 
-            7: // (unused — reserved)
-                iState := 0;
+            7: // (reserved)
+                SendForward   := FALSE;
+                IF AtForwardEntry THEN
+                    iState := 0;
+                END_IF;
         END_CASE;
     END_IF;
 END_FUNCTION_BLOCK

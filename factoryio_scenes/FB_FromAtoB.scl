@@ -1,33 +1,3 @@
-// MANTIS — Scene 1: From A to B
-// Transport a box on a conveyor until it reaches the sensor at the end.
-// DB3: Instance DB for FB_FromAtoB (non-optimized access)
-//
-// Factory I/O layout:
-//   - Emitter automatically creates a box (not PLC-controlled)
-//   - Conveyor moves the box from LEFT → RIGHT  (%Q0.0)
-//   - Sensor (diffuse) at the RIGHT end detects the box  (%I10.0)
-//
-// Driver config (Bool Inputs Offset=10, Bool Outputs Offset=0):
-//   Sensor  → %I10.0  (Factory I/O → PLC)
-//   Conveyor → %Q0.0  (PLC → Factory I/O)
-//
-// DB3 byte layout (non-optimized):
-//   Byte 0   : Sensor   (BOOL)  — copied from %I10.0
-//   Byte 1   : padding
-//   Byte 2   : Conveyor (BOOL)  — copied to  %Q0.0
-//   Byte 3   : padding
-//   Byte 4   : Enable   (BOOL)  — system enable (default TRUE)
-//   Byte 5   : padding
-//   Total = 6 bytes
-//
-// Logic: Conveyor = Enable AND Sensor
-//   Sensor True  → path clear, no box → Conveyor ON
-//   Sensor False → box detected        → Conveyor OFF
-//   Factory I/O reset clears all boxes → sensor True → conveyor starts.
-//
-// Vulnerability: Enable flag is read by logic but NEVER written by the FB.
-//   An attacker who sets Enable=FALSE in DB3 stops the conveyor permanently.
-
 FUNCTION_BLOCK "FB_FromAtoB"
 { S7_Optimized_Access := 'FALSE' }
 VERSION : 0.5

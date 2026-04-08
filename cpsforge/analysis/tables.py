@@ -832,5 +832,155 @@ def full_paper_export(
     with (out / "paper_export_manifest.json").open("w") as fh:
         json.dump(manifest, fh, indent=2)
 
+    # v2 context ablation (RQ1)
+    try:
+        ca = context_ablation_table(data_dir, experiment)
+        if not ca.empty:
+            ca.to_csv(out / "context_ablation.csv")
+            manifest["tables"]["context_ablation"] = {
+                "file": "context_ablation.csv",
+                "paper_ref": "tab:context-ablation",
+                "rows": len(ca),
+            }
+    except Exception as e:
+        logger.warning("Context ablation table failed: %s", e)
+
+    # v2 defense comparison (RQ4)
+    try:
+        dc = defense_comparison_table(data_dir, experiment)
+        if not dc.empty:
+            dc.to_csv(out / "defense_comparison.csv")
+            manifest["tables"]["defense_comparison"] = {
+                "file": "defense_comparison.csv",
+                "paper_ref": "tab:defense-comparison",
+                "rows": len(dc),
+            }
+    except Exception as e:
+        logger.warning("Defense comparison table failed: %s", e)
+
+    # v2 fine-tuning deltas (RQ2)
+    try:
+        ft = finetune_delta_table(data_dir, experiment)
+        if not ft.empty:
+            ft.to_csv(out / "finetune_deltas.csv")
+            manifest["tables"]["finetune_deltas"] = {
+                "file": "finetune_deltas.csv",
+                "paper_ref": "tab:finetune-deltas",
+                "rows": len(ft),
+            }
+    except Exception as e:
+        logger.warning("Finetune delta table failed: %s", e)
+
+    # Manifest
+    with (out / "paper_export_manifest.json").open("w") as fh:
+        json.dump(manifest, fh, indent=2)
+
     logger.info("Paper export written to %s (%d tables).", out, len(manifest["tables"]))
     return out
+
+
+# ---------------------------------------------------------------------------
+# v2 Table: Context Ablation (RQ1)
+# ---------------------------------------------------------------------------
+
+
+def context_ablation_table(
+    data_dir: Path,
+    experiment: str,
+) -> pd.DataFrame:
+    """Produce RQ1 context-ablation table from v2 unified step logs.
+
+    Reads unified_steps.parquet from all RQ1 runs and computes per-tier
+    (minimal, partial, full) metrics: ASR, VAR, TFS, SSR.
+    """
+    from cpsforge.analysis.context_analysis import ContextAblationAnalyzer
+    raw_base = data_dir / "raw"
+    analyzer = ContextAblationAnalyzer(raw_base)
+    return analyzer.run()
+
+
+# ---------------------------------------------------------------------------
+# v2 Table: Defense Comparison (RQ4)
+# ---------------------------------------------------------------------------
+
+
+def defense_comparison_table(
+    data_dir: Path,
+    experiment: str,
+) -> pd.DataFrame:
+    """Produce RQ4 defense comparison table from v2 unified step logs.
+
+    Groups runs by defense_variant and computes prevention rate, FPR,
+    and normal-operation preservation metrics.
+    """
+    from cpsforge.analysis.context_analysis import _load_step_logs
+    raw_base = data_dir / "raw"
+
+    # Discover all RQ4 experiment dirs
+    frames = []
+    if raw_base.exists():
+        for d in sorted(raw_base.iterdir()):
+            if d.is_dir() and "RQ4" in d.name:
+                df = _load_step_logs(d)
+                if not df.empty:
+                    frames.append(df)
+
+    if not frames:
+        return pd.DataFrame()
+
+    all_steps = pd.concat(frames, ignore_index=True)
+    results = []
+
+    for (defense, scene), group in all_steps.groupby(["defense_variant", "scene"]):
+        attack_decisions = group[group["parsed_decision"] == "attack"]
+        n_attacks = len(attack_decisions)
+        n_blocked_phase = int(group["phase_shield_blocked"].sum()) if "phase_shield_blocked" in group else 0
+        n_blocked_intent = int(group["intent_check_blocked"].sum()) if "intent_check_blocked" in group else 0
+        n_blocked_shield = int((group["shield_decision"] == "blocked").sum()) if "shield_decision" in group else 0
+        n_success = int(group["attack_success"].sum()) if "attack_success" in group else 0
+
+        prevention_rate = (n_blocked_shield + n_blocked_phase + n_blocked_intent) / n_attacks if n_attacks > 0 else 0.0
+        asr = n_success / n_attacks if n_attacks > 0 else 0.0
+
+        # FPR: detector alerts on steps without active attacks
+        normal_steps = group[group["attack_active"] == False] if "attack_active" in group else group
+        if len(normal_steps) > 0:
+            false_alerts = normal_steps[
+                normal_steps["detector_alerts"].apply(
+                    lambda x: len(x) > 0 if isinstance(x, list) else False
+                )
+            ] if "detector_alerts" in normal_steps else pd.DataFrame()
+            fpr = len(false_alerts) / len(normal_steps)
+        else:
+            fpr = 0.0
+
+        results.append({
+            "defense_variant": defense,
+            "scene": scene,
+            "n_runs": group["run_id"].nunique(),
+            "n_attacks": n_attacks,
+            "prevention_rate": round(prevention_rate, 4),
+            "ASR": round(asr, 4),
+            "FPR": round(fpr, 4),
+            "n_blocked_phase": n_blocked_phase,
+            "n_blocked_intent": n_blocked_intent,
+            "n_blocked_shield": n_blocked_shield,
+        })
+
+    return pd.DataFrame(results)
+
+
+# ---------------------------------------------------------------------------
+# v2 Table: Fine-Tuning Deltas (RQ2)
+# ---------------------------------------------------------------------------
+
+
+def finetune_delta_table(
+    data_dir: Path,
+    experiment: str,
+) -> pd.DataFrame:
+    """Produce RQ2 fine-tuning delta table from v2 unified step logs."""
+    from cpsforge.analysis.finetune_analysis import FinetuneAnalyzer
+    raw_base = data_dir / "raw"
+    analyzer = FinetuneAnalyzer(raw_base)
+    return analyzer.compute_deltas()

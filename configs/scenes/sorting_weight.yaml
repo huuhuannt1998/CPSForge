@@ -44,12 +44,31 @@ scene_name: sorting_weight
 scene_id: 20  # OB_Main CASE 20 — DB22
 
 description: >
-  3-way weight-based sorting. Boxes are weighed on a conveyor scale and
-  sorted: light boxes (<LightThresh) go LEFT, heavy boxes (≥HeavyThresh)
-  go RIGHT, medium boxes go FORWARD. 8-state machine with REAL weight
-  measurement and DINT count outputs. Panel buttons and indicator lights.
+  3-way weight-based sorting. Boxes travel from entry_conveyor → load_scale
+  (weighing) → diverter → exit conveyor. Routing logic: weight < light_thresh
+  (default 2.0 kg) → send_left + left_conveyor; weight ≥ heavy_thresh
+  (default 5.0 kg) → send_right + right_conveyor; otherwise →
+  send_forward + front_conveyor. State machine: 0=Idle, 1=Weighed,
+  2=SendLeft, 4=SendRight, 6=SendForward, then ClearScale → Idle.
+  Attacks that mislabel a box's weight class cause missorts to the wrong
+  exit; attacks that stop or misdirect conveyors cause physical jams.
 
 sampling_interval_ms: 500
+
+control_objective: >
+  3-way weight sort: weight < light_thresh (2.0) goes LEFT,
+  weight >= heavy_thresh (5.0) goes RIGHT, else FORWARD.
+  Attacks can shift thresholds to missort, force wrong diverter, or stall conveyors.
+
+key_sensors:
+  - weight
+  - at_scale
+  - at_scale_entry
+  - entry_conveyor
+  - send_left
+  - send_right
+  - send_forward
+  - i_state
 
 # ---------------------------------------------------------------------------
 # Tag Definitions (DB22, 86 bytes total)
@@ -379,7 +398,7 @@ writable_tags:
   - enable
 
 # ---------------------------------------------------------------------------
-# Attack Surface
+# Attack Surface (I/O MitM — Tier 1)
 # ---------------------------------------------------------------------------
 attack_surface:
   - light_thresh
@@ -390,6 +409,70 @@ attack_surface:
   - entry_conveyor
   - load_scale
   - enable
+
+# ---------------------------------------------------------------------------
+# Deep State Attack Surface (Tier 2 — internal state, never refreshed by PLC)
+# ---------------------------------------------------------------------------
+deep_state_attack_surface:
+  - name: i_state
+    address: "DB22,INT82"
+    data_type: int
+    persistence: permanent  # PLC only writes on state transitions
+    attack_category: state_machine_jump
+    description: >-
+      8-state machine index. PLC advances sequentially (0→1→2/4/6→0).
+      Writing an arbitrary value forces illegal state transitions, e.g.
+      jumping from Idle(0) to SendRight(4) without weighing.
+    valid_range: [0, 7]
+    valid_states: {0: Idle, 1: Weighed, 2: SendLeft, 4: SendRight, 6: SendForward}
+    default_value: 0
+    state_machine_effect: "Forces illegal state transition; may skip weighing or sorting"
+  - name: measured_weight
+    address: "DB22,REAL70"
+    data_type: real
+    persistence: permanent  # Latched only in state 0 (Idle) when AtScale triggers
+    attack_category: decision_flag_spoofing
+    description: >-
+      Weight captured during the Idle→Weighed transition. Once latched,
+      PLC does not rewrite until next item arrives. Modifying this after
+      latch causes the sort decision to use the spoofed weight.
+    valid_range: [0.0, 15.0]
+    default_value: 0.0
+    state_machine_effect: "Missorts current item based on spoofed weight"
+  - name: light_thresh
+    address: "DB22,REAL74"
+    data_type: real
+    persistence: permanent  # Never written by PLC logic
+    attack_category: threshold_manipulation
+    description: >-
+      Light threshold for 3-way sort. PLC reads but NEVER writes this.
+      Changing to 0.0 means no item is ever classified as 'light',
+      changing to 15.0 means ALL items classified as 'light'.
+    valid_range: [0.5, 10.0]
+    default_value: 2.0
+    state_machine_effect: "Changes sort boundary; missorts all subsequent items"
+  - name: heavy_thresh
+    address: "DB22,REAL78"
+    data_type: real
+    persistence: permanent  # Never written by PLC logic
+    attack_category: threshold_manipulation
+    description: >-
+      Heavy threshold for 3-way sort. PLC reads but NEVER writes this.
+      Changing to 0.0 means ALL items classified as 'heavy',
+      changing to 15.0 means no item is ever classified as 'heavy'.
+    valid_range: [1.0, 15.0]
+    default_value: 5.0
+    state_machine_effect: "Changes sort boundary; missorts all subsequent items"
+  - name: enable
+    address: "DB22,BOOL84.0"
+    data_type: bool
+    persistence: permanent  # Never written by PLC logic
+    attack_category: safety_kill_switch
+    description: >-
+      Enable flag gates ALL actuator outputs. PLC reads but NEVER writes.
+      Setting FALSE freezes all conveyors and diverters.
+    default_value: true
+    state_machine_effect: "Immediate process halt; all outputs freeze"
 
 # ---------------------------------------------------------------------------
 # Safety Rules

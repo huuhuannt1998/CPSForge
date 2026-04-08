@@ -258,6 +258,9 @@ class ExperimentConfig(BaseModel):
         ),
     )
 
+    # Allow extra v2 fields (e.g. v2: block in YAML) without validation errors
+    model_config = {"extra": "allow"}
+
     @field_validator("dry_run", mode="before")
     @classmethod
     def derive_dry_run(cls, v: bool, info: Any) -> bool:
@@ -316,6 +319,16 @@ class LLMConfig(BaseModel):
     log_llm_responses: bool = Field(
         True,
         description="Log LLM call metadata (model, tokens, latency) even when log_prompts=False.",
+    )
+
+    # HuggingFace provider fields (ignored by other providers)
+    adapter_path: Optional[str] = Field(
+        None,
+        description="Path to a LoRA adapter directory.  Used by the 'huggingface' provider for fine-tuned inference.",
+    )
+    load_in_4bit: bool = Field(
+        True,
+        description="Load model in 4-bit NF4 quantisation via bitsandbytes.  Used by the 'huggingface' provider.",
     )
 
     @property
@@ -386,6 +399,10 @@ class ConfigLoader:
         """Load and validate the PLC connection config."""
         data = self._load("system", filename)
         return PLCConfig(**data)
+
+    def load_modbus(self, filename: str = "modbus.yaml") -> Dict[str, Any]:
+        """Load Modbus TCP PLC connection config (for OpenPLC backend)."""
+        return self._load("system", filename)
 
     def load_logging(self, filename: str = "logging.yaml") -> LoggingConfig:
         """Load and validate the logging config."""

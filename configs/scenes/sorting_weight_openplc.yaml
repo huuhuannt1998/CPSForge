@@ -1,0 +1,397 @@
+# =============================================================================
+# CPSForge Scene Configuration — Sorting by Weight (OpenPLC / Modbus)
+# =============================================================================
+# Equivalent to sorting_weight.yaml (Factory I/O Scene 20) but uses
+# Modbus TCP addresses for OpenPLC backend + Python process simulator.
+#
+# Physical setup (simulated):
+#   - OpenPLC Runtime v4 running ST program sorting_weight.st
+#   - Python WeightSorterSimulator provides physics model
+#   - Communication via Modbus TCP (port 502)
+#   - 3-way sort: light (<2.0) → LEFT, medium → FORWARD, heavy (≥5.0) → RIGHT
+#
+# ALL variables use %QW (holding registers) or %QX (coils).
+# No %IX or %IW (read-only via Modbus).
+#
+# OpenPLC Modbus mapping:
+#   Holding Registers (actuator commands):
+#     HR0-HR7   → conveyors/diverters (BOOL as 0/1)
+#     HR10  → light_thresh   (INT x100, default 200 = 2.0 kg)
+#     HR11  → heavy_thresh   (INT x100, default 500 = 5.0 kg)
+#     HR12  → measured_weight (INT x100, latched weight)
+#     HR13  → weight_raw     (INT x100, simulator writes)
+#     HR20-HR23 → counters + state
+#
+#   Coils (mode):
+#     COIL0  → enable (system enable, default ON)
+#
+#   Coils (sensor feedback from simulator, writable):
+#     COIL8  → at_scale_entry    COIL13 → at_forward_entry
+#     COIL9  → at_scale          COIL14 → at_exit_front
+#     COIL10 → at_scale_exit     COIL15 → at_right_entry
+#     COIL11 → at_left_entry     COIL16 → at_exit_right
+#     COIL12 → at_exit_left
+# =============================================================================
+
+scene_name: sorting_weight_openplc
+backend: modbus
+process_simulator: weight_sorter
+
+description: >
+  3-way weight-based sorting (OpenPLC version). Boxes travel from entry
+  conveyor → weighing scale → diverter → exit conveyor. Routing:
+  weight < light_thresh (2.0) → LEFT, weight >= heavy_thresh (5.0) → RIGHT,
+  else FORWARD. State machine: 0=Idle, 1=Weighed, 2=SendLeft, 4=SendRight,
+  6=SendForward. Attacks can shift thresholds to missort, force wrong
+  diverter, or stall conveyors.
+
+sampling_interval_ms: 500
+
+control_objective: >
+  3-way weight sort: weight < light_thresh (2.0) goes LEFT,
+  weight >= heavy_thresh (5.0) goes RIGHT, else FORWARD.
+  Attacks can shift thresholds to missort, force wrong diverter, or stall conveyors.
+
+key_sensors:
+  - weight
+  - at_scale
+  - at_scale_entry
+  - entry_conveyor
+  - send_left
+  - send_right
+  - send_forward
+  - i_state
+
+# ---------------------------------------------------------------------------
+# Tag Definitions
+# ---------------------------------------------------------------------------
+tags:
+  # --- Sensors (from simulator, written as coils) ---
+  - name: at_scale_entry
+    address: "COIL8"
+    data_type: bool
+    access: read_write
+    description: "Box at scale entry conveyor"
+    category: sensor
+    scene_name: sorting_weight_openplc
+
+  - name: at_scale
+    address: "COIL9"
+    data_type: bool
+    access: read_write
+    description: "Box on scale — triggers weighing"
+    category: sensor
+    scene_name: sorting_weight_openplc
+
+  - name: at_scale_exit
+    address: "COIL10"
+    data_type: bool
+    access: read_write
+    description: "Box leaving scale area"
+    category: sensor
+    scene_name: sorting_weight_openplc
+
+  - name: at_left_entry
+    address: "COIL11"
+    data_type: bool
+    access: read_write
+    description: "Box entering left exit conveyor"
+    category: sensor
+    scene_name: sorting_weight_openplc
+
+  - name: at_exit_left
+    address: "COIL12"
+    data_type: bool
+    access: read_write
+    description: "Box at end of left exit conveyor"
+    category: sensor
+    scene_name: sorting_weight_openplc
+
+  - name: at_forward_entry
+    address: "COIL13"
+    data_type: bool
+    access: read_write
+    description: "Box entering forward exit conveyor"
+    category: sensor
+    scene_name: sorting_weight_openplc
+
+  - name: at_exit_front
+    address: "COIL14"
+    data_type: bool
+    access: read_write
+    description: "Box at end of forward exit conveyor"
+    category: sensor
+    scene_name: sorting_weight_openplc
+
+  - name: at_right_entry
+    address: "COIL15"
+    data_type: bool
+    access: read_write
+    description: "Box entering right exit conveyor"
+    category: sensor
+    scene_name: sorting_weight_openplc
+
+  - name: at_exit_right
+    address: "COIL16"
+    data_type: bool
+    access: read_write
+    description: "Box at end of right exit conveyor"
+    category: sensor
+    scene_name: sorting_weight_openplc
+
+  # --- Analog sensor (weight reading from simulator via HR13) ---
+  - name: weight
+    address: "HR13"
+    data_type: int
+    scale: 0.01
+    access: read_write
+    min_value: 0.0
+    max_value: 10.0
+    unit: "kg"
+    description: "Scale weight reading (0-10 kg)"
+    category: sensor
+    scene_name: sorting_weight_openplc
+
+  # --- Actuators (PLC outputs via holding registers) ---
+  - name: entry_conveyor
+    address: "HR0"
+    data_type: bool
+    access: read_write
+    description: "Entry conveyor motor (TRUE=running)"
+    category: actuator
+    scene_name: sorting_weight_openplc
+
+  - name: load_scale
+    address: "HR1"
+    data_type: bool
+    access: read_write
+    description: "Scale belt motor (TRUE=running)"
+    category: actuator
+    scene_name: sorting_weight_openplc
+
+  - name: send_left
+    address: "HR2"
+    data_type: bool
+    access: read_write
+    description: "Left diverter (TRUE=divert left)"
+    category: actuator
+    scene_name: sorting_weight_openplc
+
+  - name: left_conveyor
+    address: "HR3"
+    data_type: bool
+    access: read_write
+    description: "Left exit conveyor motor"
+    category: actuator
+    scene_name: sorting_weight_openplc
+
+  - name: send_right
+    address: "HR4"
+    data_type: bool
+    access: read_write
+    description: "Right diverter (TRUE=divert right)"
+    category: actuator
+    scene_name: sorting_weight_openplc
+
+  - name: send_forward
+    address: "HR6"
+    data_type: bool
+    access: read_write
+    description: "Forward diverter (TRUE=send forward)"
+    category: actuator
+    scene_name: sorting_weight_openplc
+
+  - name: right_conveyor
+    address: "HR5"
+    data_type: bool
+    access: read_write
+    description: "Right exit conveyor motor"
+    category: actuator
+    scene_name: sorting_weight_openplc
+
+  - name: front_conveyor
+    address: "HR7"
+    data_type: bool
+    access: read_write
+    description: "Front exit conveyor motor"
+    category: actuator
+    scene_name: sorting_weight_openplc
+
+  # --- Thresholds (PLC internals, writable) ---
+  - name: light_thresh
+    address: "HR10"
+    data_type: int
+    scale: 0.01
+    access: read_write
+    min_value: 0.0
+    max_value: 10.0
+    unit: "kg"
+    description: "Light threshold — weight below this goes LEFT (default 2.0)"
+    category: setpoint
+    scene_name: sorting_weight_openplc
+
+  - name: heavy_thresh
+    address: "HR11"
+    data_type: int
+    scale: 0.01
+    access: read_write
+    min_value: 0.0
+    max_value: 10.0
+    unit: "kg"
+    description: "Heavy threshold — weight at/above this goes RIGHT (default 5.0)"
+    category: setpoint
+    scene_name: sorting_weight_openplc
+
+  - name: measured_weight
+    address: "HR12"
+    data_type: int
+    scale: 0.01
+    access: read
+    min_value: 0.0
+    max_value: 10.0
+    unit: "kg"
+    description: "Latched weight from last weighing cycle"
+    category: internal
+    scene_name: sorting_weight_openplc
+
+  # --- Enable (system enable) ---
+  - name: enable
+    address: "COIL0"
+    data_type: bool
+    access: read_write
+    description: "System enable (default TRUE). FALSE shuts down all actuators."
+    category: mode_bit
+    scene_name: sorting_weight_openplc
+
+  # --- Counters + state ---
+  - name: left_count
+    address: "HR20"
+    data_type: int
+    access: read
+    description: "Count of boxes sorted LEFT"
+    category: internal
+    scene_name: sorting_weight_openplc
+
+  - name: forward_count
+    address: "HR21"
+    data_type: int
+    access: read
+    description: "Count of boxes sorted FORWARD"
+    category: internal
+    scene_name: sorting_weight_openplc
+
+  - name: right_count
+    address: "HR22"
+    data_type: int
+    access: read
+    description: "Count of boxes sorted RIGHT"
+    category: internal
+    scene_name: sorting_weight_openplc
+
+  - name: i_state
+    address: "HR23"
+    data_type: int
+    access: read
+    description: "State machine: 0=Idle, 1=Weighed, 2=SendLeft, 4=SendRight, 6=SendForward"
+    category: internal
+    scene_name: sorting_weight_openplc
+
+# ---------------------------------------------------------------------------
+# Writable tags
+# ---------------------------------------------------------------------------
+writable_tags:
+  - entry_conveyor
+  - load_scale
+  - send_left
+  - left_conveyor
+  - send_right
+  - right_conveyor
+  - send_forward
+  - front_conveyor
+  - light_thresh
+  - heavy_thresh
+  - enable
+
+# ---------------------------------------------------------------------------
+# Attack surface — tags an attacker can manipulate to cause missorts
+# ---------------------------------------------------------------------------
+attack_surface:
+  - light_thresh
+  - heavy_thresh
+  - send_left
+  - send_right
+  - send_forward
+  - entry_conveyor
+  - load_scale
+  - enable
+
+# ---------------------------------------------------------------------------
+# Deep state attack surface — internal variables for Tier 2+ attacks
+# ---------------------------------------------------------------------------
+deep_state_attack_surface:
+  - light_thresh
+  - heavy_thresh
+  - enable
+
+# ---------------------------------------------------------------------------
+# Safety rules
+# ---------------------------------------------------------------------------
+safety_rules:
+  - rule_id: SW-OPC-SR-001
+    description: "Light threshold must stay in reasonable range"
+    rule_type: range
+    tags: [light_thresh]
+    parameters:
+      min: 0.5
+      max: 4.0
+    enabled: true
+    priority: 100
+
+  - rule_id: SW-OPC-SR-002
+    description: "Heavy threshold must stay in reasonable range"
+    rule_type: range
+    tags: [heavy_thresh]
+    parameters:
+      min: 3.0
+      max: 9.0
+    enabled: true
+    priority: 100
+
+  - rule_id: SW-OPC-SR-003
+    description: "Light threshold must be below heavy threshold"
+    rule_type: invariant
+    tags: [light_thresh, heavy_thresh]
+    parameters:
+      expression: "light_thresh < heavy_thresh"
+    enabled: true
+    priority: 100
+
+  - rule_id: SW-OPC-SR-004
+    description: "Enable should remain TRUE during normal operation"
+    rule_type: invariant
+    tags: [enable]
+    parameters:
+      expression: "enable == True"
+    enabled: true
+    priority: 100
+
+# ---------------------------------------------------------------------------
+# Reset procedure
+# ---------------------------------------------------------------------------
+reset_procedure:
+  - tag: enable
+    value: true
+  - tag: light_thresh
+    value: 2.0
+  - tag: heavy_thresh
+    value: 5.0
+  - tag: entry_conveyor
+    value: false
+  - tag: load_scale
+    value: false
+  - tag: send_left
+    value: false
+  - tag: send_right
+    value: false
+  - tag: send_forward
+    value: false

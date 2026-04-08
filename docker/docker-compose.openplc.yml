@@ -1,0 +1,40 @@
+# =============================================================================
+# CPSForge — OpenPLC Docker Compose
+# =============================================================================
+# Runs OpenPLC Runtime v4 in a Docker container for reproducible experiments.
+#
+# Usage:
+#   docker compose -f docker/docker-compose.openplc.yml up -d
+#
+# The runtime will start on port 8443 (REST API) and port 502 (Modbus TCP).
+# Connect with: ModbusClient(ModbusConfig(host="127.0.0.1", port=502))
+#
+# To upload a program:
+#   adapter = OpenPLCAdapter(OpenPLCConfig())
+#   adapter.authenticate()
+#   adapter.upload_and_compile(st_file="configs/openplc/level_control.st")
+#   adapter.start_plc()
+# =============================================================================
+
+services:
+  openplc-runtime:
+    image: ghcr.io/autonomy-logic/openplc-runtime:latest
+    container_name: cpsforge-openplc
+    ports:
+      - "8443:8443"    # REST API (HTTPS)
+      - "502:502"      # Modbus TCP
+    volumes:
+      - openplc-data:/var/run/runtime
+    cap_add:
+      - SYS_NICE       # For SCHED_FIFO real-time scheduling
+      - SYS_RESOURCE
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-k", "-f", "https://localhost:8443/api/status"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  openplc-data:

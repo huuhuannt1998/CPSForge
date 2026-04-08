@@ -1,40 +1,11 @@
 """
-CPSForge CUSUM Detector
-========================
+
 Cumulative Sum (CUSUM) change-point detector for CPS process variables.
 
 CUSUM is a sequential analysis technique that detects small persistent
 shifts in the mean of a process variable.  It is widely used in industrial
 quality control and is a strong classical baseline for CPS anomaly detection.
 
-Algorithm
----------
-For each monitored tag *i*:
-
-1.  During a configurable warm-up period, estimate the running mean
-    :math:`\\mu_i` from the first ``warmup_steps`` observations.
-2.  At each subsequent step compute the deviation
-    :math:`z = x_i - \\mu_i`.
-3.  Update the upper and lower cumulative sums:
-
-    .. math::
-
-        S^+_i &= \\max(0,\\; S^+_i + z - k) \\\\
-        S^-_i &= \\max(0,\\; S^-_i - z - k)
-
-    where *k* (``slack``) is a tunable allowance for expected noise.
-
-4.  Fire a :class:`DetectionEvent` when :math:`S^+_i > h` or
-    :math:`S^-_i > h` (threshold *h*).
-
-Configuration (via ``parameters`` dict in DefenderConfig YAML)::
-
-    parameters:
-      target_tags: [level_meter, fill_valve]
-      slack: 0.5
-      threshold: 5.0
-      warmup_steps: 30
-      reset_on_alarm: true
 """
 
 from __future__ import annotations

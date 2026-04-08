@@ -1,28 +1,3 @@
-"""
-CPSForge LLM Attacker
-=======================
-The LLMAttacker uses a large language model to generate CPS attack actions
-based on the current plant state and scene context.
-
-Pipeline per :meth:`generate_actions` call::
-
-    PromptBuilder → provider.complete() → ActionSchemaValidator
-         ↓ on failure (up to max_retries)
-    Corrective follow-up prompt → provider.complete() → validate
-         ↓ all retries exhausted
-    Return []   (safe default: no actions)
-
-Important safety constraints:
-- The LLM is **never** given raw PLC memory addresses to use as targets.
-  The system prompt explicitly enumerates only tag names from the scene's
-  attack_surface list.
-- :class:`ActionSchemaValidator` rejects any target that matches a raw S7
-  address pattern (DB1,REAL4 / MW10 / QW0 etc.).
-- All generated actions pass through the :class:`ShieldEngine` in the
-  orchestrator before any write reaches the PLC.
-- The ``llm_log.jsonl`` file records every call and its outcome for audit.
-"""
-
 from __future__ import annotations
 
 import logging

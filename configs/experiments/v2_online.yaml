@@ -1,0 +1,56 @@
+# =============================================================================
+# CPSForge v2 — Online MITM Base Experiment Config
+# =============================================================================
+# Serves as the base template for the RQ1-RQ4 experiment matrix.
+# Per-cell overrides (context_level, model_variant, defense_variant, etc.)
+# are applied by runner/experiment_matrix.py at runtime.
+#
+# Usage (via experiment matrix):
+#   python -m cpsforge.runner.experiment_matrix --dry-run --rqs RQ1
+#
+# Usage (direct, single run):
+#   python -c "from cpsforge.runner.online_runner import OnlineExperimentRunner; ..."
+# =============================================================================
+
+name: v2_online_mitm_level_control
+description: >
+  Online MITM attacker experiment (v2). Context level, model variant, and
+  defense variant are overridden per-cell by the experiment matrix runner.
+
+scene_config: "scenes/level_control.yaml"
+plc_config: "system/plc.yaml"
+
+# Attacker — overridden by matrix runner for RQ3
+attackers:
+  - online_mitm
+
+# Defenders — enabled only when defense_variant != "none"
+# The matrix runner selects the appropriate defender config(s).
+defenders: []
+
+# Live writes — MUST be enabled for real PLC experiments.
+# Set to false for dry-run validation.
+live_writes_enabled: false   # overridden by run_experiments.py --live flag
+dry_run: false               # overridden at runtime
+eval_run: true
+
+# Run duration: 60 steps @ 500ms/step = 30 seconds per run
+# (LLM called every 3 steps = 20 LLM decision points per run)
+# attack_budget=10 limits actual writes to at most 10 per run
+max_steps: 60
+run_duration_s: 900.0
+
+# Artifact writing
+save_trace: true
+save_metrics: true
+reset_after_run: true
+
+# v2-specific fields (read by OnlineExperimentRunner)
+# These are defaults; the matrix runner overrides them per-cell.
+v2:
+  context_level: "full"           # "minimal" | "partial" | "full"
+  model_variant: "base"           # "base" | "finetuned"
+  finetune_status: "base"
+  defense_variant: "none"         # "none" | "phase_aware" | "intent" | "combined" | "baseline"
+  attack_budget: 10               # max attacks per run
+  decision_interval_steps: 3     # LLM called every N steps

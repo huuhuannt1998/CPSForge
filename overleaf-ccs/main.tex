@@ -1,0 +1,137 @@
+%%
+%% ACM CCS 2026 submission — sigconf format
+%% Double-blind: all author information MUST be commented out
+%%
+\documentclass[sigconf,anonymous]{acmart} %% CCS: DO NOT REMOVE
+
+\AtBeginDocument{%
+  \providecommand\BibTeX{{Bib\TeX}}}
+
+%% Rights management — SAMPLE values, DO NOT REMOVE
+\setcopyright{acmlicensed}
+\copyrightyear{2026}
+\acmYear{2026}
+\acmDOI{XXXXXXX.XXXXXXX}
+\acmConference[CCS '26]{Proceedings of the 2026 ACM SIGSAC Conference on Computer and Communications Security}{November 15--19, 2026}{The Hague, The Netherlands}
+\acmISBN{978-1-4503-XXXX-X/2026/11}
+
+%% Additional packages (acmart includes most standard ones)
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{enumitem}
+\usepackage[capitalise,nameinlink]{cleveref}
+
+%% TikZ / PGF for diagrams
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric, fit, calc, backgrounds, decorations.pathreplacing}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+
+\begin{document}
+
+\title{Online Context-Aware LLM Man-in-the-Middle Attacks on Cyber-Physical Systems}
+
+%% CCS: Authors MUST be commented out for double-blind submission
+% \author{Anonymous}
+% \affiliation{%
+%   \institution{Anonymous Institution}
+%   \country{Anonymous}}
+% \email{anonymous@example.com}
+
+\renewcommand{\shortauthors}{Anonymous}
+
+\input{sections/abstract}
+
+%%
+%% CCS concepts — generate at http://dl.acm.org/ccs.cfm
+%%
+\begin{CCSXML}
+<ccs2012>
+ <concept>
+  <concept_id>10002978.10002991.10002992</concept_id>
+  <concept_desc>Security and privacy~Intrusion detection systems</concept_desc>
+  <concept_significance>500</concept_significance>
+ </concept>
+ <concept>
+  <concept_id>10002978.10003014</concept_id>
+  <concept_desc>Security and privacy~Systems security</concept_desc>
+  <concept_significance>500</concept_significance>
+ </concept>
+ <concept>
+  <concept_id>10010520.10010553.10010562</concept_id>
+  <concept_desc>Computer systems organization~Embedded and cyber-physical systems</concept_desc>
+  <concept_significance>300</concept_significance>
+ </concept>
+</ccs2012>
+\end{CCSXML}
+
+\ccsdesc[500]{Security and privacy~Intrusion detection systems}
+\ccsdesc[500]{Security and privacy~Systems security}
+\ccsdesc[300]{Computer systems organization~Embedded and cyber-physical systems}
+
+\keywords{cyber-physical systems, industrial control systems, large language models, man-in-the-middle attacks, PLC security, red teaming, runtime defense}
+
+\maketitle
+
+\input{sections/introduction}
+\input{sections/background}
+\input{sections/threat_model}
+\input{sections/design}
+\input{sections/methodology}
+\input{sections/evaluation}
+\input{sections/discussion}
+\input{sections/related_work}
+\input{sections/conclusion}
+
+%% CCS: no acknowledgments at submission time
+% \begin{acks}
+% Removed for double-blind review.
+% \end{acks}
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{references}
+
+%% CCS: Required appendices (do not count toward 12-page limit)
+\appendix
+
+\section{Open Science}
+\label{sec:appendix:openscience}
+
+The following artifacts are needed to evaluate this paper's core contributions:
+
+\begin{itemize}[nosep]
+  \item \textbf{Framework source code:} The complete framework, including the observation layer, context builder, attacker variants, defense chain, safety shield, and experiment runner. Available at: \url{https://anonymous.4open.science/r/CPSForge-4ED6} (anonymous repository).
+  \item \textbf{Scene configurations:} YAML scene profiles for all three evaluation scenes (Level Control, Sorting by Height, Sorting by Weight), defining tag metadata, attack surfaces, safety rules, and reset procedures.
+  \item \textbf{Experiment scripts:} Scripts to reproduce the full 333-run experiment matrix, including checkpoint/resume support.
+  \item \textbf{Raw experiment artifacts:} Per-run Parquet traces (33+ fields per step), JSON attack records, shield decisions, PLC event captures, and summary metrics for all 333 runs.
+  \item \textbf{Fine-tuning data and adapter:} The 2{,}057-example training dataset (attack + defense examples) and the trained QLoRA adapter.
+  \item \textbf{Table generation:} Scripts to regenerate all paper tables from raw artifacts.
+  \item \textbf{PLC programs:} TIA Portal v17 project files and exported SCL source for all three scenes.
+\end{itemize}
+
+\noindent\textbf{Artifacts not shared and justification:}
+\begin{itemize}[nosep]
+  \item \textbf{Model weights:} The base models (Qwen2.5-3B-Instruct, Qwen3-1.7B, SmolLM3-3B) are publicly available from HuggingFace. We do not redistribute them; download scripts are included.
+  \item \textbf{GPT-4o-mini API access:} RQ6 frontier experiments require an OpenAI API key. We provide the exact API configuration and prompt templates; results are fully reproducible given API access.
+  \item \textbf{Physical PLC hardware:} The Siemens S7-1200 PLC and Factory~I/O license are required for live experiments. For reviewers without hardware access, we provide complete raw artifacts from all 333 runs, enabling full metric recomputation without re-running experiments.
+\end{itemize}
+
+\section{Ethical Considerations}
+\label{sec:appendix:ethics}
+
+\textbf{No production systems were used.} All experiments were conducted on a dedicated Siemens S7-1200 PLC connected to Factory~I/O, a software-based process emulator, in an isolated laboratory network with no connection to any production industrial control system. The PLC and emulator were operated under direct researcher supervision with physical emergency-stop capability available at all times.
+
+\textbf{Safety shield as harm prevention.} The mandatory safety shield (Section~\ref{sec:design}) bounds all LLM-generated writes to process-safe ranges, enforces tag whitelists, duration caps, and physical invariants before any write reaches the PLC. The shield is part of the trusted computing base and cannot be bypassed by the LLM attacker.
+
+\textbf{Dual-use considerations.} This work demonstrates that local LLMs can generate effective attacks on industrial control systems. The same capabilities that enable automated red teaming could be misused. We argue that responsible disclosure through peer-reviewed publication---accompanied by defensive contributions (LLM blue team, safety shield, defense comparison)---serves the security community better than non-disclosure. The attack techniques require prior S7 protocol-level network access to the PLC, which is a well-understood and separately defended prerequisite. The framework is released with all safety controls to enable reproducible defensive research.
+
+\textbf{No human subjects.} This work involves no human participants, personal data, or user studies. IRB/ERB approval was not required.
+
+\section{Generative AI Usage}
+\label{sec:appendix:ai}
+
+Generative AI tools (GitHub Copilot, Claude) were used during this work for: (i)~editing and polishing manuscript text (grammar, style); (ii)~writing boilerplate code (data loaders, logging infrastructure, experiment scripts); and (iii)~drafting analysis scripts for post-hoc metric computation. All AI-generated content was manually reviewed, verified against experimental artifacts, and revised by the authors. No experimental results, data, figures, or scientific claims were generated by AI tools. All reported numbers are computed from real PLC experiment artifacts.
+
+\input{sections/appendix}
+
+\end{document}

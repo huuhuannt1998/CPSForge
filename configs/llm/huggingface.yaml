@@ -1,0 +1,37 @@
+# CPSForge LLM Provider Config -- HuggingFace (Base Qwen3.5-4B)
+# ==================================================================
+# In-process inference via transformers + bitsandbytes.
+# No external server required.  Model is loaded directly into GPU memory.
+#
+# First run will download model weights from HuggingFace Hub (~8 GB).
+# Subsequent runs use the local cache (~/.cache/huggingface/hub/).
+#
+# To pre-download:
+#   huggingface-cli download Qwen/Qwen3.5-4B --local-dir models/qwen3.5-4b
+#   Then set model: models/qwen3.5-4b
+#
+# Requirements:
+#   pip install transformers>=4.48 accelerate bitsandbytes>=0.43 peft>=0.14
+#
+# GPU VRAM: ~3 GB inference (RTX A4000 16 GB is plenty)
+
+provider: huggingface
+model: models/qwen2.5-3b-instruct    # primary model (Windows-compatible standard transformer)
+# Qwen3.5-4B requires flash-linear-attention (Linux/WSL2 only) — use qwen25_3b on Windows
+adapter_path: null                # base model — no adapter
+load_in_4bit: true                # 4-bit NF4 via bitsandbytes
+
+max_tokens: 350          # attack JSON ~150-200 tokens; 350 allows verbose expected_effect
+temperature: 0.2
+timeout_s: 300.0         # 5 min covers first-load (~120s) + inference; subsequent calls ~3-10s
+
+# Not used by HuggingFace provider (no HTTP server)
+api_key_env: ""
+base_url: null
+
+# Logging controls
+log_prompts: false
+redact_prompts: false
+log_llm_responses: true
+
+prompt_template_version: "v2"

@@ -25,6 +25,17 @@ env/
 data/raw/
 data/processed/
 data/replays/
+data/captures/
+data/checkpoint.json
+
+# Model weights (large files, download separately)
+models/
+
+# Fine-tune adapters (large files)
+finetune/adapters/
+
+# Claude
+.claude/
 
 # Logs
 *.log

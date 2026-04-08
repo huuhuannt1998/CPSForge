@@ -1,0 +1,52 @@
+\section{Evaluation Methodology}
+\label{sec:methodology}
+
+\subsection{Experiment Matrix}
+
+We organize 333 live PLC runs into six research questions:
+
+\begin{description}[leftmargin=1.2em,nosep,style=nextline]
+    \item[RQ1 (Context):] How does context depth affect LLM attack capability?
+    \item[RQ2 (Fine-tuning):] Does QLoRA fine-tuning change attack and defense capability?
+    \item[RQ3 (Attack mode):] Does online feedback outperform one-shot attack?
+    \item[RQ4 (Defense):] Which defense configurations block LLM attacks?
+    \item[RQ5 (Cross-model):] Are trends robust across model architectures?
+    \item[RQ6 (Frontier):] Does GPT-4o-mini differ qualitatively from local 3B models?
+\end{description}
+
+\noindent Table~\ref{tab:matrix} summarizes the experiment matrix.
+
+\begin{table}[t]
+\centering
+\caption{Experiment matrix (333 runs total).}
+\label{tab:matrix}
+\small
+\begin{tabular}{@{}lrc@{}}
+\toprule
+\textbf{RQ} & \textbf{Runs} & \textbf{Variables} \\
+\midrule
+RQ1 Context     & 27  & 3 ctx $\times$ 3 scenes $\times$ 3 rep \\
+RQ2 Fine-tune   & 36  & 2 models $\times$ 2 ctx $\times$ 3 scenes $\times$ 3 rep \\
+RQ3 Attack mode & 27  & 3 attackers $\times$ 3 scenes $\times$ 3 rep \\
+RQ4 Defense     & 126 & 2 models $\times$ 7 defs $\times$ 3 scenes $\times$ 3 rep \\
+RQ5 Cross-model & 72  & 3 models $\times$ 2 ctx $\times$ 2 atk $\times$ 2 scenes $\times$ 3 rep \\
+RQ6 Frontier    & 45  & 3 ctx + 2 defs $\times$ 3 scenes $\times$ 3 rep \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Each run: 60 steps at 500\,ms polling; the LLM is called every 3 steps; attack budget of 10 per run; wall-clock time 6--10 min (local) or 2--5 min (API). Hardware: Siemens S7-1200 PLC, Dell Precision 5820 with RTX A4000 16\,GB, Windows~11.
+
+\subsection{Models}
+
+\textbf{Primary:} Qwen2.5-3B-Instruct (4-bit NF4), base and QLoRA-finetuned.
+\textbf{Cross-model (RQ5):} Qwen3-1.7B, SmolLM3-3B (all 4-bit NF4).
+\textbf{Frontier (RQ6):} GPT-4o-mini via OpenAI API; local Qwen2.5-3B serves as defender.
+
+\subsection{Metrics}
+
+\textbf{ASR} $= N_{\text{succ}}/N_{\text{exec}}$: post-hoc success, comparing tag value at step $N{-}1$ vs.\ $N{+}2$ (success if tag moved toward injected value).
+\textbf{VAR} $= N_{\text{valid}}/N_{\text{submitted}}$: schema-valid JSON output rate.
+\textbf{Prevention rate} $= N_{\text{blocked}}/N_{\text{proposals}}$.
+
+\textbf{Statistical note.} With 3 repeats per cell, we report Wilson 95\% CIs. The design detects large effects ($\Delta$ASR $>$ 30\,pp) and zero-vs-nonzero differences, but cannot reliably distinguish moderate effects ($\approx$10\,pp) from noise.

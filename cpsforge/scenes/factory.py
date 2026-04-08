@@ -51,6 +51,10 @@ _SCENE_REGISTRY: Dict[str, Type[BaseScene]] = {
     "sorting_height_advanced": GenericScene,
     "sorting_weight": GenericScene,
     "sorting_station": GenericScene,
+    # OpenPLC scenes (Modbus backend + Python process simulator)
+    "level_control_openplc": GenericScene,
+    "sorting_weight_openplc": GenericScene,
+    "sorting_height_openplc": GenericScene,
 }
 
 
@@ -106,4 +110,6 @@ def _parse_scene_profile(raw: dict) -> SceneProfile:
         reset_procedure=raw.get("reset_procedure", []),
         sampling_interval_ms=raw.get("sampling_interval_ms", 500),
         attack_surface=raw.get("attack_surface", []),
+        control_objective=raw.get("control_objective", ""),
+        key_sensors=raw.get("key_sensors", []),
     )

@@ -1,7 +1,7 @@
 \section{System Design}
 \label{sec:design}
 
-CPSForge is organised as a closed-loop CPS security framework built around six interacting layers---physical execution, observation and logging, attack generation, safety enforcement, defence, and adaptation---plus a seventh \emph{agent mode} layer that enables autonomous multi-agent operation. Figure~\ref{fig:architecture} illustrates the complete pipeline.
+CPSForge is a closed-loop LLM red team / blue team framework for CPS security analysis. The architecture comprises five interacting layers---physical execution, observation, red team (attack generation), safety enforcement, and blue team (defense)---connected to a real PLC. The same LLM serves both red and blue team roles with different prompts, enabling symmetric analysis. The framework is configuration-driven: any CPS connected to a supported PLC can be analyzed by providing a scene YAML configuration. Figure~\ref{fig:architecture} illustrates the pipeline.
 
 \begin{figure*}[t]
     \centering
@@ -14,9 +14,8 @@ CPSForge is organised as a closed-loop CPS security framework built around six i
         atkbox/.style={layer, fill=red!12},
         shieldbox/.style={layer, fill=yellow!20},
         defbox/.style={layer, fill=blue!12},
-        adaptbox/.style={layer, fill=green!12},
         logbox/.style={layer, fill=gray!12},
-        agentbox/.style={layer, fill=purple!12},
+        llmbox/.style={layer, fill=purple!12},
         groupbox/.style={draw, dashed, rounded corners=5pt, inner sep=6pt, thick},
         arr/.style={->, thick, >=Stealth},
         darr/.style={<->, thick, >=Stealth},
@@ -24,240 +23,189 @@ CPSForge is organised as a closed-loop CPS security framework built around six i
 
     %% ===== Physical Execution Layer =====
     \node[plcbox] (plc) {Siemens S7\\PLC};
-    \node[plcbox, right=0.8cm of plc] (fio) {Factory I/O\\Plant};
+    \node[plcbox, right=1.0cm of plc] (fio) {Factory I/O\\(or any plant)};
     \draw[darr] (plc) -- (fio);
 
-    %% ===== Middleware / Observation =====
-    \node[logbox, below=0.8cm of $(plc)!0.5!(fio)$, minimum width=4.5cm] (mw) {Middleware Bridge\\(python-snap7, 500\,ms polling)};
+    %% ===== Observation Layer =====
+    \node[logbox, below=0.8cm of $(plc)!0.5!(fio)$, minimum width=5.0cm] (mw) {Observation Layer\\(python-snap7, 500\,ms polling, phase inference)};
     \draw[arr] (plc) -- (mw);
-    \draw[arr] (fio) -- (mw);
 
-    %% ===== Scene Profile =====
-    \node[logbox, left=0.6cm of mw] (scene) {Scene\\Profile};
-    \draw[arr] (scene) -- (mw);
+    %% ===== Context Builder =====
+    \node[logbox, below=0.6cm of mw, minimum width=5.0cm] (ctx) {Context Builder\\(minimal $|$ partial $|$ full)};
+    \draw[arr] (mw) -- (ctx);
 
-    %% ===== Trace Logger =====
-    \node[logbox, below=0.6cm of mw, minimum width=4.5cm] (logger) {Trace Logger / Snapshot Recorder};
-    \draw[arr] (mw) -- (logger);
+    %% ===== Red Team (left) =====
+    \node[atkbox, below left=1.0cm and 1.5cm of ctx, minimum width=2.5cm] (llm_atk) {\textbf{LLM Red Team}\\(Online MITM)};
+    \node[atkbox, below=0.25cm of llm_atk] (static_atk) {Static LLM};
+    \node[atkbox, below=0.25cm of static_atk] (random_atk) {Random Baseline};
 
-    %% ===== Branch: Batch Mode (left) =====
-    \node[atkbox, below left=1.0cm and 1.0cm of logger] (scripted) {Scripted\\Attacker};
-    \node[atkbox, below=0.3cm of scripted] (random) {Random\\Attacker};
-    \node[atkbox, below=0.3cm of random] (llmbatch) {LLM\\Attacker};
+    %% Context to red team
+    \draw[arr, red!60] (ctx.south) -- ++(0,-0.3) -| (llm_atk.north);
 
-    %% ===== Branch: Agent Mode (right) =====
-    \node[agentbox, below right=1.0cm and 1.0cm of logger] (atk_agent) {LLM Attacker\\Agent};
-    \node[agentbox, below=0.3cm of atk_agent] (def_agent) {LLM Defender\\Agent};
-    \node[agentbox, below=0.3cm of def_agent, fill=purple!8] (coord) {Coordinator};
+    %% ===== Defense Chain (center-right) — sequential =====
+    \node[shieldbox, below=3.8cm of ctx, minimum width=3.0cm, minimum height=0.7cm] (shield) {\textbf{Safety Shield}\\(range, whitelist, invariant)};
 
-    %% ===== Safety Shield (center) =====
-    \node[shieldbox, below=3.6cm of logger, minimum width=3.5cm, minimum height=0.8cm] (shield) {\textbf{Safety Shield}\\(whitelist, range, interlock)};
+    \node[defbox, right=0.4cm of shield, minimum width=2.2cm] (phase_shield) {PhaseAware\\Shield};
+    \node[defbox, right=0.4cm of phase_shield, minimum width=2.2cm] (intent) {Intent\\Checker};
+    \node[llmbox, right=0.4cm of intent, minimum width=2.2cm] (llm_def) {\textbf{LLM Blue}\\
+    \textbf{Team}};
 
-    %% Arrows from attackers to shield
-    \draw[arr, red!60] (scripted.south) -- ++(0,-0.2) -| (shield.north west);
-    \draw[arr, red!60] (random.south) -- ++(0,-0.15) -| ([xshift=-0.5cm]shield.north);
-    \draw[arr, red!60] (llmbatch.south) -- ++(0,-0.1) -| ([xshift=-0.2cm]shield.north);
+    %% Red team proposals → defense chain (sequential)
+    \draw[arr, red!60] (llm_atk.south) -- ++(0,-0.2) -| (shield.north);
+    \draw[arr, red!40] (static_atk.south) -- ++(0,-0.1) -| ([xshift=-0.3cm]shield.north);
+    \draw[arr, red!40] (random_atk.south) -- ++(0,-0.05) -| ([xshift=-0.6cm]shield.north);
 
-    %% Arrows from agents to shield
-    \draw[arr, purple!60] (atk_agent.south) -- ++(0,-0.1) -| ([xshift=0.2cm]shield.north);
-    \draw[arr, purple!60] (def_agent.south) -- ++(0,-0.05) -| ([xshift=0.5cm]shield.north);
-    \draw[arr, purple!60] (coord) -- (shield.north east);
+    %% Sequential defense chain arrows
+    \draw[arr] (shield) -- (phase_shield);
+    \draw[arr] (phase_shield) -- (intent);
+    \draw[arr] (intent) -- (llm_def);
 
-    %% ===== PLC Write =====
-    \node[plcbox, below=0.6cm of shield, minimum width=3.5cm] (write) {PLC Write};
-    \draw[arr] (shield) -- node[right, font=\scriptsize]{approved} (write);
-    \draw[arr] (write.north west) -- ++(-0.4,0.4) node[left, font=\scriptsize, text=red!60]{rejected};
+    %% Context to blue team LLM
+    \draw[arr, blue!60] (ctx.south) -- ++(0,-0.3) -| (llm_def.north);
+
+    %% ===== PLC Write or Block =====
+    \node[plcbox, below=0.7cm of intent, minimum width=2.5cm] (write) {PLC Write\\(execute)};
+    \node[logbox, below=0.7cm of llm_def, minimum width=2.0cm] (block) {Blocked\\(logged)};
+    \draw[arr, green!60!black] (llm_def.south) -- ++(0,-0.15) -| (write.north) node[pos=0.25, right, font=\scriptsize]{allow};
+    \draw[arr, red!60] (llm_def.south) -- (block) node[midway, right, font=\scriptsize]{block};
 
     %% Arrow back to PLC
-    \draw[arr, thick, orange!60] (write.west) -- ++(-2.0,0) |- (plc.south west);
-
-    %% ===== Defenders =====
-    \node[defbox, right=3.5cm of shield] (thresh) {Threshold\\Detector};
-    \node[defbox, below=0.3cm of thresh] (invar) {Invariant\\Detector};
-    \node[defbox, below=0.3cm of invar] (seqdet) {Sequence\\Detector};
-
-    \draw[arr, blue!50] (logger.east) -| (thresh.north);
-
-    %% ===== Adaptation =====
-    \node[adaptbox, below=0.6cm of seqdet] (hcbank) {Hard-Case\\Bank};
-    \node[adaptbox, below=0.3cm of hcbank] (adapt) {Adaptation\\Loop};
-    \draw[arr, blue!50] (seqdet) -- (hcbank);
-    \draw[arr, green!50!black] (hcbank) -- (adapt);
-    \draw[arr, green!50!black, dashed] (adapt.west) -| ([xshift=0.3cm]seqdet.south east);
+    \draw[arr, thick, orange!60] (write.west) -- ++(-1.5,0) |- (plc.south);
 
     %% ===== Artifacts =====
-    \node[logbox, below=0.6cm of write, minimum width=3.5cm] (artifacts) {Run Artifacts\\(Parquet, JSON)};
-    \draw[arr, gray] (logger.south) -| (artifacts.west);
-    \draw[arr, gray] (shield.south east) -- ++(0.3,0) |- (artifacts.east);
+    \node[logbox, below=0.5cm of write, minimum width=4.5cm] (artifacts) {Run Artifacts (Parquet, JSON, PLC event capture)};
+    \draw[arr, gray] (block.south) |- (artifacts.east);
 
     %% ===== Group boxes =====
     \begin{scope}[on background layer]
         \node[groupbox, fill=orange!5, fit=(plc)(fio), label={[font=\scriptsize\bfseries]above:Physical Execution Layer}] {};
-        \node[groupbox, fill=red!5, fit=(scripted)(random)(llmbatch), label={[font=\scriptsize\bfseries]above:Batch Attackers}] {};
-        \node[groupbox, fill=purple!5, fit=(atk_agent)(def_agent)(coord), label={[font=\scriptsize\bfseries]above:Agent Mode}] {};
-        \node[groupbox, fill=blue!5, fit=(thresh)(invar)(seqdet), label={[font=\scriptsize\bfseries]above:Defender Stack}] {};
-        \node[groupbox, fill=green!5, fit=(hcbank)(adapt), label={[font=\scriptsize\bfseries]above:Adaptation}] {};
+        \node[groupbox, fill=red!5, fit=(llm_atk)(static_atk)(random_atk), label={[font=\scriptsize\bfseries]above:Red Team Variants}] {};
+        \node[groupbox, fill=blue!5, fit=(shield)(phase_shield)(intent)(llm_def), label={[font=\scriptsize\bfseries]above:Blue Team Defense Chain (sequential)}] {};
     \end{scope}
 
     \end{tikzpicture}
-    \caption{CPSForge system architecture. The physical PLC--Factory~I/O loop (top) feeds observations to both batch-mode attackers (left) and agent-mode LLM agents (right). All proposed writes---offensive and corrective---pass through the safety shield before reaching the PLC. The defender stack monitors process state and feeds hard cases to the adaptation loop (right).}
+    \caption{CPSForge system architecture. The observation layer polls the real PLC and builds context for both red and blue team LLMs. The red team (left) proposes attack writes which flow through the sequential blue team defense chain (bottom): Safety Shield $\to$ PhaseAwareShield $\to$ IntentChecker $\to$ LLM Blue Team. A write must pass all stages to reach the PLC. The same Qwen2.5-3B model and context pipeline serve both roles. The framework is configuration-driven: replacing the Factory~I/O plant with any PLC-connected CPS requires only a scene YAML file.}
     \label{fig:architecture}
 \end{figure*}
 
 \subsection{Physical Execution Layer}
 
-At the foundation of CPSForge is a PLC-in-the-loop execution environment. A Siemens S7 PLC executes control logic deployed from TIA Portal~v17, while Factory~I/O serves as a software-based process emulator. This design preserves authentic controller behaviour---including real scan timing, state transitions, and control-loop interactions---that is difficult to reproduce through offline logs alone.
+At the foundation of CPSForge is a PLC-in-the-loop execution environment. A Siemens S7-1200 PLC executes control logic deployed from TIA Portal~v17, while Factory~I/O serves as a software-based process emulator providing realistic plant dynamics. Communication uses python-snap7 over Ethernet at a 500\,ms polling interval.
 
-Each process scene is represented as a scene profile containing tag metadata, process descriptions, attack surface definitions, safety rules, and reset procedures. The architecture supports both continuous-process scenes (e.g., tank level control) and discrete event-driven scenes (e.g., conveyor sorting).
+Each process scene is represented as a scene profile containing tag metadata (addresses, types, ranges, descriptions), process descriptions, attack surface definitions, safety rules, and reset procedures. Three evaluation scenes cover both continuous and discrete process types:
+\begin{itemize}[leftmargin=1.2em,nosep]
+    \item \textbf{Level Control} (Scene~12, DB14, 15~tags): continuous PID tank fill/drain.
+    \item \textbf{Sorting by Weight} (Scene~20, DB22, 35~tags): discrete 3-way weight classification.
+    \item \textbf{Sorting by Height} (Scene~19, DB21, 30~tags): discrete 2-way height classification.
+\end{itemize}
 
-\subsection{Observation and Logging Layer}
+\subsection{Observation and Context Layer}
 
-A middleware bridge continuously reads the PLC state and records structured plant snapshots. A snapshot includes sensor values, actuator states, controller mode bits, alarms, setpoints, timestamps, and experiment context. Logging is designed to be replay-ready and audit-friendly.
+A middleware bridge continuously reads PLC state and records structured plant snapshots. Each snapshot includes sensor values, actuator states, controller mode bits, alarms, setpoints, and derived features (rates of change, moving averages). A sliding-window history buffer maintains the last 200~snapshots.
 
-This layer serves several purposes. First, it provides current context for the attacker and defender. Second, it enables post~hoc analysis of attack success, physical impact, and detection behaviour. Third, it supports replay-based evaluation and adaptation.
+A rule-based phase inference engine determines the current operational phase (idle, filling, draining, sorting, alarm, etc.) from snapshot patterns. This phase information is consumed by both the attacker (for timing attacks to phase transitions) and the defenses (for blocking phase-inconsistent writes).
 
-\subsection{Attack Layer}
+A modular context builder assembles three strictly controlled context tiers (minimal, partial, full) from the observation layer. The same context builder serves both red and blue team LLMs, ensuring a fair information basis for ablation studies.
 
-The attack layer supports multiple attacker types: scripted baselines, bounded random perturbation, an LLM-based attacker, and a \emph{campaign attacker} that plans multi-phase attack sequences. The key design decision is that attack actions are expressed in a structured semantic schema rather than as raw PLC memory writes.
+\subsection{LLM Attacker Layer}
+\label{sec:design:attacker}
 
-Example attack categories include sensor spoofing, actuator overrides, setpoint shifts, timing delays, and sequence perturbations. An LLM attacker receives scene context, current plant state, allowed capabilities, and attacker objectives, then returns one or more structured actions. The campaign attacker extends this model by executing a structured four-phase attack lifecycle---reconnaissance, preparation, exploitation, and persistence---where each phase builds on observations from the previous one, enabling multi-step attack sequences that can discover evasive trajectories. All actions are interpreted as candidate plans, not automatically executed commands.
+The attack layer implements three attacker variants for controlled comparison (RQ3):
+
+\paragraph{Random Baseline.} Bounded random perturbations over the scene's attack surface, with values drawn within configured tag ranges. Provides the lower bound on attack effectiveness.
+
+\paragraph{Static LLM Attacker.} Receives scene context and a single plant snapshot, proposes attack actions through a one-shot pipeline without observing process feedback. Tests LLM attack capability without online adaptation.
+
+\paragraph{Online MITM Attacker (C1).} The core contribution. Operates within the PLC control loop as a man-in-the-middle adversary. Every $k{=}3$ polling cycles:
+\begin{enumerate}[leftmargin=2em,nosep]
+    \item Observe current PLC state (sensors, actuators, setpoints).
+    \item Inspect short history from sliding window buffer.
+    \item Infer current operational phase via rule-based phase engine.
+    \item Assemble context-tier-specific prompt (minimal, partial, or full).
+    \item LLM decides: \textbf{attack} or \textbf{wait}.
+    \item If attack: emit structured \texttt{AttackDecision} JSON with target tag, value, duration, and reasoning.
+    \item Pass through the full defense chain before PLC execution.
+    \item Observe result; continue iteratively.
+\end{enumerate}
+
+All LLM outputs are parsed into a strict JSON schema (\texttt{AttackDecision}). Invalid outputs default to ``wait'' (safe fallback). Attack budget: max 10 per run.
+
+\paragraph{Deep State MITM Attacker (Tier~2).} Extends the online MITM to target \emph{internal PLC state variables} that the control logic reads but never overwrites---setpoints, classification thresholds, enable flags, and state-machine registers. Because these variables are not refreshed by the PLC scan cycle, a single S7 write persists indefinitely (the ``Stuxnet DB890 pattern,'' see Section~\ref{sec:threat}). The attacker prompt uses the scene's \texttt{deep\_state\_attack\_surface} configuration (specifying persistence, attack category, and state-machine effect for each target) instead of the I/O attack surface.  Eight attack categories are supported: threshold manipulation, state-machine jump, timer acceleration, safety kill-switch, decision-flag spoofing, setpoint hijack, counter spoofing, and mode manipulation.
+
+\paragraph{Logic Analyzer (Tier~3).} An offline LLM-based code analysis tool that reads the original SCL source code for each scene's PLC program, identifies exploitable code-level vulnerabilities, and generates minimal adversarial SCL modifications.  Seven code modification categories are supported: dead-code injection, comparison inversion, timer alteration, interlock removal, gradual drift, state shortcut, and sensor clamping.  Deployment requires manual TIA Portal import---mirroring Stuxnet's offline payload development methodology.  Live validation on all three evaluation scenes confirmed that comparison-inversion modifications compile without errors and cause measurable physical disruption when downloaded to the PLC (see Section~\ref{sec:discussion:tiers}).
 
 \subsection{Safety Shield}
 
-The safety shield is the central enforcement mechanism in CPSForge. Every attack action, regardless of source, must pass through the shield before being translated into live writes. The shield evaluates whether the target is writable, whether the value is within configured limits, whether the duration is acceptable, and whether the proposed action conflicts with interlocks or scene-specific invariants.
+The safety shield is the mandatory first gate before any write reaches the PLC. It evaluates seven sequential checks (see Section~\ref{sec:impl:shield-impl} for full details); the principal ones are:
+\begin{enumerate}[leftmargin=2em,nosep]
+    \item \textbf{Whitelist:} target tag must be in the scene's declared attack surface.
+    \item \textbf{Range:} proposed value must lie within configured min/max bounds.
+    \item \textbf{Duration cap:} attack duration must not exceed scene maximum.
+    \item \textbf{Mutual exclusion:} conflicting actuators cannot be simultaneously active (e.g., \texttt{send\_left} and \texttt{send\_right} in sorting scenes).
+    \item \textbf{Invariant:} hard physical-boundary rules specific to each scene.
+\end{enumerate}
 
-The shield can approve, reject, or normalise an action. It also records the reasoning behind each decision and can generate rollback plans or expiration timers. This layer allows the framework to study attack behaviour while preserving operator-defined safety boundaries. In agent mode, the shield additionally evaluates \emph{corrective} writes proposed by the defender agent, applying the same safety constraints to defensive actions.
+\noindent Additional checks (cooldown windows, interlocks, mode gates) are described in Section~\ref{sec:impl:shield-impl}. The shield runs in microseconds and is always active regardless of the defense variant.
 
-\subsection{Defender Layer}
+\subsection{Defense Layer}
+\label{sec:design:defense}
 
-The defender layer monitors the plant state during execution and emits alerts when anomalous or unsafe behaviour is detected. CPSForge supports multiple detector families:
+CPSForge evaluates seven defense configurations (RQ4), organized into three categories:
 
-\begin{itemize}[leftmargin=1.5em]
-    \item threshold-based detectors for simple baselines,
-    \item invariant-based detectors for rule-driven monitoring,
-    \item learned sequence-based detectors for time-series anomaly detection, and
-    \item an LLM defender agent (agent mode) that reasons over process telemetry and proposes corrective interventions.
+\subsubsection{Baseline Detectors}
+Six traditional anomaly detectors run in parallel during execution: ThresholdDetector (per-tag rule-based), InvariantDetector (boolean process invariants), IsolationForest (point-wise anomaly scoring), OCSVM (kernel-boundary anomaly), CUSUM (cumulative-sum change-point detection), and LSTM-AE (sequence autoencoder reconstruction error).
+
+\subsubsection{Novel Rule-Based Defenses (C4)}
+Two novel defenses designed specifically for the LLM attacker threat model:
+
+\paragraph{PhaseAwareShield.} Blocks PLC writes that are semantically inconsistent with the current operational phase. Standard range-check rules cannot block attacks where proposed values are individually legal but contextually wrong (e.g., opening the discharge valve during a fill phase). The PhaseAwareShield adds a phase-level reasoning layer using scene-specific rules that map process phases to blocked write patterns.
+
+\paragraph{IntentConsistencyChecker.} Detects writes that oppose the controller's current trend. If the PID is actively reducing the fill valve, an attacker write that forces it open is flagged as intent-inconsistent and blocked.
+
+\paragraph{StateConsistencyChecker (Tier~2 Defense).} Blocks writes that would cause illegal state transitions, timer anomalies, or unauthorized changes to protected internal variables.  Uses per-scene rule sets encoding: (i)~valid state-machine transitions (e.g., Sorting by Weight's 8-state machine permits only $\{0{\to}1, 1{\to}2, 1{\to}4, 1{\to}6, \ldots\}$); (ii)~timer jump limits (maximum single-step increment); (iii)~protected variables that are never writable (e.g., \texttt{Enable}, classification thresholds); and (iv)~classification guards that lock measurement values after the sensing phase.  Designed specifically to counter Tier~2 deep-state attacks.
+
+\subsubsection{LLM Defender (Novel)}
+\label{sec:design:llm-defender}
+
+To create a symmetric evaluation---LLM attacker vs.\ LLM defender---we introduce an \textbf{LLM-based anomaly defender} that uses the same model architecture, context builder, and inference pipeline as the attacker, but with a defense-oriented prompt.
+
+The LLM defender receives:
+\begin{enumerate}[leftmargin=2em,nosep]
+    \item Current process state (same observation as the attacker).
+    \item The proposed PLC write (target tag, value, duration, action type).
+    \item Scene description and control objective.
+    \item Inferred process phase and recent history.
+\end{enumerate}
+
+It outputs a structured JSON decision:
+\begin{itemize}[leftmargin=1.2em,nosep]
+    \item \texttt{decision}: ``allow'' or ``block''
+    \item \texttt{suspicion\_score}: 0.0 (clearly legitimate) to 1.0 (clearly malicious)
+    \item \texttt{reasoning}: brief explanation
 \end{itemize}
 
-\subsection{Adaptation Layer}
+Writes with suspicion score $\geq 0.5$ or explicit ``block'' decisions are rejected. On LLM parse failure, the defender defaults to ``allow'' to avoid blocking legitimate controller writes.
 
-The adaptation layer turns detector failures into learning opportunities. When an attack succeeds without timely detection, or when the defender behaves weakly or inconsistently, the corresponding trace is stored as a hard case. Hard cases can then be replayed, analysed, and incorporated into detector refinement. Figure~\ref{fig:adaptation-loop} illustrates this cycle.
+This design enables several key comparisons:
+\begin{itemize}[leftmargin=1.2em,nosep]
+    \item \textbf{LLM vs.\ LLM:} Can a defender LLM detect attacks from an attacker LLM using the same model?
+    \item \textbf{Rule-based vs.\ LLM defense:} Does the LLM defender outperform hand-crafted phase-aware rules?
+    \item \textbf{Combined defense:} Does adding the LLM defender to rule-based defenses improve overall blocking rate?
+\end{itemize}
 
-This mechanism is what makes CPSForge closed-loop rather than static. Instead of evaluating a detector on a fixed attack set, the framework measures how defender performance changes over rounds as new, difficult cases accumulate.
-
-\begin{figure}[t]
-    \centering
-    \begin{tikzpicture}[
-        >=Stealth,
-        node distance=0.5cm,
-        every node/.style={font=\scriptsize},
-        stepbox/.style={draw, rounded corners=3pt, minimum width=2.0cm, minimum height=0.55cm, align=center, thick},
-        arr/.style={->, very thick, >=Stealth},
-    ]
-    %% Cycle nodes arranged in a circle
-    \node[stepbox, fill=red!10] (eval) {Evaluation\\Run};
-    \node[stepbox, fill=blue!10, right=1.2cm of eval] (detect) {Defender\\Detection};
-    \node[stepbox, fill=orange!10, below=0.8cm of detect] (hard) {Hard-Case\\Extraction};
-    \node[stepbox, fill=green!10, below=0.8cm of eval] (retrain) {Detector\\Retraining};
-
-    \draw[arr, red!60] (eval) -- (detect);
-    \draw[arr, blue!60] (detect) -- node[right, font=\tiny, align=left]{missed attacks /\\late detections} (hard);
-    \draw[arr, orange!60] (hard) -- (retrain);
-    \draw[arr, green!60] (retrain) -- node[left, font=\tiny, align=right]{updated\\model} (eval);
-
-    %% Round label
-    \node[font=\tiny\itshape, gray] at ($(eval)!0.5!(hard) + (0.15,0)$) {Round $n$};
-
-    \end{tikzpicture}
-    \caption{Closed-loop adaptation cycle. Missed or weakly detected attacks accumulate as hard cases, which are used to retrain the defender before the next evaluation round.}
-    \label{fig:adaptation-loop}
-\end{figure}
-
-\subsection{Agent Mode Architecture}
-\label{sec:design:agent}
-
-In addition to the batch orchestration pipeline, CPSForge provides a \emph{live agent mode} that models adversarial CPS interaction as a concurrent multi-agent system. Agent mode is motivated by the observation that real attackers and defenders operate simultaneously and asynchronously, rather than taking turns in a synchronised pipeline. Figure~\ref{fig:agent-mode} illustrates the agent-mode interaction flow.
-
-\paragraph{Process Isolation.}
-Each agent---attacker and defender---runs in a separate process and communicates through typed queues, so each component progresses asynchronously without blocking the other. This provides temporal independence, fault isolation, and reproducibility through complete message traces.
-
-\paragraph{Coordinator.}
-A central coordinator process owns the PLC connection, polls plant state at the configured interval, and broadcasts snapshots to both agents via an event bus. When an agent submits a proposed action (an attack or a corrective write), the coordinator validates it through the safety shield before dispatching the write to the PLC. The coordinator is the \emph{only} component with write access to the PLC, enforcing the invariant that no agent can bypass safety mediation.
-
-\paragraph{LLM Attacker Agent.}
-The attacker agent receives plant snapshots and scene context, invokes an LLM to reason about process vulnerabilities and prior action outcomes, and proposes structured attack actions. It maintains a local history of prior actions and their observed effects, enabling multi-step attack campaigns with feedback.
-
-\paragraph{LLM Defender Agent.}
-The defender agent receives the same plant snapshots, invokes an LLM to analyse process behaviour and identify anomalies, and can propose \emph{corrective actions}---such as resetting a manipulated setpoint or disabling an overridden actuator---that are also validated by the shield before execution. This creates a genuine adversarial dynamic: the attacker tries to perturb the process while the defender tries to restore it.
-
-\paragraph{Safety Guarantees.}
-All writes---both offensive and corrective---pass through the same shield engine. The coordinator enforces cooldown windows, mutual-exclusion rules, and duration caps for both agents. If either agent exceeds a configurable timeout or produces an irrecoverable error, the coordinator initiates a graceful shutdown with optional rollback.
-
-\begin{figure}[t]
-    \centering
-    \begin{tikzpicture}[
-        scale=0.97,
-        transform shape,
-        >=Stealth,
-        node distance=0.4cm,
-        every node/.style={font=\scriptsize},
-        proc/.style={draw, rounded corners=2pt, minimum width=1.5cm, minimum height=0.5cm, align=center, thick},
-        arr/.style={->, thick, >=Stealth},
-    ]
-
-    %% Participants
-    \node[proc, fill=orange!15] (plc) {PLC};
-    \node[proc, fill=purple!10, right=1.0cm of plc] (coord) {Coordinator};
-    \node[proc, fill=red!10, right=0.7cm of coord] (atk) {Attacker\\Agent};
-    \node[proc, fill=blue!10, right=0.7cm of atk] (def) {Defender\\Agent};
-
-    %% Timeline
-    \foreach \n in {plc, coord, atk, def} {
-        \draw[thick, gray!50] (\n.south) -- ++(0,-5.5);
-    }
-
-    %% Step 1: Coordinator polls PLC
-    \draw[arr] ([yshift=-0.6cm]coord.south) -- node[above, font=\tiny]{poll} ([yshift=-0.6cm]plc.south);
-    \draw[arr, dashed] ([yshift=-0.9cm]plc.south) -- node[above, font=\tiny]{snapshot} ([yshift=-0.9cm]coord.south);
-
-    %% Step 2: Broadcast to agents
-    \draw[arr, purple!60] ([yshift=-1.3cm]coord.south) -- node[above, font=\tiny]{snapshot} ([yshift=-1.3cm]atk.south);
-    \draw[arr, purple!60] ([yshift=-1.5cm]coord.south) -- node[below, font=\tiny]{snapshot} ([yshift=-1.5cm]def.south);
-
-    %% Step 3: Attacker proposes attack
-    \node[right=0.05cm, font=\tiny\itshape, text=red!60] at ([yshift=-2.0cm]atk.south) {LLM};
-    \draw[arr, red!60] ([yshift=-2.4cm]atk.south) -- node[above, font=\tiny]{attack action} ([yshift=-2.4cm]coord.south);
-
-    %% Step 4: Shield check
-    \node[draw, fill=yellow!20, rounded corners=1pt, font=\tiny, inner sep=2pt] (sh) at ([yshift=-2.9cm, xshift=0cm]coord.south) {Shield};
-
-    %% Step 5: Write to PLC
-    \draw[arr, orange!60] ([yshift=-3.3cm]coord.south) -- node[above, font=\tiny]{write} ([yshift=-3.3cm]plc.south);
-
-    %% Step 6: Defender detects
-    \node[right=0.05cm, font=\tiny\itshape, text=blue!60] at ([yshift=-3.8cm]def.south) {LLM};
-    \draw[arr, blue!60] ([yshift=-4.2cm]def.south) -- node[above, font=\tiny]{detection / corrective} ([yshift=-4.2cm]coord.south);
-
-    %% Step 7: Shield + write corrective
-    \node[draw, fill=yellow!20, rounded corners=1pt, font=\tiny, inner sep=2pt] at ([yshift=-4.6cm]coord.south) {Shield};
-    \draw[arr, orange!60] ([yshift=-5.0cm]coord.south) -- node[above, font=\tiny]{corrective write} ([yshift=-5.0cm]plc.south);
-
-    %% Time arrow
-    \draw[arr, gray, thick] (-1.0, -0.3) -- (-1.0, -5.8) node[midway, left, font=\tiny, rotate=90]{time};
-
-    \end{tikzpicture}
-    \caption{Agent-mode sequence. The coordinator mediates attacker and defender actions, and all writes pass through the safety shield.}
-    \label{fig:agent-mode}
-\end{figure}
+\subsubsection{Defense Chain}
+The full defense chain for a proposed write is:
+\[
+\text{Shield} \to \text{PhaseAware} \to \text{IntentChecker} \to \text{StateConsistency} \to \text{LLMDefender} \to \text{Execute}
+\]
+Each stage can independently block the write. A write must pass all active stages to reach the PLC. Tier~1 experiments use the first four stages; Tier~2 experiments activate the StateConsistencyChecker.
 
 \subsection{Design Principles}
 
-The system design follows five principles:
-
+The system design follows four principles:
 \begin{itemize}[leftmargin=1.5em]
-    \item \textbf{No unrestricted direct actuation from any LLM.} All writes are mediated by the safety shield.
-    \item \textbf{All experiments are bounded by explicit safety rules.}
-    \item \textbf{Every run produces replayable and auditable artifacts.}
-    \item \textbf{The framework emphasises iterative attacker-defender interaction rather than one-shot evaluation.}
-    \item \textbf{Agents are process-isolated and coordinator-mediated}, preventing any single component from monopolising PLC access.
+    \item \textbf{No unrestricted direct actuation from any LLM.} All writes---both offensive and defensive---are mediated by the safety shield.
+    \item \textbf{Symmetric red/blue team.} The red and blue team LLMs share the same model architecture, context pipeline, and inference infrastructure, enabling systematic analysis of any connected CPS.
+    \item \textbf{All experiments are bounded by explicit safety rules} and produce replayable, auditable artifacts.
+    \item \textbf{Structured outputs only.} Both red and blue team LLMs produce strict JSON schemas. No free-form text is executed.
 \end{itemize}

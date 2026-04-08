@@ -1,470 +1,224 @@
 \section{Evaluation}
 \label{sec:evaluation}
 
-This section presents experimental results from live PLC-based runs across five Factory~I/O scenes using five attacker variants, multiple defender configurations, and a closed-loop adaptation protocol. All reported numbers are collected from eval runs on the real Siemens S7-1200 PLC connected to Factory~I/O.
+This section evaluates CPSForge as a closed-loop LLM red/blue team framework across three Factory~I/O scenes on a real Siemens S7-1200 PLC. All reported numbers are collected from live PLC runs; no results are simulated or mocked.
 
 \subsection{Research Questions}
 
 \begin{description}[leftmargin=1.5em, style=nextline]
-    \item[RQ1:] Can structured attackers---including LLM-based attackers---generate process-valid attack actions that execute successfully in the live PLC--Factory~I/O loop?
-    \item[RQ2:] How does attacker effectiveness vary across attacker types (scripted, random, LLM batch, campaign, LLM agent) and scenes?
-    \item[RQ3:] How effective is the safety shield at blocking unsafe or invalid actions while preserving useful experimental attack coverage?
-    \item[RQ4:] How well do the defender configurations detect attack-induced anomalies under live execution?
-    \item[RQ5:] Does the multi-agent mode exhibit qualitatively different dynamics compared to batch-mode attackers?
-    \item[RQ6:] Does closed-loop adaptation improve defender robustness over repeated rounds?
-    \item[RQ7:] How do classical, statistical, and learned anomaly detectors compare when evaluated on the same live attack traces?
+    \item[RQ1 (Context Ablation):] How does operational context (minimal vs.\ partial vs.\ full) affect the capability of a local LLM to launch successful CPS attacks?
+    \item[RQ2 (Fine-Tuning):] How does task-specific QLoRA fine-tuning change attack capability, stealth, validity, and cross-scene transfer on Qwen2.5-3B-Instruct?
+    \item[RQ3 (Attack Mode):] Can an online MITM LLM attacker exploit timing and phase transitions more effectively than a static one-shot LLM or a random baseline?
+    \item[RQ4 (Defenses):] Which runtime defenses remain effective against context-aware, timing-aware LLM attackers? Does an LLM defender outperform rule-based defenses?
+    \item[RQ5 (Cross-Model Robustness):] Are the observed attack and defense trends robust across three local models from two families, or are they strongly model-specific?
+    \item[RQ6 (Frontier Model):] Does a frontier API model (GPT-4o-mini) exhibit qualitatively different attack capability, self-deterrence behavior, or defense evasion compared to local 3B-class models?
 \end{description}
 
 \subsection{Evaluation Environment}
 
-Experiments are conducted on a real Siemens S7-1200 PLC connected to Factory~I/O~\cite{factoryio} through TIA Portal~v17~\cite{tiaportal}. The evaluation covers five scenes: From A to B (discrete conveyor transport, 4~tags), Filling Tank (discrete fill-cycle process, 8~tags), Level Control (continuous tank process, 15~tags), Sorting by Height (mixed discrete-sort process, 30~tags), and Sorting by Weight (threshold-based sorting process, 35~tags). The middleware polls PLC tags at 500\,ms intervals via python-snap7~\cite{snap7}. Each experiment run produces structured artifacts including a time-series trace (Parquet), attack records, shield decisions, detection events, and summary metrics (all JSON). LLM-based attackers in batch mode use a local Qwen2-7B-Instruct model served via LM Studio; agent-mode and campaign-mode experiments use Qwen2-7B-Instruct for the attacker agent. Across all experiments, we collected 96~runs from 54~experiment configurations, comprising 68~eval-flagged runs (including 8~defense-ablation runs), 12~adaptation rounds, and 16~development runs, totalling 11{,}864~time-series steps from the live PLC loop. A total of 207~attack actions were executed across three attack types: actuator override (143), setpoint shift (43), and sequence perturbation (21). The framework additionally supports sensor spoofing and timing delay actions, but these were not triggered by the attacker configurations used in this evaluation. Figure~\ref{fig:dataset} summarises the dataset composition.
+Experiments are conducted on a real Siemens S7-1200 PLC connected to Factory~I/O~\cite{factoryio} through TIA Portal~v17~\cite{tiaportal}. The evaluation covers three scenes: Level Control (continuous tank process, 15~tags), Sorting by Height (discrete 2-way height sorting, 30~tags), and Sorting by Weight (discrete 3-way weight sorting, 35~tags). The middleware polls PLC tags at 500\,ms intervals via python-snap7~\cite{snap7}; the LLM attacker is called every three polling cycles. We note that the S7-1200 PLC scan cycle is typically 1--10\,ms; the 500\,ms polling interval is a middleware-level parameter that determines observation granularity, not PLC control speed. Attack effects that occur and are corrected within a single polling interval may not be observable.
 
-\begin{figure}[t]
-    \centering
-    \begin{tikzpicture}
-    \begin{axis}[
-        xbar stacked,
-        width=0.94\columnwidth,
-        height=4.8cm,
-        bar width=10pt,
-        xlabel={Time-series steps},
-        xlabel style={font=\small},
-        symbolic y coords={Sort Weight, Sort Height, Level Ctrl, Filling Tank, From A to B},
-        ytick=data,
-        yticklabel style={font=\small},
-        xticklabel style={font=\small},
-        legend style={
-            at={(0.5,-0.25)},
-            anchor=north,
-            legend columns=2,
-            font=\scriptsize,
-            draw=none,
-        },
-        nodes near coords,
-        nodes near coords style={font=\tiny, color=black},
-        enlarge y limits=0.18,
-        xmin=0,
-    ]
-    \addplot[fill=gray!30, draw=gray!50] coordinates {(90,Sort Weight) (102,Sort Height) (107,Level Ctrl) (135,Filling Tank) (87,From A to B)};
-    \addplot[fill=red!40, draw=red!60] coordinates {(30,Sort Weight) (32,Sort Height) (43,Level Ctrl) (15,Filling Tank) (33,From A to B)};
-    \legend{Normal steps, Attack steps}
-    \end{axis}
-    \end{tikzpicture}
-    \caption{Ground-truth steps by scene for scripted runs (120--150 steps). Labels use runtime attack-active flags recorded during execution.}
-    \label{fig:dataset}
-\end{figure}
+All LLM inference runs in-process via HuggingFace \texttt{transformers} with 4-bit NF4 quantization through \texttt{bitsandbytes}. No external inference server is used. The primary model is Qwen2.5-3B-Instruct (${\sim}$6\,GB), studied in base form. Two additional cross-model comparison models are used for RQ5: Qwen3-1.7B (${\sim}$4\,GB) and SmolLM3-3B (${\sim}$6\,GB). Experiments run on a Dell Precision 5820 with an NVIDIA RTX A4000 (16\,GB VRAM) under Windows~11 Enterprise.
+
+The completed experiment matrix comprises 333~runs: 27~(RQ1) + 36~(RQ2) + 27~(RQ3) + 126~(RQ4, base + finetuned) + 72~(RQ5) + 45~(RQ6). Each run executes 60~steps at 500\,ms polling (30\,s of PLC polling time). Including LLM inference---13--33\,s per call at up to 20~calls per run for local models, 2--5\,s for the API model---total wall-clock time is approximately 1--10~minutes per run. Each run produces a unified per-step log (Parquet with 33+ fields), attack records, shield decisions, PLC event captures, and summary metrics (all JSON).
 
 \subsection{Attacker Configurations}
 
-We compare five attacker variants:
+We compare three attacker modes (RQ3), each producing the same unified per-step log format:
 
 \begin{itemize}[leftmargin=1.5em]
-    \item \textbf{Scripted:} manually defined attack templates targeting specific process-critical tags.
-    \item \textbf{Random:} bounded random perturbations over the configured attack surface.
-    \item \textbf{LLM (batch):} an LLM receives scene context and plant state and proposes structured attack actions through the single-shot pipeline.
-    \item \textbf{Campaign:} a four-phase LLM-driven attacker that executes structured multi-step attack sequences (reconnaissance, preparation, exploitation, persistence), evaluated on Level Control and Sorting by Weight.
-    \item \textbf{LLM (agent):} an autonomous LLM attacker agent operates concurrently with an LLM defender agent in the multi-agent mode.
+    \item \textbf{Random baseline:} bounded random perturbations over the configured attack surface, providing a lower bound on attacker capability. Always attacks (no wait decisions).
+    \item \textbf{Static LLM:} a one-shot batch attacker that receives full context once and generates attack proposals without observing process feedback. Tests LLM attack capability without online adaptation.
+    \item \textbf{Online MITM:} the core contribution (C1). An iterative observe--decide--act loop where the LLM observes live plant state every three control cycles, infers the current process phase, builds a context-tier-specific prompt, and decides to \emph{attack} or \emph{wait}. All writes pass through the full defense chain before reaching the PLC.
 \end{itemize}
 
-The defender side uses threshold and invariant detectors for all batch-mode runs. In agent mode, an LLM defender agent additionally monitors process state and proposes corrective actions. For the cross-detector comparison (RQ7), we additionally evaluate CUSUM, One-Class SVM (OCSVM), Isolation Forest, and LSTM autoencoder detectors on the same live attack traces collected from Level Control and Sorting by Weight scenes. The ML-based detectors (OCSVM, Isolation Forest, LSTM-AD) are trained on 300-step baseline traces collected during normal plant operation.
+\subsection{Defense Configurations}
+
+We evaluate seven defense variants for RQ4:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{None:} no defense (measures raw attacker capability).
+    \item \textbf{Baseline:} threshold and invariant detectors.
+    \item \textbf{Phase-aware shield (C4):} blocks writes inconsistent with the inferred process phase.
+    \item \textbf{Intent-consistency checker (C4):} blocks writes opposing the controller's current trend.
+    \item \textbf{Combined:} phase-aware shield + intent-consistency checker together.
+    \item \textbf{LLM defender (novel):} an LLM-based anomaly scorer using the same model and context pipeline as the attacker. Evaluates each proposed write and decides allow/block with a suspicion score.
+    \item \textbf{LLM combined:} phase-aware + intent-consistency + LLM defender together.
+\end{itemize}
 
 \subsection{Metrics}
 
-Attack metrics use explicit denominators: action validity ($N_{\text{schema}}/N_{\text{sub}}$), execution success rate ($N_{\text{exec}}/N_{\text{appr}}$), and attack success rate ASR ($N_{\text{succ}}/N_{\text{exec}}$). A successful attack is one that crosses the scene-specific deviation threshold $\epsilon$ in at least one monitored tag during attack-active windows. The impact score is the mean normalized deviation metric defined in Section~\ref{sec:methodology}. Shield metrics are approval and rejection rates; defender metrics are precision, recall, F1, false positive count, false negative count, and detection latency. All tabulated values are rounded to two decimals.
+\textbf{Attacker metrics.} Attack Success Rate (ASR) $= N_{\text{succ}}/N_{\text{exec}}$, computed post-hoc: for write at step $N$, compare tag value at step $N{-}1$ vs.\ $N{+}2$; success if the tag moved toward the injected value. Valid Action Rate (VAR) $= N_{\text{schema\_valid}}/N_{\text{submitted}}$, and mean LLM inference latency (ms).
+
+\textbf{Defense metrics.} Prevention rate $= N_{\text{blocked}}/N_{\text{proposals}}$, measuring the fraction of attack proposals blocked before PLC write. Includes safety-shield blocks; rows where ``None'' defense shows nonzero prevention reflect mandatory safety-shield blocking, not RQ4 defense activation. Per-stage block counts (Ph., Int., LLM columns) identify the specific defense stage that blocked each proposal.
+
+\textbf{Statistical note.} All tables report 3-repeat cells. For rare-event metrics (ASR), point estimates carry wide uncertainty (95\% CI width $\approx \pm 30\,\text{pp}$ for $n \leq 10$ writes). Findings are supported where multiple independent cells show the same pattern.
 
 \subsection{Results}
 
-\subsubsection{Batch-Mode Experiments}
+\textbf{Safety-shield caveat.} All reported ASR values are \emph{lower bounds} under the experimental safety envelope: the mandatory safety shield blocks out-of-range and invariant-violating writes before they reach the PLC. An unconstrained adversary with the same S7 access could execute writes that the shield rejects, potentially achieving higher ASR. This constraint applies uniformly to all cells and does not affect within-table comparisons, but absolute ASR values should not be interpreted as the ceiling of LLM attacker capability.
 
-Tables~\ref{tab:attack-results},~\ref{tab:shield-results}, and~\ref{tab:defender-results} summarise results from scripted, random, and LLM batch attacker runs.
+\subsubsection{RQ1: Context Ablation}
+\label{sec:eval:rq1}
 
-\begin{table}[t]
-\centering
-\caption{Attack generation and execution results across five Factory~I/O scenes. Exec.\ Rate = executed/approved actions, ASR = attack success rate, Impact = process impact score. Values are rounded to two decimals.}
-\label{tab:attack-results}
-\small
-\setlength{\tabcolsep}{3pt}
-\resizebox{\columnwidth}{!}{%
-\begin{tabular}{llcccc}
-\toprule
-Scene & Attacker & Actions & Exec.\ Rate & ASR & Impact \\
-\midrule
-From A to B & Scripted    & 3  & 1.00 & 0.27 & 0.11 \\
-From A to B & Random      & 10 & 1.00 & 0.23 & 0.08 \\
-From A to B & LLM batch   & 2  & 1.00 & 0.50 & 0.25 \\
-\midrule
-Filling Tank & Scripted   & 3  & 1.00 & 0.17 & 0.11 \\
-Filling Tank & Random     & 10 & 1.00 & 0.20 & 0.13 \\
-Filling Tank & LLM batch  & 2  & 1.00 & 0.00 & 0.00 \\
-\midrule
-Level Ctrl  & Scripted    & 4  & 1.00 & 0.75 & 1.00 \\
-Level Ctrl  & Random      & 10 & 1.00 & 0.75 & 0.53 \\
-Level Ctrl  & LLM batch   & 3  & 1.00 & 0.33 & 0.44 \\
-\midrule
-Sort Height & Scripted    & 4  & 1.00 & 0.12 & 0.00 \\
-Sort Height & Random      & 10 & 1.00 & 0.06 & 0.00 \\
-Sort Height & LLM batch   & 1  & 1.00 & 0.00 & 0.00 \\
-\midrule
-Sort Weight & Scripted    & 5  & 1.00 & 0.00 & 0.01 \\
-Sort Weight & Random      & 10 & 1.00 & 0.29 & 0.08 \\
-Sort Weight & LLM batch   & 3  & 1.00 & 0.67 & 0.11 \\
-\bottomrule
-\end{tabular}%
-}
-\end{table}
+Table~\ref{tab:context_ablation} shows the effect of operational context on attack capability using Qwen2.5-3B-Instruct (base) as the online MITM attacker with no defense active.
 
-\begin{table}[t]
-\centering
-\caption{Shield effectiveness across all batch-mode evaluation runs.}
-\label{tab:shield-results}
-\small
-\begin{tabular}{llcc}
-\toprule
-Scene & Attacker & Approval Rate & Rejection Rate \\
-\midrule
-From A to B & Scripted    & 0.80 & 0.20 \\
-From A to B & Random      & 1.00 & 0.00 \\
-From A to B & LLM batch   & 1.00 & 0.00 \\
-\midrule
-Filling Tank & Scripted   & 1.00 & 0.00 \\
-Filling Tank & Random     & 1.00 & 0.00 \\
-Filling Tank & LLM batch  & 1.00 & 0.00 \\
-\midrule
-Level Ctrl  & Scripted    & 1.00 & 0.00 \\
-Level Ctrl  & Random      & 1.00 & 0.00 \\
-Level Ctrl  & LLM batch   & 1.00 & 0.00 \\
-\midrule
-Sort Height & Scripted    & 1.00 & 0.00 \\
-Sort Height & Random      & 0.80 & 0.20 \\
-Sort Height & LLM batch   & 1.00 & 0.00 \\
-\midrule
-Sort Weight & Scripted    & 0.80 & 0.20 \\
-Sort Weight & Random      & 0.70 & 0.30 \\
-Sort Weight & LLM batch   & 1.00 & 0.00 \\
-\bottomrule
-\end{tabular}
-\end{table}
+\input{sections/table3_context}
 
-\begin{table}[t]
-\centering
-\caption{Defender detection results using threshold and invariant detectors. FP = false positives, FN = false negatives.}
-\label{tab:defender-results}
-\small
-\setlength{\tabcolsep}{3pt}
-\resizebox{\columnwidth}{!}{%
-\begin{tabular}{llccccc}
-\toprule
-Scene & Attacker & Prec. & Recall & F1 & FP & FN \\
-\midrule
-From A to B & Scripted    & 0.67 & 0.81 & 0.61 & 34  & 4 \\
-From A to B & Random      & 0.52 & 1.00 & 0.68 & 97  & 0 \\
-From A to B & LLM batch   & 0.03 & 1.00 & 0.07 & 113 & 0 \\
-\midrule
-Filling Tank & Scripted   & 0.62 & 1.00 & 0.76 & 46  & 0 \\
-Filling Tank & Random     & 0.68 & 1.00 & 0.81 & 65  & 0 \\
-Filling Tank & LLM batch  & 0.13 & 1.00 & 0.24 & 130 & 0 \\
-\midrule
-Level Ctrl  & Scripted    & 0.60 & 1.00 & 0.75 & 60  & 0 \\
-Level Ctrl  & Random      & 0.43 & 0.52 & 0.42 & 46  & 59 \\
-Level Ctrl  & LLM batch   & 0.04 & 1.00 & 0.08 & 144 & 0 \\
-\midrule
-Sort Height & Scripted    & 0.51 & 1.00 & 0.68 & 65  & 0 \\
-Sort Height & Random      & 0.69 & 1.00 & 0.82 & 49  & 0 \\
-Sort Height & LLM batch   & 0.02 & 1.00 & 0.05 & 164 & 0 \\
-\midrule
-Sort Weight & Scripted    & 0.87 & 1.00 & 0.93 & 15  & 0 \\
-Sort Weight & Random      & 0.83 & 0.60 & 0.70 & 13  & 42 \\
-Sort Weight & LLM batch   & 0.12 & 0.57 & 0.21 & 56  & 6 \\
-\bottomrule
-\end{tabular}%
-}
-\end{table}
+\textbf{Finding 1: Full context causes self-deterrence on Sorting by Weight and near-complete suppression on Level Control.} Full context produces \emph{zero} attack proposals on Sorting by Weight---the model decides ``wait'' on every LLM call across all 3~repeats. On Level Control, full context sharply reduces proposals from 23~(minimal) to just 5, all of which the safety shield blocks (Writes~=~0). The rich operational context (phase inference, safety rules, control objectives) makes the 3B model overly cautious: on Sort.~Weight it fully self-deterres; on Level Control it mostly self-deterres and the few proposals it does generate use out-of-range values that the shield rejects.
 
-\subsubsection{Agent-Mode Experiments}
+\textbf{Finding 2: Self-deterrence is scene-dependent.} On Sorting by Weight, partial context achieves 40.0\% ASR vs.\ 53.8\% at minimal---both are effective, while full context drops to zero proposals (complete self-deterrence). On Level Control, all three context levels produce zero successful attacks; full context reduces proposals to 5 (all shield-blocked) while minimal and partial generate 23 and 20 proposals respectively. On Sorting by Height, full context is the \emph{most} effective tier (13.3\% ASR vs.\ 3.3\% and 4.0\% at minimal and partial), suggesting that the scene's discrete state-machine logic benefits from richer phase and trend context.
 
-Table~\ref{tab:agent-results} summarises agent-mode results. In this mode, the attacker and defender LLM agents operate concurrently, each receiving the live plant state and proposing actions through the shield.
+\textbf{Finding 3: Context changes attack strategy, not just success rate.} With minimal context, the model uses brute-force actuator overrides. With partial context, it shifts toward control-plane setpoint manipulation---a more targeted strategy. Full context, when it does produce attacks on Sorting by Height, generates exactly 30~proposals all executed (13.3\% ASR), targeting a narrow set of tags with deliberate actuator overrides. More context makes the model more selective but also more conservative; the direction of the net effect depends on the scene's control paradigm (continuous PID vs.\ discrete state machine).
 
-\begin{table*}[t]
-\centering
-\caption{Agent-mode experiment results using Qwen2-7B-Instruct. Each scene runs for 200~steps with concurrent attacker and defender agents. Appr.\ = approvals / total submitted.}
-\label{tab:agent-results}
-\small
-\begin{tabular}{lcccccc}
-\toprule
-Scene & Atk Cycles & Appr. & Exec & Det. & Errs & Dur.~(s) \\
-\midrule
-From A to B  & 30 & 29/30 (96.7\%) & 29 & 31  & 0 & 122.0 \\
-Filling Tank & 20 & 19/20 (95.0\%) & 19 & 59  & 0 & 143.8 \\
-Level Ctrl   & 25 &  3/25 (12.0\%) &  3 & 58  & 0 & 177.7 \\
-Sort Height  & 39 & 38/39 (97.4\%) & 38 & 91  & 0 & 259.7 \\
-Sort Weight  & 45 & 44/45 (97.8\%) & 44 & 100 & 0 & 295.7 \\
-\bottomrule
-\end{tabular}
-\end{table*}
+\textbf{Note on Level Control results.} Level Control shows 0\% ASR at all three context tiers: minimal (0/2 writes succeed), partial (0/13 writes succeed), and full (5 proposals, all shield-blocked, 0 writes executed). The partial-context model generates many proposals that pass the safety shield but fail to shift the PLC's PID-controlled tag, suggesting that the PID correction loop counteracts the attacker's writes faster than the 500\,ms polling window can observe. The full-context model proposes values outside the configured safety range, so its proposals never reach the PLC.
 
-\subsection{Analysis}
+\textbf{Implication for defense:} The self-deterrence effect suggests that \emph{exposing operational context may itself be a defense mechanism}---a form of deterrence through transparency that reduces LLM red team effectiveness without any active blocking.
 
-Figure~\ref{fig:asr-comparison} visualises the attack success rate across attacker types and scenes, and Figure~\ref{fig:detector-f1} shows the corresponding detector F1 scores.
+\subsubsection{RQ2: Fine-Tuning Impact}
+\label{sec:eval:rq2}
 
-\begin{figure}[t]
-    \centering
-    \begin{tikzpicture}
-    \begin{axis}[
-        ybar,
-        bar width=5pt,
-        width=0.94\columnwidth,
-        height=5.0cm,
-        ylabel={Attack Success Rate},
-        ylabel style={font=\small},
-        symbolic x coords={From A to B, Filling Tank, Level Ctrl, Sort Height, Sort Weight},
-        xtick=data,
-        xticklabel style={font=\scriptsize, rotate=20, anchor=east},
-        yticklabel style={font=\small},
-        ymin=0, ymax=1.15,
-        legend style={
-            at={(0.5,1.02)},
-            anchor=south,
-            legend columns=3,
-            font=\scriptsize,
-            draw=none,
-        },
-        nodes near coords,
-        nodes near coords style={font=\tiny, above},
-        every node near coord/.append style={rotate=0},
-        enlarge x limits=0.15,
-        grid=major,
-        grid style={gray!20},
-    ]
-    \addplot[fill=red!40, draw=red!60] coordinates {(From A to B,0.27) (Filling Tank,0.17) (Level Ctrl,0.75) (Sort Height,0.12) (Sort Weight,0.00)};
-    \addplot[fill=blue!40, draw=blue!60] coordinates {(From A to B,0.23) (Filling Tank,0.20) (Level Ctrl,0.75) (Sort Height,0.06) (Sort Weight,0.29)};
-    \addplot[fill=green!40, draw=green!60] coordinates {(From A to B,0.50) (Filling Tank,0.00) (Level Ctrl,0.33) (Sort Height,0.00) (Sort Weight,0.67)};
-    \legend{Scripted, Random, LLM Batch}
-    \end{axis}
-    \end{tikzpicture}
-    \caption{Attack success rate (ASR) comparison across five Factory~I/O scenes and three batch-mode attacker variants.}
-    \label{fig:asr-comparison}
-\end{figure}
+RQ2 measures how task-specific QLoRA fine-tuning changes \emph{both} red team (attack) and blue team (defense) capability on the same model. The training dataset (2{,}057 examples) includes: (i)~83 post-hoc verified successful attack proposals; (ii)~608 defense ``block'' examples from known attack proposals; and (iii)~1{,}366 defense ``allow'' examples from normal operation states. Fine-tuning uses QLoRA (rank=16, $\alpha$=32) on Qwen2.5-3B-Instruct in 4-bit NF4 quantization for 3~epochs.
 
-\begin{figure}[t]
-    \centering
-    \begin{tikzpicture}
-    \begin{axis}[
-        ybar,
-        bar width=5pt,
-        width=\columnwidth,
-        height=5.0cm,
-        ylabel={Detector F1 Score},
-        ylabel style={font=\small},
-        symbolic x coords={From A to B, Filling Tank, Level Ctrl, Sort Height, Sort Weight},
-        xtick=data,
-        xticklabel style={font=\scriptsize, rotate=20, anchor=east},
-        yticklabel style={font=\small},
-        ymin=0, ymax=1.0,
-        legend style={
-            at={(0.5,1.02)},
-            anchor=south,
-            legend columns=3,
-            font=\scriptsize,
-            draw=none,
-        },
-        nodes near coords,
-        nodes near coords style={font=\tiny, above},
-        enlarge x limits=0.15,
-        grid=major,
-        grid style={gray!20},
-    ]
-    \addplot[fill=red!40, draw=red!60] coordinates {(From A to B,0.61) (Filling Tank,0.76) (Level Ctrl,0.75) (Sort Height,0.68) (Sort Weight,0.93)};
-    \addplot[fill=blue!40, draw=blue!60] coordinates {(From A to B,0.68) (Filling Tank,0.81) (Level Ctrl,0.42) (Sort Height,0.82) (Sort Weight,0.70)};
-    \addplot[fill=green!40, draw=green!60] coordinates {(From A to B,0.07) (Filling Tank,0.24) (Level Ctrl,0.08) (Sort Height,0.05) (Sort Weight,0.21)};
-    \legend{Scripted, Random, LLM Batch}
-    \end{axis}
-    \end{tikzpicture}
-    \caption{Detector F1 score by attacker type and scene. Low F1 for LLM batch reflects high false-positive rates when few attacks occur relative to run length, rather than missed detections (recall = 1.0 in most cases).}
-    \label{fig:detector-f1}
-\end{figure}
+\textbf{Training procedure.} The 2{,}057 examples are used in a single training split without a held-out validation set, following the approach of Hackphyr~\cite{rigaki2024hackphyr} (1{,}641 examples, no validation split). We monitor training loss, which decreases monotonically from 1.82 to 0.41 over 3~epochs. The absence of a validation split means we cannot formally rule out overfitting; however, the adapter's total parameter count (29.9M, 0.96\% of the 3.1B base) and LoRA's implicit regularization (low-rank weight updates) inherently limit overfitting capacity. We train with a single seed; multi-seed training would strengthen confidence in the results but was not feasible given hardware constraints. The dataset is small relative to comparable cybersecurity fine-tuning work: HackMentor uses 14{,}000 examples and CyberLLMInstruct uses 54{,}928, though our task is narrower (structured JSON attack/defense decisions for three specific CPS scenes rather than general cybersecurity Q\&A). The 83 verified attack examples are the primary limitation---this is the number of physically successful writes observed across 189~base-model runs, and cannot be synthetically expanded without risking distributional artifacts.
 
-\paragraph{RQ1: Attack Validity and Execution.}
-Scripted and random attackers produced process-valid actions, and every shield-approved action executed successfully on the live Siemens S7-1200. LLM batch actions achieved 100\% action validity and 100\% execution success conditioned on shield approval across all five scenes, with every approved action compiled to concrete tag writes. This confirms end-to-end pipeline correctness: the structured action schema, JSON validation with retry, and shield mediation reliably translate LLM outputs into legitimate PLC operations. Shield rejections in constrained scenes (Table~\ref{tab:shield-results}) are explicitly accounted for and do not count as execution failures.
+Table~\ref{tab:finetune_comparison} shows the results.
 
-\paragraph{RQ2: Attack Effectiveness Across Types and Scenes.}
-Scripted attacks are most effective when critical process tags are targeted: on Level Control, scripted achieves ASR~=~0.75 with impact~=~1.00, exploiting domain knowledge of tank fill/discharge dynamics. Random attacks achieve higher coverage (10 actions per run) and match scripted effectiveness on Level Control (ASR~=~0.75). The LLM batch attacker generated fewer but targeted actions (1--3 per run), achieving ASR~=~0.33 on Level Control and ASR~=~0.50--0.67 on From A to B and Sorting by Weight, demonstrating comparable per-action effectiveness with fewer actions.
+\input{sections/table_rq2_finetune}
 
-Two scenes show distinct patterns: Level Control is the most consistently exploitable scene, with all three attacker types achieving high ASR (0.33--0.75) and measurable impact. Sorting by Weight showed the highest LLM batch ASR (0.67), exploiting threshold parameters that the model correctly identified as process-critical. Sorting by Height proved most resilient, with LLM batch scoring zero ASR and scripted/random achieving ASR $\leq$ 0.12, reflecting the difficulty of disrupting discrete sorting logic through single-tag perturbations.
+\textbf{Finding RQ2-1: Fine-tuning substantially improves attack effectiveness on Level Control minimal.} The fine-tuned model generates 30~proposals, all of which execute (30 writes, 11 successes, 36.7\% ASR), compared to the base model's 23 proposals but only 2~executed writes and 0\% ASR. Task-specific training enables the model to propose values that pass the safety shield---where the base model frequently proposes out-of-range values that are blocked---and succeed in shifting the target tag.
 
-The campaign attacker executes structured four-phase attacks (reconnaissance, preparation, exploitation, persistence) over 8--10 actions per run. On Level Control, a dedicated campaign stress run achieved a stealth score of 1.0---every attack step evaded both threshold and invariant detectors (102~false negatives, F1~=~0.0), despite an ASR of only 0.22 and moderate impact (0.14). This result primarily exposes a known limitation of rule-based detectors: gradually-escalating perturbations that remain within configured threshold bounds are invisible to fixed-threshold monitors. The campaign's multi-phase planning enabled it to stay within these bounds, but the evasion mechanism is detector blindness rather than adversarial sophistication per se. On Sorting by Weight, the campaign achieved higher ASR (0.78) but zero stealth (all attacks detected, F1~=~0.65), indicating that stealth and effectiveness are scene-dependent properties. The stress-run result above is separate from the adaptation rounds reported later in Table~\ref{tab:adapt-results}.
+\textbf{Finding RQ2-2: Fine-tuning does not improve all scenes uniformly.} On Sorting by Weight minimal, fine-tuning \emph{hurts} attack effectiveness: the fine-tuned model generates more proposals (30 vs.\ 13) but achieves 0\% ASR compared to 53.8\% for the base. The adapter has learned to propose more actions but cannot replicate the base model's scene-specific targeting on this 35-tag complex scene.
 
-\paragraph{RQ3: Shield Effectiveness.}
-The shield approved 100\% of LLM batch actions across all scenes. Shield rejections occurred with scripted attacks on From A to B (20\% rejected) and Sorting by Weight (20\% rejected), and with random attacks on Sorting by Height (20\% rejected) and Sorting by Weight (30\% rejected), where tag ranges impose tighter constraints. In Level Control agent mode, the shield rejected 21 of 25 submitted actions (84\%), reflecting its strict process invariants. No unsafe writes were permitted across any configuration, confirming the shield's role as a hard safety boundary.
+\textbf{Finding RQ2-3: Fine-tuned model produces zero proposals under full context due to schema regression.} On all three scenes under full context, the fine-tuned model makes LLM calls (34--60 per scene) but achieves VAR~=~0.0\%---every output fails schema validation. This is \emph{schema regression}, not strategic self-deterrence: the base model under full context achieves VAR~=~100\% on Level Control and Sort.~Height (issuing valid ``wait'' decisions) and VAR~=~40\% on Sort.~Weight (already struggling with the 35-tag prompt length), whereas the fine-tuned model achieves VAR~=~0\% on all three---it cannot produce parseable JSON under the longer full-context prompts. We attribute this to a \emph{prompt-length distributional mismatch}: the fine-tuning examples are derived from partial- and minimal-context runs (which produced successful attacks), so the adapter's training distribution is biased toward shorter prompts (${\sim}$400--800~tokens). Full-context prompts (${\sim}$1{,}500--2{,}000~tokens) fall outside this distribution, causing the adapter to generate malformed output. This is a known failure mode of LoRA adapters trained on narrow prompt distributions~\cite{hu2025evodefender}; mitigations include augmenting training data with full-context examples or increasing LoRA rank. Under minimal context, where prompt length aligns with the training distribution, fine-tuning raises Sort.~Height ASR from 3.3\% to 10.0\%, confirming the adapter is effective within its training distribution.
 
-\paragraph{RQ4: Detection Performance.}
-Table~\ref{tab:defender-results} reports the \emph{union} of threshold and invariant detector alerts: a step is flagged as detected if either detector fires. Threshold and invariant detectors achieve perfect recall (1.0) in most batch-mode configurations, meaning no attack step was missed. Precision varies widely: highest for Sorting by Weight scripted (0.87, F1~=~0.93) and lowest for LLM batch runs on scenes with few attack steps relative to run length (F1 $\leq$ 0.05 in several cases). The low LLM batch F1 values (0.05--0.24) stem from a detector calibration mismatch: the threshold detector fires on \emph{any} state deviation, and in runs with only 1--3 short-duration attacks across 120+ steps, the resulting false-positive counts (113--164) overwhelm the few true positives. This indicates that the current threshold settings, while effective for scripted and random attacks, are over-sensitive for sparse attack patterns and would benefit from adaptive calibration.
+\textbf{Mitigation note.} The schema regression under full context is addressable: augmenting the v2 training dataset with ${\sim}$200 full-context examples (both attack and defense) would align the adapter's prompt-length distribution with all three context tiers. We did not implement this mitigation within the current evaluation timeline but note it as a straightforward extension for future work.
 
-Level Control random is a notable case where recall drops to 0.52 (FN~=~59), as frequent small-magnitude setpoint perturbations fall within normal process variation bounds. The false-positive counts (13--164) reflect the threshold detector's conservative design and motivate the adaptation loop experiments summarised in Table~\ref{tab:adapt-results}.
+\textbf{Finding RQ2-4: The dual-role hypothesis holds for defense (see RQ4 finetuned).} Table~\ref{tab:defense_finetuned} (Section~\ref{sec:eval:rq4}) shows that the fine-tuned LLM defender achieves 100\% prevention on Sorting by Height (30/30 proposals blocked by the LLM component), identical to the base model's LLM defender. Training on both attack and defense examples preserves defense capability while modifying attack behavior---the fine-tuned model that achieves 36.7\% ASR in attack mode still blocks 100\% of proposals in defense mode on the same scene type.
 
-\paragraph{RQ5: Agent Mode Dynamics.}
-The multi-agent architecture with Qwen2-7B-Instruct successfully executes concurrent attacker and defender processes with independent LLM inference, coordinated through a single PLC-owning coordinator. Using a larger model than prior experiments, the attacker agent achieved 95--98\% shield approval rates across four of five scenes: 29/30 approved on From A to B, 19/20 on Filling Tank, 38/39 on Sorting by Height, and 44/45 on Sorting by Weight. This represents a dramatic improvement over the initial Phi-3-Mini-4K-Instruct runs that achieved only 2\% schema compliance.
+\subsubsection{RQ3: Online vs.\ Static Attack Mode}
+\label{sec:eval:rq3}
 
-Level Control remains the exception: only 3 of 25 submitted actions (12\%) were approved by the shield, due to strict process invariant rules that reject any action deviating from tight level bounds. This result demonstrates the shield's correct enforcement of safety constraints even when the attacker explicitly reasons about the attack surface and value ranges. Across all five scenes, attacker errors dropped to zero---confirming that the Qwen2-7B model reliably generates structurally valid JSON actions when provided with range-annotated attack surface descriptions. The defender agent emitted 31--100 detection events per scene, providing continuous monitoring coverage.
+Table~\ref{tab:attacker_comparison} compares the three attacker modes across all three scenes with no defense active.
 
-\paragraph{RQ6: Adaptation.}
-We ran two sets of three-round closed-loop adaptation experiments on Level Control and Sorting by Weight. The first set used scripted and random attackers; the second used the campaign attacker to stress-test adaptation against harder attack distributions. Table~\ref{tab:adapt-results} summarises the campaign adaptation results.
+\input{sections/table4_attacker}
 
-With scripted and random attackers, the threshold and invariant detectors maintained stable F1 scores across all rounds without retraining (Level Control: F1~=~0.916, Recall~=~1.0; Sorting by Weight: F1~=~0.925, Recall~=~1.0), and zero hard cases were flagged. This confirms that rule-based detectors are well-calibrated for predetermined attack patterns.
+\textbf{Finding 4: Static LLM generates zero valid proposals under the batch design.} The static one-shot LLM produces no schema-valid attack proposals across all scenes. The batch attacker requests a full JSON array of up to 10 attack objects in a single call with a 350-token output budget---insufficient for the full array. Even after truncation repair (salvaging any complete objects from a partial response), zero schema-valid proposals survive. This reflects two concurrent constraints: (i)~the 350-token limit is too small for a multi-object JSON array, and (ii)~without iterative plant feedback, the model produces low-confidence generic outputs that fail schema validation. \textbf{Important caveat:} the 0\% result reflects our specific experimental design (350-token budget, batch JSON array format) rather than a fundamental limitation of one-shot LLM attack capability. AttackLLM~\cite{ahmed2025attackllm} uses GPT-4 with much larger context and output windows plus human-in-the-loop validation; such a design would likely overcome the token-budget constraint. We report the static result as evidence that \emph{our} batch design is ineffective, not that all one-shot designs are inherently incapable. The random baseline, which operates without any LLM call, achieves 10.0\% on Level Control and 13.3\% on Sorting by Height, establishing that the 0\% static LLM result is not the floor for all non-online approaches.
 
-With the campaign attacker, Level Control exhibited dramatic adaptation dynamics. In Round~0, the campaign completely evaded all detectors (F1~=~0.00, Recall~=~0.00), with every one of 102~attack steps classified as a false negative. The Isolation Forest detector was retrained on these hard-case windows plus synthetic normal data. In Round~1, detection performance jumped to F1~=~0.92 (Precision~=~0.84, Recall~=~1.00). This result should be interpreted cautiously: the retrained detector was evaluated on a \emph{new} campaign run, but the campaign planner used the same LLM and scene configuration, so the Round~1 attacks likely share structural similarity with Round~0. The single-round recovery demonstrates that hard-case retraining can close a specific coverage gap, but does not establish generalisation to structurally different attack sequences. Round~2 sustained this performance (F1~=~0.92, zero new hard cases), yielding a net improvement of $+$0.92 F1 from Round~0.
+\textbf{Finding 5: Online MITM is the only effective attacker on complex scenes.} On Sorting by Weight, the online MITM achieves 53.8\% ASR while both random and static attackers generate zero proposals. The LLM's ability to reason about the 35-tag scene's control logic and select appropriate targets is essential---random perturbations cannot identify valid attack surfaces on complex scenes.
 
-On Sorting by Weight, the detectors achieved perfect recall (1.00) from Round~0 onward, with zero hard cases across all three rounds---no attacks were missed. No retraining was triggered. ASR decreased from 0.78 in Round~0 to 0.13 in Rounds~1--2, and detection precision improved correspondingly (F1: 0.65$\to$0.92). Because no retraining occurred, these metric changes reflect variability in the LLM-planned campaign phases across rounds rather than detector adaptation. The contrasting results demonstrate that adaptation is most valuable in scenes where initial detectors have coverage gaps---precisely the scenarios where campaign attackers can discover evasive sequences.
+\textbf{Finding 6: Random baseline is competitive on discrete scenes.} On Sorting by Height, the random baseline achieves 13.3\% ASR compared to 3.3\% for the online MITM (3 runs each). Discrete sorting scenes have binary actuators where random single-tag overrides can accidentally align with vulnerable states, while the LLM's cautious wait/attack reasoning sometimes misses opportunistic windows.
 
-\begin{table}[t]
-\centering
-\caption{Closed-loop adaptation with the campaign attacker. HC = cumulative hard cases. $\checkmark$ indicates the Isolation Forest detector was retrained before that round. Level Control shows dramatic improvement after one retraining cycle; Sorting by Weight detectors achieve perfect recall without retraining.}
-\label{tab:adapt-results}
-\small
-\setlength{\tabcolsep}{3pt}
-\resizebox{\columnwidth}{!}{%
-\begin{tabular}{llcccccc}
-\toprule
-Scene & Round & Retrain & F1 & Prec. & Recall & ASR & HC \\
-\midrule
-Level Ctrl  & 0 & --              & 0.00 & 0.00 & 0.00 & 0.22 & 102 \\
-Level Ctrl  & 1 & $\checkmark$  & \textbf{0.92} & 0.84 & 1.00 & 0.00 & 102 \\
-Level Ctrl  & 2 & $\checkmark$  & \textbf{0.92} & 0.84 & 1.00 & 0.00 & 102 \\
-\midrule
-Sort Weight & 0 & --              & 0.65 & 0.48 & 1.00 & 0.78 & 0 \\
-Sort Weight & 1 & --              & \textbf{0.92} & 0.86 & 1.00 & 0.13 & 0 \\
-Sort Weight & 2 & --              & \textbf{0.92} & 0.86 & 1.00 & 0.13 & 0 \\
-\bottomrule
-\end{tabular}%
-}
-\end{table}
+\textbf{Finding 7: Level Control is resistant to all attacker types.} On Level Control, random achieves 10.0\% ASR with 10 writes, and static LLM generates 0 proposals. The online MITM generates 14 proposals but all are blocked by the safety shield (Writes~=~0)---the LLM proposes out-of-range values that fail the shield's range check, so no writes reach the PLC. This differs from the RQ1 partial-context result (Table~\ref{tab:context_ablation}), where 13~writes \emph{do} execute but 0 succeed: there, the PID correction loop counteracts valid writes faster than the polling window observes. Level Control's resilience thus has two layers: the safety shield blocks out-of-range proposals, and the PID controller corrects in-range writes.
 
-\subsubsection{Cross-Detector Comparison}
+\subsubsection{RQ4: Defense Effectiveness}
+\label{sec:eval:rq4}
 
-To address RQ7, we evaluate six anomaly detection approaches on the same live attack traces collected from Level Control and Sorting by Weight scenes using scripted, random, and LLM batch attackers. The ML-based detectors---OCSVM, Isolation Forest, and LSTM autoencoder (LSTM-AD)---are each trained on a 300-step baseline trace of normal plant operation (approximately 2.5~minutes at the 500\,ms polling interval). This training set is small by ML standards; the resulting detector performance reflects what is achievable with minimal baseline data rather than well-trained production models. Table~\ref{tab:detector-comparison} reports precision, recall, F1, and mean detection latency averaged across all attacker types per scene.
+Table~\ref{tab:defense_comparison} presents the defense comparison across all three scenes using the base Qwen2.5-3B-Instruct model.
 
-\begin{table}[t]
-\centering
-\caption{Cross-detector comparison on live attack traces from two Factory~I/O scenes. Metrics are averaged across scripted, random, and LLM batch attacker runs. Lat.\ = mean detection latency in seconds. Best F1 per scene in \textbf{bold}.}
-\label{tab:detector-comparison}
-\small
-\setlength{\tabcolsep}{3pt}
-\resizebox{\columnwidth}{!}{%
-\begin{tabular}{llcccc}
-\toprule
-Scene & Detector & Prec. & Recall & F1 & Lat.~(s) \\
-\midrule
-Level Ctrl & OCSVM           & 0.494 & 1.000 & \textbf{0.620} & $<$1 \\
-Level Ctrl & Isolation Forest & 0.494 & 1.000 & \textbf{0.620} & $<$1 \\
-Level Ctrl & LSTM-AD          & 0.502 & 0.859 & 0.601 & 1.4 \\
-Level Ctrl & Threshold        & 0.421 & 0.808 & 0.482 & 1.0 \\
-Level Ctrl & CUSUM            & 0.485 & 0.586 & 0.471 & 4.5 \\
-Level Ctrl & Invariant        & 0.323 & 0.169 & 0.175 & 10.9 \\
-\midrule
-Sort Weight & OCSVM           & 0.562 & 1.000 & \textbf{0.658} & $<$1 \\
-Sort Weight & Isolation Forest & 0.542 & 0.817 & 0.554 & $<$1 \\
-Sort Weight & LSTM-AD          & 0.561 & 0.706 & 0.542 & 3.1 \\
-Sort Weight & Threshold        & 0.584 & 0.590 & 0.523 & 0.3 \\
-Sort Weight & CUSUM            & 0.635 & 0.481 & 0.508 & 6.4 \\
-Sort Weight & Invariant        & 0.626 & 0.454 & 0.489 & 13.3 \\
-\bottomrule
-\end{tabular}%
-}
-\end{table}
+\input{sections/table5_defense}
 
-\begin{figure}[t]
-    \centering
-    \begin{tikzpicture}
-    \begin{axis}[
-        ybar,
-        bar width=4pt,
-        width=\columnwidth,
-        height=5.5cm,
-        ylabel={F1 Score},
-        ylabel style={font=\small},
-        symbolic x coords={Threshold, Invariant, CUSUM, OCSVM, IForest, LSTM-AD},
-        xtick=data,
-        xticklabel style={font=\scriptsize, rotate=25, anchor=east},
-        yticklabel style={font=\small},
-        ymin=0, ymax=0.85,
-        legend style={
-            at={(0.5,1.02)},
-            anchor=south,
-            legend columns=2,
-            font=\scriptsize,
-            draw=none,
-        },
-        nodes near coords,
-        nodes near coords style={font=\tiny, above},
-        enlarge x limits=0.12,
-        grid=major,
-        grid style={gray!20},
-    ]
-    \addplot[fill=blue!40, draw=blue!60] coordinates {(Threshold,0.48) (Invariant,0.18) (CUSUM,0.47) (OCSVM,0.62) (IForest,0.62) (LSTM-AD,0.60)};
-    \addplot[fill=orange!40, draw=orange!60] coordinates {(Threshold,0.52) (Invariant,0.49) (CUSUM,0.51) (OCSVM,0.66) (IForest,0.55) (LSTM-AD,0.54)};
-    \legend{Level Control, Sorting by Weight}
-    \end{axis}
-    \end{tikzpicture}
-    \caption{Cross-detector F1 comparison on two Factory~I/O scenes. ML-based detectors (OCSVM, Isolation Forest, LSTM-AD) consistently outperform rule-based and statistical baselines.}
-    \label{fig:detector-comparison}
-\end{figure}
+\textbf{Finding 8: The LLM defender achieves 100\% prevention on Sorting by Height.} The LLM-based anomaly defender blocked all 30 attack proposals (100\% prevention rate) and all 28 proposals in the LLM+Combined configuration. No rule-based defense achieved comparable blocking: baseline, intent, and combined defenses let all writes through to the PLC, where some succeeded (ASR up to 16.7\%). We note that these proposals already passed the safety shield; the LLM defender blocks \emph{shield-legal} writes that rule-based defenses miss. However, a controlled FPR study across all three scenes (Section~\ref{sec:discussion}) reveals that the LLM defender also blocks 95--100\% of legitimate writes (226/229 probes, FPR\,=\,98.7\%), indicating a ``block-everything'' policy rather than discriminating anomaly detection.
 
-\paragraph{RQ7: Cross-Detector Analysis.}
-As shown in Figure~\ref{fig:detector-comparison}, the one-class ML detectors (OCSVM and Isolation Forest) achieve the highest F1 scores on both scenes, driven by perfect or near-perfect recall: every attack step is flagged as anomalous relative to the learned normal distribution. However, their precision is modest (0.49--0.56), as the models also flag some normal process variation as anomalous. OCSVM and Isolation Forest both achieve sub-second detection latency because they score each snapshot independently without requiring temporal context.
+\textbf{Finding 9: Phase-aware shield row coincides with zero ASR but does not cause it.} On Sorting by Height, all 28 writes proposed under the phase-aware shield configuration passed through without any blocking (Ph.~=~0, Blk.~=~0), yet none succeeded (ASR~=~0\%). The zero ASR is \emph{not} attributable to the phase-aware shield---it blocks nothing in this configuration. The result most plausibly reflects run-to-run variance: the baseline defense row (which also performs no blocking) achieves 13.3\% ASR across its proposals, so the phase-aware row's 0\% ASR with only 28 proposals lies well within the expected variance range (95\% CI includes 0\% for $n = 28$, $k = 0$). Whether the phase-aware shield influences which proposals the LLM generates---and thereby indirectly affects success---cannot be determined from these results alone.
 
-LSTM-AD provides the best precision--recall trade-off among learned detectors (F1~=~0.601 on Level Control, 0.542 on Sorting by Weight), with the reconstruction-error threshold capturing temporal anomalies that point-wise detectors cannot distinguish from noise. Its detection latency of 1.4--3.1\,s reflects the sliding-window requirement for the autoencoder.
+\textbf{Finding 10: Rule-based defenses do not block LLM-generated writes on Sorting by Height.} On Sorting by Height, baseline, intent, and combined defenses allow all proposed writes through to the PLC without blocking (Blk.=0 in all rows). The Ph.\ and Int.\ columns---which record per-stage block counts---show zero because the phase-aware shield and intent checker evaluate writes but do not block them; their effect manifests through ASR reduction, not write prevention. Only the LLM defender blocks at the proposal level (100\% prevention). Critically, ASR values across defense rows are not directly comparable because the attacker generates different proposals across runs; the relevant comparison is whether any successful attacks occur, not the specific ASR value.
 
-CUSUM provides interpretable statistical change detection but exhibits higher latency (4.5--6.4\,s) due to the cumulative-sum warmup period before the statistic exceeds its threshold. Its recall is lower (0.48--0.59) because short-duration attacks may not accumulate sufficient deviation.
+\textbf{Important note on Table~\ref{tab:defense_comparison} ``None'' rows.} The ``None'' defense variant deactivates all RQ4 defense components. The mandatory safety shield is always active; it blocks out-of-range or duration-violating proposals before any RQ4 defense fires. On Level Control ``None'' (RQ4), all 14 proposals are blocked by the safety shield (100\% prevention). This appears to contradict Table~\ref{tab:context_ablation} (RQ1), where Level Control partial context shows 13 writes executed. The difference is explained by run-to-run variation in the LLM's proposed values: the RQ4 ``full context'' attacker proposes different target tags and values than the RQ1 ``partial context'' attacker, and the specific values chosen in the RQ4 runs happened to fall outside the configured safety envelope. Prevention rates in ``None'' rows reflect safety-shield blocking of out-of-range proposals, not RQ4 defense effectiveness.
 
-The threshold detector remains competitive (F1~=~0.48--0.52), confirming its value as a zero-training baseline. The invariant detector shows the highest precision among rule-based approaches on Sorting by Weight (0.626) but the lowest recall on Level Control (0.169), reflecting its conservative scene-specific rules that miss subtle perturbations.
+\textbf{Finding 11: Attacker self-deterrence confounds defense effectiveness measurement on Level Control and Sorting by Weight.} On these two scenes, most defense variants produce 0 attacker proposals---not because the defense blocked them, but because the attacker self-deterred (issued ``wait'' on every LLM call). This limits our ability to attribute 0\% ASR to defense blocking versus attacker passivity. For these scenes, the only interpretable defense comparison rows are those with nonzero proposals (Level Control Intent: 18 proposals, 16.7\% ASR; Sorting by Weight None: 13 proposals, 53.8\% ASR). The defense study is most interpretable on Sorting by Height, where the attacker consistently proposes attacks across all defense configurations. We acknowledge this as a limitation of the full-context evaluation design for RQ4 (see Section~\ref{sec:eval:threats}).
 
-These results indicate that even with minimal training data (300 steps), one-class ML detectors provide measurable detection improvements over hand-tuned baselines. Longer baseline traces would likely improve all ML detector scores; the current comparison establishes relative ordering rather than ceiling performance. The diversity of detector characteristics---particularly the precision--recall and latency trade-offs---motivates ensemble approaches in future work.
+\subsubsection{RQ4 (Finetuned): Defense Against a Fine-Tuned Attacker}
+\label{sec:eval:rq4ft}
 
-\subsection{Defense Ablation}
-\label{sec:ablation}
+Table~\ref{tab:defense_finetuned} presents the defense comparison when both attacker and defender use the fine-tuned model (symmetric setup).
 
-To isolate the contribution of each detector class, we ran eight dedicated PLC experiments using four defender configurations on Level Control and Sorting by Weight: (i)~threshold detector only, (ii)~invariant detector only, (iii)~ML detectors only (OCSVM + Isolation Forest), and (iv)~full ensemble (all four detectors). Each run uses the scripted attacker with 150 steps (Level Control) or $\approx$118 steps (Sorting by Weight). Table~\ref{tab:ablation} reports the results.
+\input{sections/table_rq4_finetuned}
 
-On Level Control, the threshold detector alone achieves full recall (F1~=~0.75) but at the cost of 60~false positives, while the invariant detector contributes nothing (F1~=~0.00)---its rules target valve interlock violations that the scripted attacker does not trigger. The ML-only configuration matches the threshold detector's performance (F1~=~0.75, recall~=~1.0), and the full ensemble offers no additional gain, indicating that the threshold and ML detectors cover the same attack patterns on this scene. Notably, ASR rises from 0.25 to 0.50 under ML-only and full-ensemble configurations; this reflects run-to-run variability in the scripted attacker's random target selection rather than a detector weakness.
+\textbf{Finding RQ4-FT-1: LLM defender retains 100\% prevention on Sorting by Height.} On Sorting by Height, the fine-tuned LLM defender blocks all 30 proposals (LLM~=~30), identical to the base model's performance. The fine-tuned attacker achieves 25--40\% ASR against all rule-based defenses on this scene---but the LLM defender stops all of them. For Sorting by Weight, the LLM Defender row shows 100\% prevention (5/5 proposals blocked), but the LLM column is 0---all blocks are attributable to the safety shield, not the LLM defender component: the fine-tuned attacker targets \texttt{light\_thresh} with out-of-range values (10.5--15.0) which the shield rejects before the LLM defender is invoked. Also notable: the Level Control LLM+Combined row shows 0 proposals while LLM Defender alone produces 8; this inversion---fewer proposals under more defenses---is likely run-to-run variance across the 3-repeat design.
 
-On Sorting by Weight, all four configurations achieve perfect recall. The invariant detector alone yields the highest precision (0.88, F1~=~0.93) with only 14~false positives, because its weight-threshold rules align well with the scene's attack surface. The threshold, ML-only, and full-ensemble configurations produce similar F1 ($\approx$0.91) with slightly more false positives (20). The threshold-only configuration is the only one to achieve ASR~=~0.00, suggesting that its conservative alerting indirectly constrains the effective attack window.
+\textbf{Finding RQ4-FT-2: Rule-based defenses are weaker against the fine-tuned attacker.} On Sorting by Height, the fine-tuned attacker achieves 40\% ASR against the baseline defense and 30--35\% against phase-aware, intent, and combined---substantially higher than the base model (13.3\%, 0\%, 7.4\%, 16.7\% respectively). The fine-tuned attacker has learned to propose writes that pass rule-based filters.
 
-\input{sections/table7_ablation}
+\textbf{Finding RQ4-FT-3: Fine-tuned attacker self-deterres under no-defense on Sorting by Height.} The fine-tuned model generates zero proposals under no-defense on Sorting by Height, while the base model generates 30 in the same configuration (RQ4 base, Table~\ref{tab:defense_comparison}). This is an unexplained inversion: fine-tuning improves attack capability on some cells (Level Control minimal) while inducing complete self-deterrence on others (Sort.\ Height no-defense). The most plausible explanation is that the fine-tuning data's 83 successful attack examples are biased toward scenes and configurations where defenses were active, so the adapter may have learned to associate attack proposals with defense-present contexts. Testing this hypothesis requires analyzing the fine-tuning examples by configuration, which we leave for future work.
 
-\subsection{Statistical Reliability}
-\label{sec:variance}
+\subsubsection{RQ5: Cross-Model Robustness}
+\label{sec:eval:rq5}
 
-To quantify the variability of results across repeated trials, we report mean and 95\% confidence intervals for the primary metrics (ASR and detector F1) across all (scene, attacker) pairs with at least two independent runs. Table~\ref{tab:variance} summarises the variance analysis. Of 17 (scene, attacker) pairs, 8 currently have $n \geq 2$ runs; the remaining 9 are single-run measurements reported as point estimates. Confidence intervals are wide for pairs with $n = 2$, reflecting inherent variability in LLM-driven and stochastic attack processes against a live PLC.
+Table~\ref{tab:crossmodel} presents the cross-model comparison using three local models with no defense active.
 
-% Table 8 — generated by scripts/compute_variance.py
-% To populate: run Phase B+C repeated trials, then python scripts/compute_variance.py
+\input{sections/table6_crossmodel}
+
+\textbf{Finding 12: Attack capability scales with model size.} On Level Control, Qwen2.5-3B achieves 13.7\% ASR, SmolLM3-3B achieves 11.7\%, and Qwen3-1.7B achieves 0\%. All three models generate attack proposals and execute writes, but the 1.7B model's writes never successfully shift the target tag toward the injected value---indicating that smaller models produce syntactically valid but semantically ineffective actions.
+
+\textbf{Finding 13: Cross-family capability is comparable at the same scale.} Qwen2.5-3B (13.7\%) and SmolLM3-3B (11.7\%) achieve similar ASR despite different architectures and training corpora. This suggests attack capability at the 3B scale is not strongly architecture-specific, supporting the generalizability of our findings.
+
+\textbf{Finding 14: Sorting by Weight exceeds 3B model capacity for cross-model evaluation.} All three models generate zero attack proposals on Sorting by Weight, consistent with the observation from RQ1 that this 35-tag scene produces prompts that challenge 3B-class models. The primary model achieves proposals only in the online MITM configuration with specific context tiers (Table~\ref{tab:context_ablation}).
+
+\subsubsection{RQ6: Frontier Model Scaling}
+\label{sec:eval:rq6}
+
+RQ6 tests whether a frontier API model (GPT-4o-mini) produces qualitatively different attack outcomes compared to the local 3B-class models evaluated in RQ1--RQ5. We run 45~cells: 5~conditions (3~context levels without defense + 2~full-context with LLM defender/LLM+combined) $\times$ 3~scenes $\times$ 3~repeats. The online MITM attacker uses GPT-4o-mini via the OpenAI API; in defense cells, the LLM defender uses the local Qwen2.5-3B-Instruct, testing cross-model defense generalization.
+
+Table~\ref{tab:frontier} presents the head-to-head comparison. Qwen2.5-3B columns reproduce the matched RQ1 and RQ4 cells from Tables~\ref{tab:context_ablation}--\ref{tab:defense_comparison}.
+
+\input{sections/table_rq6_frontier}
+
+\textbf{Finding 15: Self-deterrence is eliminated at frontier-model scale.} GPT-4o-mini generates the maximum 30~proposals (10~per run) in every cell across all 45~runs---zero self-deterrence under any context level or defense configuration. Qwen2.5-3B ranges from 0~proposals (Sort.~Weight full context: complete self-deterrence) to 30 (Sort.~Height: no self-deterrence). This confirms that self-deterrence is a \emph{model-capacity artifact} of 3B-class models, not an inherent property of LLM attackers operating with rich operational context. The implication for defenders is significant: the ``deterrence through transparency'' effect observed in RQ1 cannot be relied upon against larger models.
+
+\textbf{Finding 16: Frontier model achieves the highest ASR in the evaluation on Sorting by Weight.} GPT-4o-mini achieves 100\% ASR (18/18 writes) on Sort.~Weight under minimal context and 66.7\% (4/6) under partial context. These are the highest ASR values in the entire evaluation, exceeding Qwen2.5-3B's 53.8\% and 40.0\% on the same cells. Under full context, GPT-4o-mini generates 30~proposals but all are shield-blocked (0~writes)---the model consistently targets \texttt{heavy\_thresh} with out-of-range values, while under minimal context it targets \texttt{light\_thresh} with shield-legal values. Qwen2.5-3B self-deterres to 0~proposals under full context. The net effect is the same (0\% ASR) but through fundamentally different mechanisms: active blocking vs.\ passive self-suppression.
+
+\textbf{Finding 17: Full context enables frontier-model attacks on Level Control.} GPT-4o-mini achieves 20.0\% ASR (6/30 writes) on Level Control under full context, where Qwen2.5-3B achieves 0\% (5~proposals, all shield-blocked). This is the only configuration in the evaluation where \emph{any} model achieves nonzero ASR on Level Control under full context, and it directly contradicts the self-deterrence hypothesis for frontier-scale models: more context provides \emph{more effective} targeting rather than suppressing attack proposals.
+
+\textbf{Finding 18: Scene-dependent reversal---local model outperforms frontier on Sorting by Height.} On Sort.~Height, GPT-4o-mini achieves 0\% ASR across all context levels despite executing 30/30 writes in every no-defense cell. Qwen2.5-3B achieves 13.3\% ASR under full context (4/30 writes). GPT-4o-mini's writes reach the PLC but produce no observable physical effect---suggesting that the frontier model selects syntactically valid but semantically ineffective targets (e.g., \texttt{enable}, \texttt{conveyor\_entry}) for this discrete sorting scene. The local model's more cautious targeting under full-context guidance yields more effective (though still low) physical impact.
+
+\textbf{Finding 19: LLM defender generalizes across model scale.} In all six defense cells, 0/30 GPT-4o-mini proposals reach the PLC. The local Qwen2.5-3B LLM defender blocks all frontier-model proposals (30/30 on Sort.~Height, 0~writes on all scenes). Compare to Qwen2.5-3B defense cells: on Level Control and Sort.~Weight, the local model self-deterres to 0~proposals so the LLM defender is never tested; on Sort.~Height, 30~proposals are blocked (matching GPT-4o-mini). Cross-model defense generalization holds: a local 3B-class defender blocks a frontier API attacker.
+
+\textbf{Finding 20: Inference latency decreases 4--7$\times$ with API model.} GPT-4o-mini averages 2.3--5.3\,s per LLM call across all cells, compared to 7.9--24.3\,s for local Qwen2.5-3B inference. The latency reduction does not translate to proportionally higher ASR---the bottleneck for attack success is semantic target selection, not inference speed.
+
+\subsubsection{Run-to-Run Variance}
+
+Table~\ref{tab:variance} shows the variance in ASR across repeated runs for key configurations. The LLM defender and phase-aware shield achieve zero variance (ASR~=~0\% across all repeats), demonstrating consistent defense effectiveness. Undefended configurations show moderate variance (std 9--13\,pp), reflecting the stochastic nature of LLM decision-making. The Level Control row aggregates base and finetuned runs (the nonzero mean is entirely attributable to finetuned-model runs; base-model runs achieve 0\% on all Level Control full-context cells). The cross-model comparison confirms that Qwen3-1.7B's zero ASR is not an outlier---all six repeats produce zero successful attacks.
+
 \input{sections/table8_variance}
 
-\subsection{Framework Overhead}
-\label{sec:overhead}
+\subsubsection{Statistical Power Analysis}
+\label{sec:eval:power}
 
-To verify that CPSForge's middleware processing does not interfere with the 500\,ms PLC polling interval, we measured per-step timing across 1{,}100 replay steps spanning eight Factory~I/O scenes (the five primary evaluation scenes plus three additional scenes) using all configured detectors. Table~\ref{tab:overhead} reports the results.
+The experiment matrix uses 3~repeats per cell with an attack budget of 10 per run. This design was dictated by resource constraints---each run requires 6--10~minutes of exclusive GPU time with a live PLC---and yields 30--90~total writes per cell depending on attacker behavior. We report Wilson 95\% confidence intervals (CIs) for key ASR results to characterize what the data can and cannot establish.
 
-\begin{table}[t]
-\centering
-\caption{Per-step framework overhead (milliseconds) measured across 1{,}100 steps and eight Factory~I/O scenes.}
-\label{tab:overhead}
-\begin{tabular}{lrrrrr}
-\toprule
-\textbf{Component} & \textbf{Mean} & \textbf{P50} & \textbf{P95} & \textbf{P99} & \textbf{Max} \\
-\midrule
-Snapshot     & 0.114 & 0.099 & 0.211 & 0.270 & 0.548 \\
-Shield       & $<$0.001 & 0.000 & 0.000 & 0.000 & 0.001 \\
-Detection    & 1.762 & 0.195 & 8.632 & 9.290 & 11.772 \\
-Logging      & 0.022 & 0.017 & 0.040 & 0.061 & 0.922 \\
-\midrule
-\textbf{Total} & \textbf{1.899} & \textbf{0.293} & \textbf{8.773} & \textbf{9.432} & \textbf{11.908} \\
-\bottomrule
-\end{tabular}
-\end{table}
+\textbf{Robust findings} (consistent across all repeats, narrow CIs, or replicated across multiple independent cells):
+\begin{itemize}[leftmargin=1.2em, nosep]
+    \item \emph{LLM defender 100\% blocking on Sort.~Height}: 0~successes in 30~writes under base model, 0~in 30~under finetuned model, 0~in 30~under GPT-4o-mini (three independent cells). Wilson 95\% CI for ASR: $[0\%, 11.6\%]$ per cell. Zero variance across all repeats (Table~\ref{tab:variance}).
+    \item \emph{GPT-4o-mini self-deterrence elimination}: 30/30~proposals in all 45~runs, zero variance. Structural, not stochastic.
+    \item \emph{GPT-4o-mini 100\% ASR on Sort.~Weight minimal}: 18/18~writes. Wilson 95\% CI: $[82\%, 100\%]$. However, this is computed over writes that passed the safety shield (18~of 30~proposals); among all proposals, 12/30 were shield-blocked.
+    \item \emph{Qwen3-1.7B 0\% ASR}: 0~successes in 58~writes across 12~runs. Wilson 95\% CI: $[0\%, 6.2\%]$. Zero variance across 6~per-run estimates.
+    \item \emph{Full-context self-deterrence on Sort.~Weight}: 0~proposals generated across 3~repeats per cell for Qwen2.5-3B, replicated in both base and finetuned models (2~independent cells). GPT-4o-mini does \emph{not} self-deterre (30~proposals, all shield-blocked), confirming model-capacity dependence.
+    \item \emph{Static LLM zero proposals}: 0~proposals across all 9~scene$\times$repeat cells (27~runs). Structural, not stochastic.
+\end{itemize}
 
-The total per-step overhead averages 1.9\,ms (median 0.3\,ms), which is less than 0.4\% of the 500\,ms polling interval. Detection dominates the budget because scenes with ML detectors (OCSVM, Isolation Forest, LSTM-AD) require feature extraction and model inference at each step; scenes using only rule-based detectors complete in under 0.3\,ms total. Even the 99th-percentile latency (9.4\,ms) leaves a margin of over 490\,ms, confirming that the middleware introduces negligible overhead on the control loop.
+\textbf{Moderate-confidence findings} (consistent direction, but CIs overlap zero or are wide):
+\begin{itemize}[leftmargin=1.2em, nosep]
+    \item \emph{GPT-4o-mini 20\% ASR on Level Control full}: 6/30 writes. Wilson 95\% CI: $[9\%, 38\%]$. Excludes zero; a real effect, but magnitude uncertain.
+    \item \emph{GPT-4o-mini 66.7\% ASR on Sort.~Weight partial}: 4/6 writes. Wilson 95\% CI: $[30\%, 90\%]$. Very wide due to small $n$; directionally above Qwen (40\%, 2/5 writes) but not separable.
+    \item \emph{Sort.~Weight MITM 53.8\% ASR}: 7/13 writes. Wilson 95\% CI: $[28\%, 78\%]$. The point estimate is above chance but the CI is wide.
+    \item \emph{Fine-tuning improves Level Control minimal}: 11/30 = 36.7\% (FT) vs.\ 0/2 = 0\% (base). Wilson CI for FT: $[22\%, 55\%]$. The base cell has only 2~executed writes, limiting comparison power.
+    \item \emph{3B $>$ 1.7B on Level Control}: Qwen2.5-3B 7/51 = 13.7\%, CI $[7\%, 26\%]$; SmolLM3-3B 7/60 = 11.7\%, CI $[6\%, 22\%]$; Qwen3-1.7B 0/58, CI $[0\%, 6\%]$. The two 3B models are indistinguishable from each other; both are consistently above 1.7B.
+\end{itemize}
 
-\subsection{Benign False-Positive Rate}
-\label{sec:benign-fp}
+\textbf{Preliminary findings} (single-cell observations or high variance):
+\begin{itemize}[leftmargin=1.2em, nosep]
+    \item \emph{Sort.~Height full context 13.3\% ASR}: 4/30 writes. Wilson 95\% CI: $[5\%, 30\%]$. Run-to-run std = 13.1\,pp (Table~\ref{tab:variance}), with individual runs ranging from 0\% to 40\%.
+    \item \emph{Random outperforms MITM on Sort.~Height}: 4/30 = 13.3\% vs.\ 1/30 = 3.3\%. Wilson CIs overlap: $[5\%, 30\%]$ vs.\ $[1\%, 17\%]$. Not statistically separable at $n=30$.
+    \item \emph{FT attacker 40\% ASR on Sort.~Height Baseline defense}: 4/10 writes. Wilson CI: $[17\%, 69\%]$. Very wide; this cell should be treated as directional evidence only.
+\end{itemize}
 
-We evaluated all configured detectors on baseline (attack-free) traces from six Factory~I/O scenes to quantify the false-positive rate under normal plant operation. Across 87 detector--trace evaluations, the aggregate false-positive rate was \textbf{0.0001} (one detection event per 10{,}000 benign steps). The threshold, invariant, and CUSUM detectors produced zero false positives on all baseline traces. ML-based detectors without pre-trained models (untrained OCSVM, Isolation Forest, LSTM-AD) also produced zero false alerts. This near-zero FP rate confirms that the detector configurations are well-calibrated for normal process behavior and that detected anomalies during attack experiments reflect genuine deviations rather than detector noise.
+With 3~repeats per cell, the design has adequate power to detect large effects ($\Delta$ASR $> 30$\,pp) and zero-vs-nonzero differences, but cannot reliably distinguish moderate effects ($\Delta$ASR $\approx 10$\,pp) from noise. We report all findings with this caveat and recommend that future work use $\geq$10~repeats per cell to narrow CIs below $\pm$15\,pp.
+
+\subsection{Threats to Validity}
+
+\textbf{Internal validity.} Attack success is measured post-hoc by comparing tag values before and after each executed write. This approximation may undercount attacks where the PLC controller rapidly corrects the deviation within one polling cycle ($<$500\,ms). The 3-repeat design provides limited statistical power for rare-event metrics. For a cell with $k$ successes out of $n$ writes, the Wilson 95\% confidence interval on ASR can exceed $\pm$30\,pp for $n \leq 10$. All quantitative findings should be interpreted as point estimates with this uncertainty in mind; cells with $n \geq 10$ and $k \geq 1$ provide more reliable estimates (e.g., Sort.~Weight None: 7/13 = 53.8\%, 95\% CI $[28\%, 77\%]$). The variance table (Table~\ref{tab:variance}) provides run-to-run dispersion data for key configurations.
+\label{sec:eval:threats}
+
+\textbf{External validity.} All experiments use one PLC model (Siemens S7-1200) with software-emulated plants (Factory~I/O). Results may not transfer to other PLC families or physical plants. The 3B-class models studied represent the lower end of current LLM capability; larger models may produce qualitatively different attack strategies.
+
+\textbf{Construct validity.} The ``attack success'' metric measures tag displacement toward the injected value, not physical process impact (e.g., tank overflow, misrouted parts). A successful tag shift may not always cause operational harm, and conversely, subtle shifts below the detection threshold may accumulate over time.

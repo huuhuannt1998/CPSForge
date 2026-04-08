@@ -42,15 +42,6 @@ logger = logging.getLogger(__name__)
 
 
 class ShieldEngine:
-    """
-    Runtime safety shield for a single Factory I/O scene.
-
-    Parameters
-    ----------
-    profile:
-        The :class:`SceneProfile` whose ``safety_rules`` and ``writable_tags``
-        define what this shield enforces.
-    """
 
     def __init__(self, profile: SceneProfile) -> None:
         self._profile = profile

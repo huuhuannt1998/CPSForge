@@ -1,0 +1,285 @@
+# =============================================================================
+# CPSForge Scene Configuration — Sorting by Height (OpenPLC / Modbus)
+# =============================================================================
+# Equivalent to sorting_height_basic.yaml (Factory I/O Scene 19) but uses
+# Modbus TCP addresses for OpenPLC backend + Python process simulator.
+#
+# Physical setup (simulated):
+#   - OpenPLC Runtime v4 running ST program sorting_height.st
+#   - Python HeightSorterSimulator provides physics model
+#   - Communication via Modbus TCP (port 502)
+#   - 2-way sort: short → LEFT, tall → RIGHT
+#
+# ALL variables use %QW (holding registers) or %QX (coils).
+# No %IX or %IW (read-only via Modbus).
+#
+# OpenPLC Modbus mapping:
+#   Holding Registers (PLC outputs / actuator commands):
+#     HR0  → conveyor_entry (BOOL as 0/1)
+#     HR1  → load_act       (BOOL as 0/1)
+#     HR2  → unload_act     (BOOL as 0/1)
+#     HR3  → transf_left    (BOOL as 0/1)
+#     HR4  → transf_right   (BOOL as 0/1)
+#     HR5  → conveyor_left  (BOOL as 0/1)
+#     HR6  → conveyor_right (BOOL as 0/1)
+#     HR10 → counter_out    (INT)
+#     HR11 → i_state        (INT, state machine)
+#
+#   Coils (mode):
+#     COIL0  → enable (system enable, default ON)
+#
+#   Coils (sensor feedback from simulator, writable):
+#     COIL8  → high_sensor     COIL12 → at_left_entry
+#     COIL9  → low_sensor      COIL13 → at_left_exit
+#     COIL10 → pallet_sensor   COIL14 → at_right_entry
+#     COIL11 → loaded          COIL15 → at_right_exit
+# =============================================================================
+
+scene_name: sorting_height_openplc
+backend: modbus
+process_simulator: height_sorter
+
+description: >
+  2-way height-based sorting (OpenPLC version). Items travel on entry
+  conveyor past height sensors, onto a loading platform, then get
+  transferred LEFT (short) or RIGHT (tall). State machine: 0=Feed,
+  1=Load, 2=Transfer, 3=Clear, 4=Finish. Attacks can flip the
+  is_tall latch, disable the system, or stall transfer actuators.
+
+sampling_interval_ms: 500
+
+control_objective: >
+  2-way height sort: short items (low sensor only) go LEFT,
+  tall items (high sensor) go RIGHT. Attacks can flip height detection,
+  misdirect transfers, stall conveyors, or disable the system.
+
+key_sensors:
+  - high_sensor
+  - low_sensor
+  - pallet_sensor
+  - loaded
+  - conveyor_entry
+  - transf_left
+  - transf_right
+  - i_state
+
+# ---------------------------------------------------------------------------
+# Tag Definitions
+# ---------------------------------------------------------------------------
+tags:
+  # --- Sensors (from simulator, written as coils) ---
+  - name: high_sensor
+    address: "COIL8"
+    data_type: bool
+    access: read_write
+    description: "Detects tall items"
+    category: sensor
+    scene_name: sorting_height_openplc
+
+  - name: low_sensor
+    address: "COIL9"
+    data_type: bool
+    access: read_write
+    description: "Detects short items (fires for all items)"
+    category: sensor
+    scene_name: sorting_height_openplc
+
+  - name: pallet_sensor
+    address: "COIL10"
+    data_type: bool
+    access: read_write
+    description: "Item arrived at loading platform"
+    category: sensor
+    scene_name: sorting_height_openplc
+
+  - name: loaded
+    address: "COIL11"
+    data_type: bool
+    access: read_write
+    description: "Item fully loaded on transfer platform"
+    category: sensor
+    scene_name: sorting_height_openplc
+
+  - name: at_left_entry
+    address: "COIL12"
+    data_type: bool
+    access: read_write
+    description: "Item entering left exit conveyor"
+    category: sensor
+    scene_name: sorting_height_openplc
+
+  - name: at_left_exit
+    address: "COIL13"
+    data_type: bool
+    access: read_write
+    description: "Item at end of left exit conveyor"
+    category: sensor
+    scene_name: sorting_height_openplc
+
+  - name: at_right_entry
+    address: "COIL14"
+    data_type: bool
+    access: read_write
+    description: "Item entering right exit conveyor"
+    category: sensor
+    scene_name: sorting_height_openplc
+
+  - name: at_right_exit
+    address: "COIL15"
+    data_type: bool
+    access: read_write
+    description: "Item at end of right exit conveyor"
+    category: sensor
+    scene_name: sorting_height_openplc
+
+  # --- Actuators (PLC outputs via holding registers) ---
+  - name: conveyor_entry
+    address: "HR0"
+    data_type: bool
+    access: read_write
+    description: "Entry conveyor motor"
+    category: actuator
+    scene_name: sorting_height_openplc
+
+  - name: load_act
+    address: "HR1"
+    data_type: bool
+    access: read_write
+    description: "Load platform raise (chains up)"
+    category: actuator
+    scene_name: sorting_height_openplc
+
+  - name: unload_act
+    address: "HR2"
+    data_type: bool
+    access: read_write
+    description: "Unload platform lower (chains down)"
+    category: actuator
+    scene_name: sorting_height_openplc
+
+  - name: transf_left
+    address: "HR3"
+    data_type: bool
+    access: read_write
+    description: "Transfer chains LEFT direction"
+    category: actuator
+    scene_name: sorting_height_openplc
+
+  - name: transf_right
+    address: "HR4"
+    data_type: bool
+    access: read_write
+    description: "Transfer chains RIGHT direction"
+    category: actuator
+    scene_name: sorting_height_openplc
+
+  - name: conveyor_left
+    address: "HR5"
+    data_type: bool
+    access: read_write
+    description: "Left exit conveyor motor"
+    category: actuator
+    scene_name: sorting_height_openplc
+
+  - name: conveyor_right
+    address: "HR6"
+    data_type: bool
+    access: read_write
+    description: "Right exit conveyor motor"
+    category: actuator
+    scene_name: sorting_height_openplc
+
+  # --- Enable (system enable) ---
+  - name: enable
+    address: "COIL0"
+    data_type: bool
+    access: read_write
+    description: "System enable (default TRUE). FALSE shuts down all actuators."
+    category: mode_bit
+    scene_name: sorting_height_openplc
+
+  # --- State + counter ---
+  - name: counter_out
+    address: "HR10"
+    data_type: int
+    access: read
+    description: "Total items sorted"
+    category: internal
+    scene_name: sorting_height_openplc
+
+  - name: i_state
+    address: "HR11"
+    data_type: int
+    access: read
+    description: "State machine: 0=Feed, 1=Load, 2=Transfer, 3=Clear, 4=Finish"
+    category: internal
+    scene_name: sorting_height_openplc
+
+# ---------------------------------------------------------------------------
+# Writable tags
+# ---------------------------------------------------------------------------
+writable_tags:
+  - conveyor_entry
+  - load_act
+  - unload_act
+  - transf_left
+  - transf_right
+  - conveyor_left
+  - conveyor_right
+  - enable
+
+# ---------------------------------------------------------------------------
+# Attack surface
+# ---------------------------------------------------------------------------
+attack_surface:
+  - transf_left
+  - transf_right
+  - conveyor_entry
+  - load_act
+  - unload_act
+  - enable
+
+# ---------------------------------------------------------------------------
+# Deep state attack surface
+# ---------------------------------------------------------------------------
+deep_state_attack_surface:
+  - enable
+
+# ---------------------------------------------------------------------------
+# Safety rules
+# ---------------------------------------------------------------------------
+safety_rules:
+  - rule_id: SH-OPC-SR-001
+    description: "Cannot transfer LEFT and RIGHT simultaneously"
+    rule_type: invariant
+    tags: [transf_left, transf_right]
+    parameters:
+      expression: "not (transf_left and transf_right)"
+    enabled: true
+    priority: 100
+
+  - rule_id: SH-OPC-SR-002
+    description: "Enable should remain TRUE during normal operation"
+    rule_type: invariant
+    tags: [enable]
+    parameters:
+      expression: "enable == True"
+    enabled: true
+    priority: 100
+
+# ---------------------------------------------------------------------------
+# Reset procedure
+# ---------------------------------------------------------------------------
+reset_procedure:
+  - tag: enable
+    value: true
+  - tag: conveyor_entry
+    value: false
+  - tag: load_act
+    value: false
+  - tag: unload_act
+    value: false
+  - tag: transf_left
+    value: false
+  - tag: transf_right
+    value: false

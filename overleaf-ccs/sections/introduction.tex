@@ -1,0 +1,26 @@
+\section{Introduction}
+\label{sec:intro}
+
+Industrial PLCs exchange actuator commands, sensor readings, and setpoints with connected machines over field protocols (Siemens S7, Modbus, OPC-UA) every few milliseconds. An adversary with protocol-level network access can read this stream, infer the process state, and inject writes timed to cause physical damage---overflowing a tank, missorting products, or disabling safety interlocks. Conversely, a defender observing the same stream can detect writes inconsistent with the controller's current behavior and block them before execution.
+
+Recent work has applied LLMs to CPS security: AttackLLM~\cite{ahmed2025attackllm} generates process-aware attacks offline on static traces; MALF~\cite{ning2025malf} fuzzes industrial protocols at the packet layer; PentestGPT~\cite{deng2024pentestgpt} and Hackphyr~\cite{rigaki2024hackphyr} automate IT penetration testing. HARVEY~\cite{garcia2017harvey} demonstrated closed-loop PLC MitM with a hand-crafted physics model. None embed an LLM in a live PLC control loop as both attacker and defender.
+
+\textbf{Insight.} The live PLC tag stream carries exactly the information needed for both attack and defense reasoning. By placing an LLM as a man-in-the-middle in this stream---reading the same tags an attacker or defender would observe---we can automate both roles symmetrically. The same model, observation pipeline, and context structure serve as red team and blue team, differing only in the prompt.
+
+\textbf{CPSForge} is a framework that places an LLM as a man-in-the-middle agent in real PLC communication. Every 1.5\,s, it reads the tag stream via S7 protocol, assembles a context prompt from observed data, and queries the LLM: as red team, \emph{attack} or \emph{wait}; as blue team, \emph{allow} or \emph{block}. A mandatory safety shield mediates every write. The framework is configuration-driven: any PLC-connected plant requires only a scene YAML---no code changes.
+
+We evaluate CPSForge on three Factory~I/O scenes connected to a real Siemens S7-1200 PLC across \textbf{333 runs} organized into six research questions (context ablation, fine-tuning, online-vs-static modes, defense configurations, cross-model robustness, frontier model scaling). Our contributions are:
+
+\begin{itemize}[leftmargin=1.2em,nosep]
+    \item \textbf{C1.~Online LLM MITM for CPS red/blue teaming.} A closed-loop LLM agent that operates inside the PLC control loop: observe $\to$ infer phase $\to$ build context $\to$ decide (attack$|$wait) $\to$ act $\to$ observe result. Unlike AttackLLM (offline), MALF (packet-level), or HARVEY (hand-crafted physics model), CPSForge uses general-purpose LLM reasoning with a configuration-driven scene abstraction. The same architecture serves as an LLM blue team agent, creating a symmetric attacker--defender pairing.
+
+    \item \textbf{C2.~Context-ablation study.} Three strictly controlled context tiers---minimal (tag values only), partial (+ history + descriptions), full (+ phase inference + action effects)---measure the minimum adversary knowledge required for effective CPS attacks. We discover a ``self-deterrence'' effect: rich context suppresses 3B-class model attacks but \emph{not} frontier-scale models.
+
+    \item \textbf{C3.~Dual-objective fine-tuning.} QLoRA training on 2{,}057 examples (verified attacks + defense decisions) improves red team ASR from 0\% to 37\% on a continuous-control scene while preserving 100\% blue team blocking---testing whether attack-aware training transfers to defense.
+
+    \item \textbf{C4.~Defense comparison.} Seven defense configurations---rule-based (threshold, phase-aware, intent-consistency), LLM-only, and combined---enable the first systematic comparison of runtime defense types against LLM-generated CPS attacks.
+
+    \item \textbf{C5.~Multi-scale model evaluation.} Cross-model comparison from 1.7B (Qwen3) through 3B (Qwen2.5, SmolLM3) to frontier-scale (GPT-4o-mini), demonstrating that attack capability and self-deterrence are model-scale-dependent, and that a local 3B defender generalizes to block frontier-model attacks.
+\end{itemize}
+
+The rest of the paper is organized as follows: \S\ref{sec:background} provides background; \S\ref{sec:threat} defines the threat model; \S\ref{sec:design} presents the architecture; \S\ref{sec:methodology} describes the evaluation methodology; \S\ref{sec:evaluation} presents results; \S\ref{sec:discussion} discusses findings and limitations; \S\ref{sec:related} reviews related work; \S\ref{sec:conclusion} concludes.

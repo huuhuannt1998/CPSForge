@@ -27,6 +27,20 @@ description: >
 
 sampling_interval_ms: 500
 
+control_objective: >
+  2-way height sort: short items (low_sensor only) go LEFT,
+  tall items (high_sensor) go RIGHT. Attacks can force wrong
+  transfer to missort, stop conveyors, or disable the system.
+
+key_sensors:
+  - high_sensor
+  - low_sensor
+  - pallet_sensor
+  - transf_left
+  - transf_right
+  - load_act
+  - unload_act
+
 # ---------------------------------------------------------------------------
 # Tag Definitions (DB21, 62 bytes total)
 # ---------------------------------------------------------------------------
@@ -379,7 +393,7 @@ writable_tags:
   - enable
 
 # ---------------------------------------------------------------------------
-# Attack Surface
+# Attack Surface (I/O MitM — Tier 1)
 # ---------------------------------------------------------------------------
 attack_surface:
   - conveyor_entry
@@ -390,6 +404,69 @@ attack_surface:
   - conveyor_left
   - conveyor_right
   - enable
+
+# ---------------------------------------------------------------------------
+# Deep State Attack Surface (Tier 2 — internal state, never refreshed by PLC)
+# ---------------------------------------------------------------------------
+deep_state_attack_surface:
+  - name: i_state
+    address: "DB21,INT50"
+    data_type: int
+    persistence: permanent  # PLC only writes on state transitions
+    attack_category: state_machine_jump
+    description: >-
+      5-state machine. PLC advances 0→1→2→3→4→0. Writing forces
+      illegal transitions, e.g. jumping from Feed(0) to Clear(3)
+      without loading, or from Load(1) to Finish(4) prematurely.
+    valid_range: [0, 4]
+    valid_states: {0: Feed, 1: Load, 2: Transfer, 3: Clear, 4: Finish}
+    default_value: 0
+    state_machine_effect: "Forces illegal state transition; may skip loading or sorting"
+  - name: is_tall
+    address: "DB21,BOOL54.0"
+    data_type: bool
+    persistence: permanent  # Latched only in state 0 (Feed) when sensor triggers
+    attack_category: decision_flag_spoofing
+    description: >-
+      Height classification flag latched when item enters. Once latched,
+      PLC does not overwrite until next item. Modifying after latch
+      causes the item to route to the wrong exit.
+    default_value: false
+    state_machine_effect: "Missorts current item: wrong exit conveyor"
+  - name: dwell_timer
+    address: "DB21,INT56"
+    data_type: int
+    persistence: transient  # PLC increments each scan, but writable
+    attack_category: timer_acceleration
+    description: >-
+      Dwell timer incremented each PLC scan. Used for timed state
+      transitions. Writing a high value forces an immediate timeout,
+      skipping the confirmation period. Writing 0 resets the timer,
+      potentially stalling the machine.
+    valid_range: [0, 60000]
+    default_value: 0
+    state_machine_effect: "Accelerates or stalls timed transitions"
+  - name: enable
+    address: "DB21,BOOL60.0"
+    data_type: bool
+    persistence: permanent  # Never written by PLC logic
+    attack_category: safety_kill_switch
+    description: >-
+      Enable flag gates ALL actuator outputs. PLC reads but NEVER writes.
+      Setting FALSE freezes all conveyors and transfer gates.
+    default_value: true
+    state_machine_effect: "Immediate process halt; all outputs freeze"
+  - name: item_count
+    address: "DB21,INT52"
+    data_type: int
+    persistence: permanent  # Only incremented by PLC on item completion
+    attack_category: counter_spoofing
+    description: >-
+      Item counter incremented on each sort completion. Writable via S7.
+      Spoofing causes false production metrics.
+    valid_range: [0, 99999]
+    default_value: 0
+    state_machine_effect: "False production count; misleading operator metrics"
 
 # ---------------------------------------------------------------------------
 # Safety Rules

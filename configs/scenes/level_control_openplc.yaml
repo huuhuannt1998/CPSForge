@@ -1,0 +1,281 @@
+# =============================================================================
+# CPSForge Scene Configuration — Level Control (OpenPLC / Modbus)
+# =============================================================================
+# OpenPLC equivalent of level_control.yaml (Factory I/O / S7)
+#
+# This scene uses Modbus TCP addresses instead of S7 data block addresses.
+# The physical process is simulated by cpsforge.simulation.TankSimulator
+# instead of Factory I/O.
+#
+# OpenPLC ST program: configs/openplc/level_control.st
+# PLC backend: modbus (ModbusClient)
+# Process simulator: cpsforge.simulation.TankSimulator
+# =============================================================================
+
+scene_name: level_control_openplc
+scene_id: 12
+backend: modbus
+
+description: >
+  Tank level control process with proportional controller, running on
+  OpenPLC v4 via Modbus TCP. Fill valve opens proportionally to
+  (SetpointIn - LevelMeter) error. Functionally identical to the S7
+  level_control scene but fully open-source and reproducible.
+
+sampling_interval_ms: 500
+
+control_objective: >
+  Maintain liquid level at the configured setpoint (default ~5.0 V).
+  Controller opens fill or discharge valve as needed.
+
+process_simulator: tank
+
+key_sensors:
+  - level_meter
+  - fill_valve
+  - discharge_valve
+  - setpoint_in
+
+# ---------------------------------------------------------------------------
+# Tag Definitions (Modbus addresses)
+# ---------------------------------------------------------------------------
+# OpenPLC register mapping (all INT, analog values x100):
+#   HR0  : fill_valve      (INT x100, 0-1000 -> 0.0-10.0 V)
+#   HR1  : discharge_valve (INT x100)
+#   HR2  : sp_display      (INT x100)
+#   HR3  : pv_display      (INT x100)
+#   HR10 : level_meter     (INT x100, written by simulator)
+#   HR11 : flow_meter      (INT x100, written by simulator)
+#   HR12 : setpoint_in     (INT x100, attackable)
+#   COIL0 : running
+#   COIL1 : enable
+# ---------------------------------------------------------------------------
+tags:
+
+  # --- Analog sensors (holding registers, written by simulator) ---
+  - name: level_meter
+    address: "HR10"
+    data_type: int
+    scale: 0.01
+    access: read
+    unit: "V"
+    min_value: 0.0
+    max_value: 10.0
+    description: "Tank level measurement (0-10V range)"
+    category: sensor
+    scene_name: level_control_openplc
+
+  - name: flow_meter
+    address: "HR11"
+    data_type: int
+    scale: 0.01
+    access: read
+    unit: "V"
+    min_value: 0.0
+    max_value: 10.0
+    description: "Flow rate measurement (0-10V range)"
+    category: sensor
+    scene_name: level_control_openplc
+
+  # --- Setpoint ---
+  - name: setpoint_in
+    address: "HR12"
+    data_type: int
+    scale: 0.01
+    access: read_write
+    unit: "V"
+    min_value: 0.0
+    max_value: 10.0
+    description: "Level setpoint — write-once attack target"
+    category: setpoint
+    scene_name: level_control_openplc
+
+  # --- Analog actuators (holding registers, computed by PLC) ---
+  - name: fill_valve
+    address: "HR0"
+    data_type: int
+    scale: 0.01
+    access: read_write
+    unit: "V"
+    min_value: 0.0
+    max_value: 10.0
+    description: "Fill valve opening (0=closed, 10V=fully open)"
+    category: actuator
+    scene_name: level_control_openplc
+
+  - name: discharge_valve
+    address: "HR1"
+    data_type: int
+    scale: 0.01
+    access: read_write
+    unit: "V"
+    min_value: 0.0
+    max_value: 10.0
+    description: "Discharge valve opening (0=closed, 10V=fully open)"
+    category: actuator
+    scene_name: level_control_openplc
+
+  # --- Display outputs ---
+  - name: sp_display
+    address: "HR2"
+    data_type: int
+    scale: 0.01
+    access: read
+    description: "Setpoint display value"
+    category: internal
+    scene_name: level_control_openplc
+
+  - name: pv_display
+    address: "HR3"
+    data_type: int
+    scale: 0.01
+    access: read
+    description: "Process value display"
+    category: internal
+    scene_name: level_control_openplc
+
+  # --- Internal state (coils) ---
+  - name: running
+    address: "COIL0"
+    data_type: bool
+    access: read
+    description: "Process running state"
+    category: internal
+    scene_name: level_control_openplc
+
+  - name: enable
+    address: "COIL1"
+    data_type: bool
+    access: read_write
+    description: "System enable flag — kill switch target"
+    category: mode_bit
+    scene_name: level_control_openplc
+
+# ---------------------------------------------------------------------------
+# Writable Tags
+# ---------------------------------------------------------------------------
+writable_tags:
+  - setpoint_in
+  - fill_valve
+  - discharge_valve
+  - enable
+
+# ---------------------------------------------------------------------------
+# Attack Surface
+# ---------------------------------------------------------------------------
+attack_surface:
+  - setpoint_in
+  - fill_valve
+  - discharge_valve
+  - enable
+
+# ---------------------------------------------------------------------------
+# Deep State Attack Surface
+# ---------------------------------------------------------------------------
+deep_state_attack_surface:
+  - name: setpoint_in
+    address: "HR12"
+    data_type: int
+    scale: 0.01
+    persistence: permanent
+    attack_category: setpoint_hijack
+    description: >-
+      Level setpoint. Once running, PLC logic reads but never overwrites.
+      An external write changes the control target permanently.
+    valid_range: [0.0, 10.0]
+    default_value: 5.0
+    state_machine_effect: "Changes PID error; tank drains or overflows"
+  - name: enable
+    address: "COIL1"
+    data_type: bool
+    persistence: permanent
+    attack_category: safety_kill_switch
+    description: >-
+      Enable flag gates all actuator outputs. PLC reads but never writes.
+      Setting FALSE halts the process indefinitely.
+    default_value: true
+    state_machine_effect: "Immediate process halt"
+  - name: running
+    address: "COIL0"
+    data_type: bool
+    persistence: transient
+    attack_category: mode_manipulation
+    description: >-
+      Running flag controls whether PID controller is active.
+    default_value: true
+    state_machine_effect: "Stops or starts PID control loop"
+
+# ---------------------------------------------------------------------------
+# Safety Rules
+# ---------------------------------------------------------------------------
+safety_rules:
+  - rule_id: LC-OPC-SR-001
+    description: "Fill valve must stay in 0-10V range"
+    rule_type: range
+    tags: [fill_valve]
+    parameters:
+      min: 0.0
+      max: 10.0
+    enabled: true
+    priority: 100
+
+  - rule_id: LC-OPC-SR-002
+    description: "Discharge valve must stay in 0-10V range"
+    rule_type: range
+    tags: [discharge_valve]
+    parameters:
+      min: 0.0
+      max: 10.0
+    enabled: true
+    priority: 100
+
+  - rule_id: LC-OPC-SR-003
+    description: "Setpoint must stay in 0-10V range"
+    rule_type: range
+    tags: [setpoint_in]
+    parameters:
+      min: 0.0
+      max: 10.0
+    enabled: true
+    priority: 100
+
+  - rule_id: LC-OPC-SR-004
+    description: "Tank level must not exceed 9.5V"
+    rule_type: invariant
+    tags: [level_meter]
+    parameters:
+      max: 9.5
+    enabled: true
+    priority: 100
+
+  - rule_id: LC-OPC-SR-005
+    description: "Enable must not be held FALSE for more than 30 seconds"
+    rule_type: duration
+    tags: [enable]
+    parameters:
+      max_duration_ms: 30000
+      forbidden_value: false
+    enabled: true
+    priority: 100
+
+  - rule_id: LC-OPC-SR-006
+    description: "Fill and discharge must not both be fully open"
+    rule_type: mutual_exclusion
+    tags: [fill_valve, discharge_valve]
+    parameters:
+      threshold: 8.0
+    enabled: true
+    priority: 80
+
+# ---------------------------------------------------------------------------
+# Reset Procedure
+# ---------------------------------------------------------------------------
+reset_procedure:
+  - tag: enable
+    value: true
+  - tag: fill_valve
+    value: 0.0
+  - tag: discharge_valve
+    value: 0.0
+  - tag: setpoint_in
+    value: 5.0

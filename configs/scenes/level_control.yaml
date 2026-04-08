@@ -29,6 +29,16 @@ description: >
 
 sampling_interval_ms: 500
 
+control_objective: >
+  Maintain liquid level at the configured setpoint (default ~5.25 V).
+  Controller opens fill or discharge valve as needed.
+
+key_sensors:
+  - level_meter
+  - fill_valve
+  - discharge_valve
+  - setpoint_in
+
 # ---------------------------------------------------------------------------
 # Tag Definitions (DB14, 44 bytes total)
 # ---------------------------------------------------------------------------
@@ -216,13 +226,56 @@ writable_tags:
   - enable
 
 # ---------------------------------------------------------------------------
-# Attack Surface
+# Attack Surface (I/O MitM — Tier 1)
 # ---------------------------------------------------------------------------
 attack_surface:
   - setpoint_in
   - fill_valve
   - discharge_valve
   - enable
+
+# ---------------------------------------------------------------------------
+# Deep State Attack Surface (Tier 2 — internal state, never refreshed by PLC)
+# ---------------------------------------------------------------------------
+# These variables are writable via S7 but the PLC logic never overwrites them
+# during normal execution. A single write persists indefinitely, modifying
+# how the PLC logic behaves without changing the program itself.
+# Analogous to Stuxnet DB890 writes that altered VFD behavior via data blocks.
+deep_state_attack_surface:
+  - name: setpoint_in
+    address: "DB14,REAL20"
+    data_type: real
+    persistence: permanent  # Frozen when Running=TRUE; PLC never rewrites
+    attack_category: setpoint_hijack
+    description: >-
+      SetpointIn is copied from the panel knob only while Running=FALSE.
+      Once Running=TRUE, PLC freezes the value. An S7 write changes the
+      control target permanently until the process is stopped and restarted.
+    valid_range: [0.0, 10.0]
+    default_value: 5.25
+    state_machine_effect: "Changes PID error calculation; tank drains or overflows"
+  - name: enable
+    address: "DB14,BOOL42.0"
+    data_type: bool
+    persistence: permanent  # Never written by PLC logic
+    attack_category: safety_kill_switch
+    description: >-
+      Enable flag gates ALL actuator outputs. PLC logic reads it but NEVER
+      writes it. Setting Enable=FALSE freezes all valves at current position,
+      halting the process indefinitely.
+    default_value: true
+    state_machine_effect: "Immediate process halt; all actuators freeze"
+  - name: running
+    address: "DB14,BOOL40.0"
+    data_type: bool
+    persistence: transient  # PLC logic writes based on Start/Stop buttons
+    attack_category: mode_manipulation
+    description: >-
+      Running flag controls whether PID controller is active. PLC sets it
+      based on Start/Stop button state. Writing FALSE stops control loop;
+      writing TRUE when stopped could skip initialization.
+    default_value: true
+    state_machine_effect: "Stops or starts PID control loop"
 
 # ---------------------------------------------------------------------------
 # Safety Rules

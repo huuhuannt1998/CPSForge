@@ -1,14 +1,3 @@
-"""
-CPSForge Scripted Attacker
-============================
-Executes a deterministic, pre-defined sequence of attack actions.
-
-Attack templates are loaded from a JSON file (``script_file`` in config)
-or from a hardcoded default sequence if no file is specified.
-
-Scripted attacks are fully reproducible and suitable for repeatable experiments.
-"""
-
 from __future__ import annotations
 
 import json

@@ -1,0 +1,36 @@
+# CPSForge LLM Provider Config -- HuggingFace (Qwen3-1.7B)
+# ==================================================================
+# Within-family scaling comparator for RQ2.
+# Qwen3-1.7B is the smaller sibling of Qwen3.5-4B (same family, ~4.5x fewer params).
+# Not gated — download freely from HuggingFace Hub.
+#
+# To pre-download:
+#   huggingface-cli download Qwen/Qwen3-1.7B --local-dir models/qwen3-1.7b
+#   Then set model: models/qwen3-1.7b
+#
+# Requirements:
+#   pip install transformers>=5.0 accelerate bitsandbytes>=0.43
+#
+# GPU VRAM: ~1 GB inference in 4-bit (well within A4000 16 GB)
+# Expected throughput: ~80-100 tok/s in 4-bit on RTX A4000
+
+provider: huggingface
+model: models/qwen3-1.7b             # local path — use after download completes
+# model: Qwen/Qwen3-1.7B            # HF Hub name if local path not yet downloaded
+adapter_path: null                   # no adapter (base-only comparator)
+load_in_4bit: true                   # 4-bit NF4 via bitsandbytes
+
+max_tokens: 300
+temperature: 0.2
+timeout_s: 300.0
+
+# Not used by HuggingFace provider (no HTTP server)
+api_key_env: ""
+base_url: null
+
+# Logging controls
+log_prompts: false
+redact_prompts: false
+log_llm_responses: true
+
+prompt_template_version: "v2"

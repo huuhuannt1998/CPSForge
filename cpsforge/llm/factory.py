@@ -31,6 +31,9 @@ _PROVIDER_REGISTRY: dict[str, str] = {
     "local_openai_compatible": (
         "cpsforge.llm.local_openai_provider.LocalOpenAICompatibleProvider"
     ),
+    "huggingface": (
+        "cpsforge.llm.huggingface_provider.HuggingFaceProvider"
+    ),
 }
 
 

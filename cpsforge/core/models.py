@@ -126,6 +126,14 @@ class TagDefinition(BaseModel):
     description: str = Field("", description="Human-readable description of this tag")
     category: TagCategory = Field(..., description="Semantic category of the tag")
     scene_name: str = Field(..., description="Name of the Factory I/O scene this tag belongs to")
+    scale: Optional[float] = Field(
+        None,
+        description=(
+            "Scale factor for raw integer ↔ physical value conversion. "
+            "Used by Modbus backend when PLC stores scaled integers. "
+            "read: physical = raw * scale, write: raw = round(physical / scale)."
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -447,6 +455,16 @@ class SceneProfile(BaseModel):
     attack_surface: List[str] = Field(
         default_factory=list,
         description="Tag names exposed as valid attack targets (subset of writable_tags)",
+    )
+    control_objective: str = Field(
+        "",
+        description="Human-readable description of the control objective for this scene. "
+                    "Used in LLM prompts for both red team (attacker) and blue team (defender).",
+    )
+    key_sensors: List[str] = Field(
+        default_factory=list,
+        description="Tag names of key sensors/actuators to include in history tables "
+                    "alongside attack-surface tags. Keeps prompts focused on relevant tags.",
     )
 
     def get_tag(self, name: str) -> Optional[TagDefinition]:
