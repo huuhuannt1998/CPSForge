@@ -37,6 +37,10 @@ finetune/adapters/
 # Claude
 .claude/
 
+# Paper source (private, on Overleaf)
+overleaf/
+overleaf-ccs/
+
 # Logs
 *.log
 logs/
