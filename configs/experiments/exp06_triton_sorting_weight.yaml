@@ -1,0 +1,30 @@
+# EXP-6: TRITON — Sorting by Weight
+name: exp06_triton_sorting_weight
+description: >
+  EXP-6 TRITON: Safety interlock targeting on Sorting by Weight.
+
+scene_config: "scenes/sorting_weight.yaml"
+plc_config: "system/plc.yaml"
+attackers: [online_mitm]
+defenders: []
+live_writes_enabled: false
+dry_run: false
+eval_run: true
+max_steps: 60
+run_duration_s: 900.0
+save_trace: true
+save_metrics: true
+reset_after_run: true
+
+v2:
+  context_level: "full"
+  model_variant: "qwen25_3b"
+  finetune_status: "base"
+  defense_variant: "none"
+  attack_budget: 10
+  decision_interval_steps: 3
+  prompt_objective: "safety_interlock"
+
+exp_id: "EXP-6"
+exp_name: "triton"
+exp_variant: "sorting_weight"

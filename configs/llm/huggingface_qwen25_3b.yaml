@@ -18,7 +18,7 @@ model: models/qwen2.5-3b-instruct       # local path — use after download comp
 adapter_path: null                       # no adapter (base-only comparator)
 load_in_4bit: true                       # 4-bit NF4 via bitsandbytes
 
-max_tokens: 300
+max_tokens: 512
 temperature: 0.2
 timeout_s: 300.0
 

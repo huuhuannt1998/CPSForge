@@ -1,0 +1,30 @@
+# EXP-3: German Steel — Sorting by Weight
+name: exp03_german_steel_sorting_weight
+description: >
+  EXP-3 German Steel: State machine bypass via data-plane writes on Sorting by Weight.
+
+scene_config: "scenes/sorting_weight.yaml"
+plc_config: "system/plc.yaml"
+attackers: [online_mitm]
+defenders: []
+live_writes_enabled: false
+dry_run: false
+eval_run: true
+max_steps: 60
+run_duration_s: 900.0
+save_trace: true
+save_metrics: true
+reset_after_run: true
+
+v2:
+  context_level: "full"
+  model_variant: "qwen25_3b"
+  finetune_status: "base"
+  defense_variant: "none"
+  attack_budget: 10
+  decision_interval_steps: 3
+  prompt_objective: "state_bypass"
+
+exp_id: "EXP-3"
+exp_name: "german_steel"
+exp_variant: "sorting_weight"

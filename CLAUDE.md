@@ -3,11 +3,10 @@ You are my principal systems engineer and research co-author on CPSForge.
 # CPSForge — Authoritative Project Guide
 
 **Title:**
-CPSForge: Online Context-Aware LLM Man-in-the-Middle Attacks
-on Cyber-Physical Systems — Capability, Fine-Tuning, and Defense
+Online Context-Aware LLM Man-in-the-Middle Attacks on Cyber-Physical Systems
 
-**Target venue:** IEEE Transactions on Industrial Informatics (TII)
-Fallback: Computers & Security (Elsevier) or ACM TOPS
+**Target venue:** ACM CCS 2026 (primary)
+Fallback: IEEE Transactions on Information Forensics and Security (TIFS) or Computers & Security
 
 ---
 
@@ -100,9 +99,9 @@ different attack behavior than local 3B-class models?
 
 ---
 
-## 3. CURRENT EXPERIMENT STATUS (as of 2026-06-05)
+## 3. CURRENT EXPERIMENT STATUS (as of 2026-04-10)
 
-### Completed (333 runs — ALL DONE)
+### Completed baseline runs (333 runs — ALL DONE)
 
 | RQ | Cells | Status |
 |----|-------|--------|
@@ -113,6 +112,15 @@ different attack behavior than local 3B-class models?
 | RQ4 (Defense, finetuned) | 63/63 | DONE |
 | RQ5 (Cross-model) | 72/72 | DONE |
 | RQ6 (Frontier) | 45/45 | DONE |
+
+### New CCS experiments (EXP-1 through EXP-10) — NOT YET RUN
+
+10 new attack-class experiments implemented in code (configs, modules, scripts) but not yet executed on PLC.
+See `configs/experiments/exp01_*` through `exp10_*` for YAML configs.
+Execution order: EXP-8 (Oldsmar) → EXP-2 (Maroochy) → EXP-3 (German Steel) → EXP-6 (TRITON) →
+EXP-5 (Industroyer) → EXP-4 (Ukraine) → EXP-1 (Stuxnet) → EXP-9 (Colonial) →
+EXP-7 (Havex, dry-run first) → EXP-10 (PIPEDREAM, dry-run first).
+Run from PowerShell. live_writes_enabled must be true in configs/system/plc.yaml.
 
 ### Fine-tuning pipeline status
 
@@ -145,16 +153,38 @@ different attack behavior than local 3B-class models?
   with nonzero ASR on LC under full context. Scene-dependent reversal: on
   Sort. Height, local Qwen2.5-3B (13.3%) outperforms GPT-4o-mini (0%).
 
-### Paper status: READY TO SUBMIT
+### Paper status: IN REVISION FOR ACM CCS 2026
 
-All 333 experiment cells complete (288 original + 45 FRONTIER). All reviewer weaknesses addressed:
-- W1 (FPR): Measured 98.7% FPR (226/229 probes), clearly scoped as precision result
-- W2 (Statistical rigor): Wilson CIs added, findings classified
-- W3 (First framework): Scoped to evaluation envelope
-- W4 (Schema regression): Mitigation note added
-- W5 (Static LLM): Clarified as design constraint
-- RQ6 (Frontier): GPT-4o-mini evaluation complete, paper sections updated
-- All sections revised and aligned
+Active mission: mis_01KNT3EAQVKSCKEBWCWRSQJ12C in RKA project prj_01KNHXRXTYKCQVZBS22086A0SF
+40 tasks total. Writing-only tasks completed in this session (2026-04-10):
+
+**COMPLETED (this session):**
+- [W-C1+W-E1] Reframed contributions F1-F6 as empirical findings (introduction.tex)
+- [W-A1] Added ICS Kill Chain subsection, S7comm auth gap, IT-LLM agents, scope statement (threat_model.tex)
+- [W-D1] Strengthened HARVEY comparison + added Autonomous Cyber Agents subsection (related_work.tex)
+- [W-A2] Added OT recon/enumeration discussion (background.tex)
+- [W-E4] Self-deterrence dedicated subsection (discussion.tex)
+- [W-E3] 8-point key findings summary K1-K8 (evaluation.tex)
+- [W-D3+W-D4+W-B4-B6] Adaptive attacker, formal safety, shield quantification, PLC scope, fidelity (discussion.tex)
+- [End-to-End Pipeline] New subsection on composition with IT-side agents (discussion.tex)
+- [CCS-REQ] Expanded Ethics + new Broader Impact/AI Safety Policy section (main.tex)
+- [CCS-REQ] Expanded comparison table with AISI Cooling Tower row (related_work.tex)
+- [refs] Added 6 new bib entries: beresford2011s7, assante2015ics_kill_chain, purdue1992model,
+  cisa2014icsa, siemens2014ssa830, apart2025_3cb, aisi2026cooling
+
+**STILL PENDING (require PLC or additional runs):**
+- [W-B1] Fix static LLM 2-step bug + rerun with fair token budget
+- [W-B3] Implement + run rule-based heuristic baseline attacker
+- [W-A2 full] EXP-7 Havex recon pipeline (requires PLC)
+- [EXP-1 through EXP-10] All 10 new attack-class experiments (require live PLC)
+
+**STILL PENDING (writing, can do without PLC):**
+- [W-E2] Formal definition of online/closed-loop vs offline/static modes (design.tex or methodology.tex)
+- [W-B2] Power analysis for 3-repeat design
+- [STRUCTURAL] Narrative consolidation + page budget audit (CCS = 12 pages)
+- [CCS-REQ] Artifact Evaluation package preparation
+- [ATTACK-MAP] Paper section mapping all 10 real-world attacks to CPSForge experiments
+- [WRITING] Update conclusion.tex to reflect findings-first framing
 
 ---
 
@@ -422,7 +452,7 @@ Analysis: `py -3 -m cpsforge.analysis.capture_analysis`
 
 ## 11. PAPER STATUS (overleaf-ccs/)
 
-### Status: READY TO SUBMIT (IEEE TII)
+### Status: IN REVISION — ACM CCS 2026 (see Section 3 for completed/pending tasks)
 
 ### Completed sections (with real data)
 

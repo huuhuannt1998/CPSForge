@@ -565,3 +565,5 @@ reset_procedure:
     value: 5.0
   - tag: enable
     value: true
+  - tag: i_state
+    value: 0

@@ -516,6 +516,8 @@ safety_rules:
 reset_procedure:
   - tag: enable
     value: true
+  - tag: i_state
+    value: 0
   - tag: conveyor_entry
     value: false
   - tag: load_act

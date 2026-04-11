@@ -105,7 +105,12 @@ class OnlineExperimentRunner:
         self._config = config
         self._loader = loader
         self._run_id = make_run_id()
-        self._extra = extra or {}
+
+        # v2 block from YAML config (extra="allow" stores it as config.v2)
+        # Prefer explicit extra dict (from experiment_matrix / run_experiments.py);
+        # fall back to config.v2 block for standalone EXP config runs.
+        _yaml_v2: dict = getattr(config, "v2", None) or {}
+        self._extra = {**_yaml_v2, **(extra or {})}  # explicit extra wins
 
         base = output_base or Path("data/raw")
         self._run_dir = get_run_dir(base, config.name, self._run_id)
@@ -118,6 +123,7 @@ class OnlineExperimentRunner:
         self._attack_budget = int(self._extra.get("attack_budget", 10))
         self._decision_interval = int(self._extra.get("decision_interval_steps", 3))
         self._attacker_type = self._extra.get("attacker_type", "online_mitm")
+        self._prompt_objective: Optional[str] = self._extra.get("prompt_objective", None)
 
         # Collected records
         self._step_logs: List[UnifiedStepLog] = []
@@ -216,6 +222,7 @@ class OnlineExperimentRunner:
                 phase_engine=phase_engine,
                 attack_budget=self._attack_budget,
                 decision_interval=self._decision_interval,
+                prompt_objective=self._prompt_objective,
             )
 
         # PLC client + event logger
@@ -251,6 +258,8 @@ class OnlineExperimentRunner:
             if backend_type == "snap7" and scene.profile.scene_id is not None:
                 plc_client.switch_active_scene(scene.profile.scene_id)
                 time.sleep(max(0.5, scene.profile.sampling_interval_ms / 1000.0))
+                # Reset scene to known-good state before run (clears stale attack values)
+                plc_client.reset_scene(scene)
 
         # Process simulator for OpenPLC scenes (replaces Factory I/O)
         simulator = None

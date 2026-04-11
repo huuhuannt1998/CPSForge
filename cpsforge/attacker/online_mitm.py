@@ -115,6 +115,7 @@ class OnlineMITMAttacker:
         decision_interval: int = 3,
         llm_timeout_s: float = 120.0,
         max_retries: int = 1,
+        prompt_objective: Optional[str] = None,
     ) -> None:
         self._scene = scene
         self._provider = llm_provider
@@ -125,6 +126,7 @@ class OnlineMITMAttacker:
         self._decision_interval = decision_interval
         self._timeout = llm_timeout_s
         self._max_retries = max_retries
+        self._prompt_objective = prompt_objective  # EXP-specific objective addendum key
 
         self._context_builder = ContextBuilder(
             scene=scene,
@@ -180,7 +182,9 @@ class OnlineMITMAttacker:
             level=self._context_level,
             prior_actions=prior_actions,
         )
-        system_prompt, user_prompt = self._context_builder.render(payload)
+        system_prompt, user_prompt = self._context_builder.render(
+            payload, prompt_objective=self._prompt_objective
+        )
 
         decision = self._call_with_retry(system_prompt, user_prompt, payload, snapshot)
 
@@ -383,7 +387,10 @@ def _parse_decision(
     # --- Extract attack fields ---
     target_tag   = data.get("target_tag") or data.get("tag") or None
     action_type  = data.get("action_type") or data.get("attack_type") or None
-    action_value = data.get("action_value") or data.get("value") or None
+    _av = data.get("action_value")
+    if _av is None:
+        _av = data.get("value")
+    action_value = _av  # preserve falsy-but-valid values like 0 / 0.0 / False
     duration_ms  = int(data.get("duration_ms") or 5000)
     confidence   = float(data.get("confidence") if data.get("confidence") is not None else 0.5)
     reasoning    = str(data.get("reasoning", ""))
@@ -449,6 +456,10 @@ def _extract_first_json_object(text: str) -> Optional[str]:
         if ch == '"':
             in_string = not in_string
     if in_string:
+        # Escape any literal newlines inside the unclosed string before closing it
+        # (JSON spec forbids raw control characters in strings)
+        fragment = re.sub(r'\n', r'\\n', fragment.rstrip())
+        fragment = re.sub(r'\r', r'\\r', fragment)
         fragment += '"'
     # Remove trailing comma after last complete value
     fragment = re.sub(r",\s*$", "", fragment)

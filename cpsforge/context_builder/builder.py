@@ -140,8 +140,19 @@ class ContextBuilder:
     def render(
         self,
         payload: ContextPayload,
+        prompt_objective: Optional[str] = None,
     ) -> tuple[str, str]:
         """Render *payload* into (system_prompt, user_prompt) strings.
+
+        Parameters
+        ----------
+        payload : ContextPayload
+            Assembled context for this decision step.
+        prompt_objective : str, optional
+            EXP-specific objective addendum key (e.g. ``"state_bypass"``,
+            ``"safety_interlock"``, ``"extreme_setpoint"``).  When provided,
+            the corresponding addendum file is appended to the system prompt.
+            Addendum files live in ``templates/objectives/<key>.md``.
 
         Returns
         -------
@@ -168,7 +179,23 @@ class ContextBuilder:
             logger.error("Template placeholder %s not found in context payload", exc)
             system = _fallback_system(payload)
             user   = _fallback_user(payload)
+
+        # Append task-specific objective addendum if requested.
+        if prompt_objective:
+            addendum = self._load_objective_addendum(prompt_objective)
+            if addendum:
+                system = system + "\n\n" + addendum
+            else:
+                logger.warning("prompt_objective '%s' addendum not found", prompt_objective)
+
         return system, user
+
+    def _load_objective_addendum(self, key: str) -> str:
+        """Load an objective addendum from templates/objectives/<key>.md."""
+        path = self._tpl_dir / "objectives" / f"{key}.md"
+        if path.exists():
+            return path.read_text(encoding="utf-8").strip()
+        return ""
 
     # ------------------------------------------------------------------
     # Helpers

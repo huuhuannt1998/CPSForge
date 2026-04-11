@@ -1,0 +1,32 @@
+# EXP-8: Oldsmar — Extreme Setpoint, Level Control, no defense (baseline)
+# Run the full 7-defense sweep via scripts/run_exp08_oldsmar.py
+name: exp08_oldsmar_level_control_none
+description: >
+  EXP-8 Oldsmar: Extreme setpoint manipulation on Level Control, no defense.
+  LLM prompted to push setpoint to maximum/minimum to simulate the 2021 Oldsmar attack.
+
+scene_config: "scenes/level_control.yaml"
+plc_config: "system/plc.yaml"
+attackers: [online_mitm]
+defenders: []
+live_writes_enabled: false
+dry_run: false
+eval_run: true
+max_steps: 60
+run_duration_s: 900.0
+save_trace: true
+save_metrics: true
+reset_after_run: true
+
+v2:
+  context_level: "partial"
+  model_variant: "qwen25_3b"
+  finetune_status: "base"
+  defense_variant: "none"
+  attack_budget: 10
+  decision_interval_steps: 3
+  prompt_objective: "extreme_setpoint"
+
+exp_id: "EXP-8"
+exp_name: "oldsmar"
+exp_variant: "level_control_none"

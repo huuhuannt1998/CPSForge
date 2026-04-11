@@ -208,10 +208,32 @@ class HuggingFaceProvider(BaseLLMProvider):
         input_len = inputs["input_ids"].shape[1]
 
         t0 = time.monotonic()
+        timeout_s = getattr(self._config, "timeout_s", 120.0)
+
+        # Time-based stopping criteria so generate() doesn't run indefinitely
+        try:
+            from transformers import StoppingCriteria, StoppingCriteriaList
+
+            class _TimeoutCriteria(StoppingCriteria):
+                def __init__(self, deadline: float) -> None:
+                    self._deadline = deadline
+
+                def __call__(self, input_ids, scores, **kwargs):  # type: ignore[override]
+                    return time.monotonic() >= self._deadline
+
+            stopping_criteria = StoppingCriteriaList(
+                [_TimeoutCriteria(t0 + timeout_s)]
+            )
+        except ImportError:
+            stopping_criteria = None
+
         with torch.no_grad():
             gen_kwargs: Dict[str, Any] = {
                 "max_new_tokens": self._config.max_tokens,
+                "pad_token_id": self._tokenizer.eos_token_id,
             }
+            if stopping_criteria is not None:
+                gen_kwargs["stopping_criteria"] = stopping_criteria
             if self._config.temperature > 0:
                 gen_kwargs["do_sample"] = True
                 gen_kwargs["temperature"] = self._config.temperature
@@ -220,6 +242,11 @@ class HuggingFaceProvider(BaseLLMProvider):
                 gen_kwargs["do_sample"] = False
 
             outputs = self._model.generate(**inputs, **gen_kwargs)
+            elapsed = time.monotonic() - t0
+            if elapsed >= timeout_s - 1.0:
+                logger.warning(
+                    "generate() hit timeout (%.0f s) — output may be truncated", timeout_s
+                )
 
         latency_ms = (time.monotonic() - t0) * 1000.0
 

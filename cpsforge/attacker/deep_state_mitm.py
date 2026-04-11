@@ -548,7 +548,10 @@ def _parse_deep_state_decision(
 
     target_tag = data.get("target_tag") or data.get("tag") or None
     action_type = data.get("action_type") or data.get("attack_type") or None
-    action_value = data.get("action_value") or data.get("value") or None
+    _av = data.get("action_value")
+    if _av is None:
+        _av = data.get("value")
+    action_value = _av  # preserve falsy-but-valid values like 0 / 0.0 / False
     duration_ms = int(data.get("duration_ms") or 5000)
     confidence = float(data.get("confidence") if data.get("confidence") is not None else 0.5)
     reasoning = str(data.get("reasoning", ""))

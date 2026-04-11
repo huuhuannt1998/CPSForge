@@ -285,6 +285,58 @@ class PlcClient(PlcBackend):
                 )
                 return False
 
+    def reset_scene(self, scene: Any, stabilize_s: float = 3.0) -> None:
+        """Write the scene's reset_procedure tags to restore known-good state.
+
+        This is an infrastructure write (like switch_active_scene) and bypasses
+        the live_writes_enabled safety gate.  It must succeed regardless of
+        experiment mode so the scene starts from a clean baseline every run.
+
+        Parameters
+        ----------
+        scene:
+            The active BaseScene (provides reset_procedure and tag lookup).
+        stabilize_s:
+            Seconds to wait after writing resets so the PLC scan cycle can
+            process them and Factory I/O can reflect the new state.
+        """
+        reset_tags = getattr(scene.profile, "reset_procedure", None) or []
+        if not reset_tags:
+            logger.info("reset_scene: no reset_procedure defined for scene '%s'.",
+                        scene.profile.scene_name)
+            return
+
+        self._ensure_connected()
+        written = 0
+        for entry in reset_tags:
+            tag_name = entry.get("tag") if isinstance(entry, dict) else getattr(entry, "tag", None)
+            value    = entry.get("value") if isinstance(entry, dict) else getattr(entry, "value", None)
+            if tag_name is None or value is None:
+                continue
+            tag = scene.get_tag(tag_name)
+            if tag is None:
+                logger.warning("reset_scene: tag '%s' not found in scene — skipping.", tag_name)
+                continue
+            try:
+                addr = parse_address(tag.address)
+                raw  = _encode_value(value, addr.word_len)
+                with self._lock:
+                    self._client.write_area(
+                        self._to_snap7_area(addr.area),
+                        addr.db_number,
+                        addr.start,
+                        bytearray(raw),
+                    )
+                logger.debug("reset_scene: %s = %s", tag_name, value)
+                written += 1
+            except Exception as exc:
+                logger.warning("reset_scene: failed to reset '%s': %s", tag_name, exc)
+
+        logger.info("Scene reset: wrote %d/%d tags. Waiting %.1fs for stabilization.",
+                    written, len(reset_tags), stabilize_s)
+        import time
+        time.sleep(stabilize_s)
+
     # ------------------------------------------------------------------
     # Tag I/O -- internal raw read/write
     # ------------------------------------------------------------------

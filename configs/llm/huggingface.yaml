@@ -21,7 +21,7 @@ model: models/qwen2.5-3b-instruct    # primary model (Windows-compatible standar
 adapter_path: null                # base model — no adapter
 load_in_4bit: true                # 4-bit NF4 via bitsandbytes
 
-max_tokens: 350          # attack JSON ~150-200 tokens; 350 allows verbose expected_effect
+max_tokens: 512          # attack JSON ~150-200 tokens; 512 avoids mid-JSON truncation
 temperature: 0.2
 timeout_s: 300.0         # 5 min covers first-load (~120s) + inference; subsequent calls ~3-10s
 

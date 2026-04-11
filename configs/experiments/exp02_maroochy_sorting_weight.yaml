@@ -1,0 +1,37 @@
+# EXP-2: Maroochy — Sorting by Weight
+name: exp02_maroochy_sorting_weight
+description: >
+  EXP-2 Maroochy: 300-step persistent actuator override on Sorting by Weight.
+  Qwen2.5-3B (base), partial context, no defense, 40-attack budget.
+
+scene_config: "scenes/sorting_weight.yaml"
+plc_config: "system/plc.yaml"
+
+attackers:
+  - online_mitm
+
+defenders: []
+
+live_writes_enabled: false
+dry_run: false
+eval_run: true
+
+max_steps: 300
+run_duration_s: 1800.0
+
+save_trace: true
+save_metrics: true
+reset_after_run: true
+
+v2:
+  context_level: "partial"
+  model_variant: "qwen25_3b"
+  finetune_status: "base"
+  defense_variant: "none"
+  attack_budget: 40
+  decision_interval_steps: 3
+  prompt_objective: "maroochy"
+
+exp_id: "EXP-2"
+exp_name: "maroochy"
+exp_variant: "sorting_weight"

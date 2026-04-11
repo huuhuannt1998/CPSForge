@@ -110,8 +110,18 @@ class UnifiedStepLog:
     # ------------------------------------------------------------------ #
 
     def as_dict(self) -> Dict[str, Any]:
-        """Return a JSON-serialisable dict."""
-        return asdict(self)
+        """Return a JSON-serialisable dict suitable for Parquet/JSON output.
+
+        Nested dict fields (observation_dict, derived_features) are flattened
+        to avoid Parquet struct-with-no-child-field errors on empty dicts.
+        """
+        d = asdict(self)
+        # Flatten nested dicts that would become Parquet structs with variable schema
+        for obs_key, prefix in (("observation_dict", "obs__"), ("derived_features", "feat__")):
+            nested = d.pop(obs_key, {}) or {}
+            for k, v in nested.items():
+                d[f"{prefix}{k}"] = v
+        return d
 
     def to_json_line(self) -> str:
         """Serialise to a single JSON line suitable for JSONL output."""
