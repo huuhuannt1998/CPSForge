@@ -36,6 +36,7 @@ finetune/adapters/
 
 # Claude
 .claude/
+CLAUDE.md
 
 # Paper source (private, on Overleaf)
 overleaf/
