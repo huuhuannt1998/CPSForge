@@ -1,61 +1,50 @@
-﻿# CPSForge
+# CPSForge
 
-**CPSForge: Online Context-Aware LLM Man-in-the-Middle Attacks on Cyber-Physical Systems — Capability, Fine-Tuning, and Defense**
+**CPSForge: Measuring the Realized Effects of LLM-Generated PLC Writes**
+Huan Bui and Chenglong Fu, University of North Carolina at Charlotte
+*IEEE IPCCC 2026* (short paper), Austin, TX, USA
 
-A general-purpose PLC-in-the-loop framework that places a local LLM as a man-in-the-middle agent in the communication between a PLC and its connected machines, automating both **red team (attack)** and **blue team (defense)** analysis of the control-plane communication stream. Evaluated on a **real Siemens S7-1200 PLC** with **Factory I/O** across **333 experiment runs** and **6 research questions**.
+CPSForge is a PLC-in-the-loop measurement framework. It couples a **physical Siemens S7-1200 PLC** with **Factory I/O** simulated plants and places a bounded, online LLM agent on a configured semantic action surface. A **mandatory safety shield** validates every proposed write before it reaches the PLC, and the same model serves as a defender with a different prompt. The framework records, separately for each proposed action:
 
-> **Anonymous artifact repository:** <https://anonymous.4open.science/r/CPSForge-4ED6>
+1. whether the model produced a schema-valid proposal,
+2. whether the proposal passed enforcement and was executed as an S7 write,
+3. whether the target value subsequently moved toward the requested value, and
+4. whether the run produced a process-level deviation.
 
-> **Default PLC target:** `192.168.0.1` — All commands default to dry-run (no live PLC writes).
+It is a measurement instrument, not a deployment architecture. All results come from **333 runs** on a real S7-1200.
 
----
-
-## Key Features
-
-| Layer | Capability |
-|-------|------------|
-| **PLC Interface** | Siemens S7 via `python-snap7`, configurable polling (500 ms), DB/I/Q/M addressing |
-| **Online MITM Attacker** | Observe → infer phase → build context → decide (attack\|wait) → act — every 3 steps |
-| **Context Builder** | 3-tier context ablation (minimal / partial / full) for controlled experiments (RQ1) |
-| **Multi-Model LLM** | Qwen2.5-3B-Instruct (base + QLoRA), Qwen3-1.7B, SmolLM3-3B, GPT-4o-mini — in-process via HuggingFace transformers + OpenAI API |
-| **Attack Framework** | Random, static LLM, and online MITM attackers with structured JSON action schema |
-| **Safety Shield** | Mandatory validation of every write — whitelist, range, duration, interlock, invariant |
-| **Defense Chain** | Safety Shield → PhaseAwareShield → IntentConsistencyChecker → LLM Defender (7 variants) |
-| **LLM Defender** | Symmetric LLM-vs-LLM: same model and context pipeline serves both red and blue team |
-| **Fine-Tuning** | QLoRA pipeline with dual-objective training (attack + defense, 2,057 examples) |
-| **Experiment Matrix** | 333-cell grid across 6 RQs: context, fine-tuning, attack mode, defenses, cross-model, frontier |
-| **Analysis Pipeline** | Paper-ready tables with Wilson CIs, PLC event capture analysis |
+> **Safety default:** all commands run in dry-run mode (no PLC writes) unless live writes are explicitly enabled.
 
 ---
 
-## Research Questions & Results
+## Main Findings
 
-| RQ | Question | Cells | Key Finding |
-|----|----------|-------|-------------|
-| **RQ1** | How does operational context affect LLM attack capability? | 27 | Self-deterrence under full context (3B models only) |
-| **RQ2** | How does fine-tuning change attack AND defense capability? | 36 | QLoRA improves ASR 0% → 37% on Level Control |
-| **RQ3** | Is closed-loop feedback essential for LLM attacks? | 27 | Static LLM: 0% valid proposals; Online MITM: up to 54% ASR |
-| **RQ4** | Which defenses remain effective against LLM attackers? | 126 | LLM defender blocks 100% of attacks (but 98.7% FPR) |
-| **RQ5** | Are findings robust across models? | 72 | ASR scales with size; cross-family capability comparable at 3B |
-| **RQ6** | Does a frontier model behave differently? | 45 | GPT-4o-mini: 100% ASR on Sort.Weight; self-deterrence vanishes |
+All rates are conditional on the configured action surface, the mandatory shield, the prompts, and a supervisory-timescale agent (one decision per 13–33 s). See the paper for the full caveats.
 
-**Total: 333 completed runs on a real Siemens S7-1200 PLC.**
+| | Finding |
+|---|---|
+| **F1** | **Writeability is an incomplete proxy for realized effect.** In the tested programs, writes to parameters the program does not cyclically refresh show a higher target-movement rate (TMR) than writes to scan-refreshed variables: 33.7% vs. 10.8% for base Qwen2.5-3B (per-write, descriptive). A single-write intervention is consistent with cyclic overwrite erasing injected values. |
+| **F1b** | **Target movement and process deviation are distinct.** Substantial process deviations occur in a minority of attack-active runs (32.5% exceed a two-unit tank excursion vs. 2.9% of quiet runs). |
+| **F2** | **More context is not monotonically better.** No context tier dominates across scenes, and full context often suppresses proposals altogether. |
+| **F3** | **Feedback appears to help.** In a small repaired single-action comparison, the online agent reaches 77.5% TMR vs. 57.1% for a static one-shot LLM (only 7 static writes, so directional). |
+| **F4** | **Results vary across models.** Both tested 3B models produce nonzero TMR on Level Control and Qwen3-1.7B does not; model-family differences prevent attributing this to parameter count. |
+| **F5** | **The same-scale LLM defender does not discriminate.** It blocks every adversarial proposal on Sorting by Height but also rejects 226 of 229 known-benign probes (FPR 98.7%). This is block-all behavior, not deployable detection. |
 
 ### Models
 
 | Model | Parameters | Role |
 |-------|-----------|------|
-| Qwen2.5-3B-Instruct | ~3B (4-bit NF4) | Primary model (base + QLoRA finetuned) |
-| Qwen3-1.7B | ~1.7B (4-bit NF4) | Within-family scaling (RQ5) |
-| SmolLM3-3B | ~3B (4-bit NF4) | Cross-family robustness (RQ5) |
-| GPT-4o-mini | Frontier (API) | Frontier model scaling (RQ6) |
+| Qwen2.5-3B-Instruct | ~3B (4-bit NF4) | Primary model (base; exploratory QLoRA pilot) |
+| Qwen3-1.7B | ~1.7B (4-bit NF4) | Cross-model comparison |
+| SmolLM3-3B | ~3B (4-bit NF4) | Cross-model comparison |
+| GPT-4o-mini | API | API-model comparison |
 
 ### Evaluation Scenes
 
 | Scene | DB | Tags | R/W | Process Type |
 |-------|-----|------|-----|-------------|
 | Level Control | DB14 | 15 | 4 | Continuous (PID) |
-| Sorting by Height | DB21 | 30 | 8 | Discrete (state-machine) |
+| Sorting by Height | DB21 | 30 | 8 | Discrete (state machine) |
 | Sorting by Weight | DB22 | 35 | 11 | Discrete (classification) |
 
 ---
@@ -63,24 +52,28 @@ A general-purpose PLC-in-the-loop framework that places a local LLM as a man-in-
 ## Quick Start
 
 ```bash
-# Clone and install
-git clone <repo-url> && cd CPSForge
-pip install -e ".[dev]"
+# Clone and install (Python >= 3.11)
+git clone https://github.com/huuhuannt1998/CPSForge.git && cd CPSForge
+pip install -e ".[dev,torch]"
 
-# Download models (requires HuggingFace access)
-python download_models.py
+# Model weights are not committed. Download them into models/ and point
+# configs/llm/*.yaml at them (see the comments in configs/llm/huggingface.yaml).
 
-# Verify PLC connection + scene
-python verify_plc_scene.py --scene level_control
+# Inspect and validate a scene profile
+cpsforge scene info --scene level_control
+cpsforge scene validate --scene level_control
 
-# Run a single experiment cell (dry-run, no PLC writes)
-python run_experiments.py --scene level_control --context minimal --attacker online_mitm --defense none --dry-run
+# Check the PLC connection (requires the S7-1200 and Factory I/O)
+cpsforge plc probe
 
-# Run the full experiment matrix (requires PLC + Factory I/O)
-# See START_EXPERIMENTS.ps1 for the complete 333-run grid
+# Run the online agent on one scene (dry-run by default: no PLC writes)
+cpsforge run agent --scene level_control --experiment agent_level_control
+
+# Summarize an experiment's runs
+cpsforge report summarize --experiment agent_level_control
 ```
 
-> **Important:** Run from **PowerShell**, not Git Bash (bitsandbytes segfaults in Git Bash). Kill Python between experiment cells to free GPU memory.
+> **Windows note:** run from **PowerShell**, not Git Bash (bitsandbytes segfaults in Git Bash). Restart Python between experiment cells to free GPU memory.
 
 ---
 
@@ -88,44 +81,79 @@ python run_experiments.py --scene level_control --context minimal --attacker onl
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  Factory I/O (plant simulation)                         │
+│  Factory I/O (simulated plant)                          │
 └───────────────────────┬─────────────────────────────────┘
                         │ physical I/O
 ┌───────────────────────▼─────────────────────────────────┐
-│  Siemens S7-1200 PLC (TIA Portal v17)   192.168.0.1    │
+│  Siemens S7-1200 PLC (TIA Portal v17)                   │
 └───────────────────────┬─────────────────────────────────┘
                         │ python-snap7 (S7 protocol)
 ┌───────────────────────▼─────────────────────────────────┐
 │  CPSForge Middleware                                     │
 │                                                          │
 │  Observation Layer                                       │
-│    Tag Poller (500ms) → Snapshot → Phase Inference       │
+│    Tag poller (500 ms) → snapshot → phase inference      │
 │                                                          │
 │  Context Builder (3 tiers)                               │
-│    minimal | partial | full  →  LLM Prompt               │
+│    minimal | partial | full  →  LLM prompt               │
 │                                                          │
-│  Red Team LLM                    Blue Team LLM           │
-│    Online MITM Attacker    ←→    LLM Defender            │
+│  Red Team                        Blue Team               │
+│    Online LLM agent              LLM defender            │
 │    (same model + context)        (same model + context)  │
 │                                                          │
-│  Defense Chain                                           │
-│    Shield → PhaseAware → IntentCheck → LLM Defender      │
+│  Enforcement chain                                       │
+│    Safety Shield (mandatory) → PhaseAware → Intent →     │
+│    LLM defender (per configuration)                      │
 │                                                          │
-│  PLC Writer (approved writes only)                       │
-│                                                          │
-│  Event Logger (JSONL capture of all PLC events)          │
+│  PLC writer (approved writes only)                       │
+│  Event logger (JSONL capture of all PLC events)          │
 └──────────────────────────────────────────────────────────┘
 ```
 
 ### Layers
 
-1. **Physical Execution** — PLC runs control logic; Factory I/O renders the plant.
-2. **Observation & Phase Inference** — Cyclic tag polling, timestamped snapshots, rule-based phase detection.
-3. **Context Builder** — 3-tier prompt assembly (minimal / partial / full) for controlled RQ1 ablation.
-4. **LLM Attacker** — Online MITM (observe → decide → act loop), static LLM (one-shot), random baseline.
-5. **Safety Shield** — Validates every write against configurable rules (range, duration, cooldown, interlock, invariant).
-6. **Defense Chain** — Sequential: Safety Shield → PhaseAwareShield → IntentConsistencyChecker → LLM Defender.
-7. **Event Capture** — Structured JSONL logging of all PLC reads, writes, blocks, and session events.
+1. **Physical execution:** the PLC runs the control logic; Factory I/O simulates the plant.
+2. **Observation and phase inference:** cyclic tag polling, timestamped snapshots, rule-based phase inference (an inference, not ground truth).
+3. **Context builder:** 3-tier prompt assembly (minimal / partial / full), served identically to attacker and defender.
+4. **Attackers:** the online agent (observe, decide, act), a static one-shot LLM, and random baselines.
+5. **Safety shield:** validates every write (whitelist, range, duration cap, cooldown, invariant, interlock, mode gate).
+6. **Defense chain:** Safety Shield → PhaseAwareShield → IntentConsistencyChecker → LLM defender. Each stage can block independently.
+7. **Event capture:** structured JSONL logging of all PLC reads, writes, blocks, and session events.
+
+---
+
+## Online Agent Loop
+
+The agent runs at a **supervisory timescale**, not the PLC scan cycle. Tag acquisition runs in its own thread at 500 ms while the plant keeps evolving during inference.
+
+```
+Every 3rd agent iteration:
+  1. Capture the latest PLC snapshot (sensors, actuators, setpoints, alarms)
+  2. Inspect the sliding-window history
+  3. Infer the operational phase
+  4. Build the context-tier prompt (minimal | partial | full)
+  5. LLM decides: attack | wait   (13–33 s per call for the 3B model)
+  6. If attack: emit structured JSON (target tag, value, duration, reasoning)
+  7. Pass through the enforcement chain (shield → phase → intent → LLM defender)
+  8. Execute approved writes on the PLC (or log the block)
+```
+
+- Attack budget: at most 10 per 60-iteration run (6–10 minutes per run)
+- On timeout or parse failure: default to `wait`
+
+---
+
+## Defense Configurations
+
+| Variant | Description |
+|---------|-------------|
+| `none` | Mandatory safety shield only |
+| `baseline` | Shield plus six anomaly detectors (threshold, invariant, CUSUM, Isolation Forest, One-Class SVM, LSTM autoencoder) |
+| `phase_aware` | PhaseAwareShield: blocks phase-inconsistent writes |
+| `intent` | IntentConsistencyChecker: blocks writes that oppose the controller trend |
+| `combined` | `phase_aware` + `intent` |
+| `llm_defender` | LLM defender (same model and context as the attacker) |
+| `llm_combined` | `phase_aware` + `intent` + LLM defender |
 
 ---
 
@@ -133,138 +161,61 @@ python run_experiments.py --scene level_control --context minimal --attacker onl
 
 ```
 CPSForge/
-├── pyproject.toml              # Package metadata, dependencies, entry point
-├── requirements.txt            # Pip-installable dependency list
-├── run_experiments.py          # Main experiment runner
-├── START_EXPERIMENTS.ps1       # PowerShell script for full 333-run matrix
-├── download_models.py          # Download HuggingFace models
-├── verify_plc_scene.py         # PLC + scene validation
+├── pyproject.toml              # Package metadata; installs the `cpsforge` CLI
+├── requirements.txt
 ├── configs/
 │   ├── system/                 # PLC connection, logging
 │   ├── scenes/                 # Factory I/O scene profiles (YAML)
-│   ├── llm/                    # LLM provider configs
-│   │   ├── huggingface.yaml            # Qwen2.5-3B base
-│   │   ├── huggingface_finetuned.yaml  # Qwen2.5-3B + QLoRA adapter
-│   │   ├── huggingface_qwen3_17b.yaml  # Qwen3-1.7B
-│   │   ├── huggingface_smollm3_3b.yaml # SmolLM3-3B
-│   │   └── prompts/                    # Online MITM + context-tier templates
+│   ├── llm/                    # Model configs and prompt templates
 │   ├── attacks/                # Attacker configurations
 │   ├── defenders/              # Defense configurations
 │   └── experiments/            # Experiment presets
 ├── cpsforge/                   # Main Python package
+│   ├── cli/                    # `cpsforge` command-line interface
 │   ├── observation/            # Live state collection + phase inference
-│   ├── context_builder/        # 3-tier prompt context assembly (C2)
-│   ├── attacker/               # Online MITM + static attackers (C1)
-│   ├── defenses/               # PhaseAwareShield, IntentChecker, LLM Defender (C4)
-│   ├── runner/                 # Online runner, experiment matrix
-│   ├── finetune/               # QLoRA fine-tuning pipeline (C3)
-│   ├── plc/                    # PLC client + event logger
-│   ├── analysis/               # Paper table generation + capture analysis
-│   ├── llm/                    # HuggingFace provider (4-bit NF4, LoRA)
+│   ├── context_builder/        # 3-tier prompt context assembly
+│   ├── attacker/               # Online agent + static attackers
+│   ├── defenses/               # PhaseAwareShield, IntentChecker, LLM defender
 │   ├── shield/                 # Safety shield engine
-│   ├── scenes/                 # Factory I/O scene abstraction
+│   ├── runner/                 # Online runner, experiment matrix
+│   ├── finetune/               # QLoRA fine-tuning pipeline
+│   ├── plc/                    # PLC client + event logger
+│   ├── analysis/               # Table generation + capture analysis
+│   ├── llm/                    # HuggingFace provider (4-bit NF4, LoRA)
+│   ├── scenes/                 # Scene abstraction
 │   ├── core/                   # Configuration + data models
-│   └── logging/                # Unified per-step logging (33+ fields)
-├── finetune/
-│   └── adapters/               # QLoRA adapters (v2: 2,057 examples)
-├── data/
-│   ├── raw/                    # Per-run artifacts (traces, attacks, events)
-│   ├── processed/              # Fine-tuning data, aggregate summaries
-│   ├── captures/               # PLC event captures (JSONL)
-│   └── replays/                # Replay data
-├── models/                     # Local model weights (not committed)
-│   ├── qwen2.5-3b-instruct/   # Primary model (~6 GB)
-│   ├── qwen3-1.7b/            # Scaling comparator (~4 GB)
-│   └── smollm3-3b/            # Cross-family (~6 GB)
-├── overleaf/                   # LaTeX paper source (IEEE TII format)
-├── overleaf-ccs/               # LaTeX paper source (ACM CCS format)
-├── factoryio_scenes/           # TIA Portal SCL source for all scenes
+│   └── logging/                # Unified per-step logging
+├── factoryio_scenes/           # TIA Portal SCL source for the scenes
 ├── cpsforge_tiaportal/         # TIA Portal v17 project files
-├── docs/                       # Guides and documentation
-└── scripts/                    # Standalone analysis scripts
+├── docs/                       # Guides
+└── scripts/                    # Experiment-matrix generator and analysis scripts
 ```
+
+Model weights (`models/`), fine-tuning adapters, and run data (`data/raw/`, `data/processed/`, `data/captures/`) are not committed.
 
 ---
 
 ## Run Artifacts
 
-Each run produces a folder under `data/raw/<experiment>/<run_id>/`:
+Each run writes a folder under `data/raw/<experiment>/<run_id>/`:
 
 | File | Contents |
 |------|----------|
-| `trace.parquet` | Timestamped plant snapshots (33+ fields per step) |
-| `attacks.json` | All proposed attack actions with shield decisions |
-| `metadata.json` | Run configuration, PLC IP, scene, timing |
+| `trace.parquet` | Timestamped acquisition samples and agent decisions |
+| `attacks.json` | Proposed actions with shield and defense decisions |
+| `metadata.json` | Run configuration, scene, timing |
 
-PLC event captures go to `data/captures/<run_id>_plc_events.jsonl`:
+PLC event captures go to `data/captures/<run_id>_plc_events.jsonl` (`poll_read`, `attack_write`, `blocked_write`, `connect`/`disconnect`).
 
-| Event Type | Description |
-|------------|-------------|
-| `poll_read` | Every 500 ms tag poll with all tag values |
-| `attack_write` | Approved write executed on PLC |
-| `blocked_write` | Write blocked by defense chain (stage, reason, score) |
-| `connect/disconnect` | PLC TCP session events |
+The per-run traces and S7 event logs behind the paper will be released in this repository. Regenerate tables with `python -m cpsforge.analysis.generate_tables`.
 
-**Regenerate paper tables:** `py -3 -m cpsforge.analysis.generate_tables`
+**Metrics.** The paper reports the valid-proposal rate, the execution rate, the target-movement rate (TMR), and the proposal-blocking rate (Section IV of the paper). Some code identifiers and docs predate the paper and use older metric names.
 
 ---
 
-## Online MITM Attack Loop
+## Fine-Tuning (Exploratory QLoRA Pilot)
 
-```
-Every k=3 polling steps (1.5s):
-  1. Observe current PLC state (sensors, actuators, setpoints, alarms)
-  2. Inspect sliding-window history
-  3. Infer operational phase
-  4. Build context-tier-specific prompt (minimal | partial | full)
-  5. LLM decides: attack | wait
-  6. If attack: emit structured JSON (target_tag, action_value, duration, reasoning)
-  7. Pass through defense chain (shield → phase → intent → LLM defender)
-  8. Execute approved writes on PLC (or log blocked)
-  9. Observe result → continue iteratively
-```
-
-- Attack budget: max 10 per run
-- LLM timeout: 120s per call (full context takes ~30s on 3B model)
-- On timeout or parse failure: default to "wait" (safe fallback)
-
----
-
-## Defense Chain
-
-All proposed PLC writes pass through this chain in order:
-
-```
-Safety Shield → PhaseAwareShield → IntentConsistencyChecker → LLM Defender → PLC Write
-```
-
-Each stage can independently block a write. A write must pass ALL active stages.
-
-| Variant | Description |
-|---------|-------------|
-| `none` | No defense (measures raw attacker capability) |
-| `baseline` | Threshold + invariant detectors |
-| `phase_aware` | PhaseAwareShield: blocks phase-inconsistent writes |
-| `intent` | IntentConsistencyChecker: blocks controller-trend-opposing writes |
-| `combined` | phase_aware + intent together |
-| `llm_defender` | LLM-based anomaly defender (same model as attacker) |
-| `llm_combined` | phase_aware + intent + LLM defender |
-
----
-
-## Fine-Tuning (QLoRA)
-
-Training data: `data/processed/finetune_v2/finetune_examples.jsonl` (2,057 examples)
-
-| Category | Examples | Purpose |
-|----------|----------|---------|
-| Attack | 83 | Post-hoc verified physically successful attacks |
-| Defense (block) | 608 | Known attack proposals → gold `{decision: "block"}` |
-| Defense (allow) | 1,366 | Normal operation → gold `{decision: "allow"}` |
-
-QLoRA config: rank=16, alpha=32, dropout=0.05, 3 epochs, lr=2e-4. Trainable: 29.9M params (0.96% of 3.1B).
-
-Output: `finetune/adapters/qwen25_3b_cps_v2/final_adapter/`
+Training data: 2,057 examples (83 attack, 608 defense-block, 1,366 defense-allow). QLoRA config: rank 16, alpha 32, dropout 0.05, 3 epochs, lr 2e-4. In the paper this is a single-split, single-seed pilot that did not transfer across scenes; treat it as exploratory.
 
 ---
 
@@ -272,45 +223,52 @@ Output: `finetune/adapters/qwen25_3b_cps_v2/final_adapter/`
 
 | Component | Details |
 |-----------|---------|
-| **PLC** | Siemens S7-1200, IP 192.168.0.1, TIA Portal v17 |
-| **Plant** | Factory I/O (software process emulator) |
-| **Bridge** | Dell Precision 5820, RTX A4000 16 GB VRAM |
-| **Protocol** | python-snap7, S7 protocol, 500 ms polling |
-| **OS** | Windows 11 Enterprise |
+| **PLC** | Siemens S7-1200, TIA Portal v17 (non-optimized DBs, PUT/GET enabled) |
+| **Plant** | Factory I/O |
+| **Bridge** | Dell Precision 5820, RTX A4000 16 GB |
+| **Protocol** | python-snap7, S7, 500 ms polling |
+| **OS** | Windows 11 |
 | **Safety** | `live_writes_enabled: false` by default |
 
 ---
 
-## Configuration
-
-All behavior is config-driven via YAML files under `configs/`. See:
+## Documentation
 
 - [Quick Start Guide](docs/quickstart.md)
-- [Scene Config Guide](docs/scene_config.md) — Tag definitions, safety rules, attack surface
-- [Hardware Deployment Guide](docs/hardware_deployment.md) — PLC + Factory I/O setup
-- [Safety Notes](docs/safety_notes.md) — Shield rules, dry-run mode, live-write controls
-- [Evaluation Workflow](docs/evaluation_workflow.md) — Full experiment matrix execution
-- [Metrics Guide](docs/metrics_guide.md) — ASR, VAR, prevention rate definitions
-
-## Extending CPSForge
-
-- [Adding a New Attacker](docs/adding_attacker.md)
-- [Adding a New Detector](docs/adding_detector.md)
-- [Adding a New Scene](docs/adding_scene.md)
+- [Scene Config Guide](docs/scene_config.md): tag definitions, safety rules, action surface
+- [Hardware Deployment Guide](docs/hardware_deployment.md): PLC and Factory I/O setup
+- [Safety Notes](docs/safety_notes.md): shield rules, dry-run mode, live-write controls
+- [Evaluation Workflow](docs/evaluation_workflow.md)
+- [Metrics Guide](docs/metrics_guide.md)
+- [Adding a New Attacker](docs/adding_attacker.md) · [Adding a New Detector](docs/adding_detector.md) · [Adding a New Scene](docs/adding_scene.md)
 
 ---
 
-## Safety
+## Safety and Responsible Use
 
-CPSForge is a **CPS security research framework**, not malware.
+CPSForge is a CPS security **measurement** framework, intended for isolated laboratory testbeds.
 
-- **Dry-run by default** — no PLC writes unless explicitly enabled
-- **Mandatory safety shield** — every write validated against scene-specific safety rules
-- **Structured actions only** — no raw PLC writes from LLM; all outputs parsed into JSON schema
-- **Auditable** — every action, decision, and detection is logged as structured JSONL
-- **Attack budget** — maximum 10 attacks per 60-step run
+- **Dry-run by default:** no PLC writes unless explicitly enabled
+- **Mandatory safety shield:** every write is validated against scene-specific safety rules
+- **Structured actions only:** the LLM never issues raw PLC writes; outputs are parsed into a JSON schema
+- **Auditable:** every action, decision, and detection is logged
+- **Attack budget:** at most 10 writes per 60-iteration run
 
-See [Safety Notes](docs/safety_notes.md) for full details.
+Never connect CPSForge to production control systems. See [Safety Notes](docs/safety_notes.md).
+
+---
+
+## Citation
+
+```bibtex
+@inproceedings{bui2026cpsforge,
+  author    = {Bui, Huan and Fu, Chenglong},
+  title     = {{CPSForge}: Measuring the Realized Effects of {LLM}-Generated {PLC} Writes},
+  booktitle = {Proceedings of the 45th IEEE International Performance, Computing, and Communications Conference (IPCCC)},
+  address   = {Austin, TX, USA},
+  year      = {2026}
+}
+```
 
 ---
 
