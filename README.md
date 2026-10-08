@@ -274,4 +274,4 @@ Never connect CPSForge to production control systems. See [Safety Notes](docs/sa
 
 ## License
 
-MIT
+MIT. See [LICENSE](LICENSE).
