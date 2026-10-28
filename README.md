@@ -1,8 +1,8 @@
 # CPSForge
 
 **CPSForge: Measuring the Realized Effects of LLM-Generated PLC Writes**
-Huan Bui and Chenglong Fu, University of North Carolina at Charlotte
-*IEEE IPCCC 2026* (short paper), Austin, TX, USA
+Huan Bui and Chenglong Fu (University of North Carolina at Charlotte), Xiaojiang Du (Stevens Institute of Technology)
+*Paper under review.*
 
 CPSForge is a PLC-in-the-loop measurement framework. It couples a **physical Siemens S7-1200 PLC** with **Factory I/O** simulated plants and places a bounded, online LLM agent on a configured semantic action surface. A **mandatory safety shield** validates every proposed write before it reaches the PLC, and the same model serves as a defender with a different prompt. The framework records, separately for each proposed action:
 
@@ -261,12 +261,11 @@ Never connect CPSForge to production control systems. See [Safety Notes](docs/sa
 ## Citation
 
 ```bibtex
-@inproceedings{bui2026cpsforge,
-  author    = {Bui, Huan and Fu, Chenglong},
-  title     = {{CPSForge}: Measuring the Realized Effects of {LLM}-Generated {PLC} Writes},
-  booktitle = {Proceedings of the 45th IEEE International Performance, Computing, and Communications Conference (IPCCC)},
-  address   = {Austin, TX, USA},
-  year      = {2026}
+@misc{bui2026cpsforge,
+  author = {Bui, Huan and Fu, Chenglong and Du, Xiaojiang},
+  title  = {{CPSForge}: Measuring the Realized Effects of {LLM}-Generated {PLC} Writes},
+  note   = {Under review},
+  year   = {2026}
 }
 ```
 
